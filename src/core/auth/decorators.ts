@@ -1,3 +1,4 @@
+import { scaled } from "./rate";
 import { SetMetadata, createParamDecorator, applyDecorators, type ExecutionContext } from "@nestjs/common";
 import { Throttle } from "@nestjs/throttler";
 import type { Permission } from "@/domain/auth/permissions";
@@ -18,7 +19,7 @@ export const StepUp = () => SetMetadata(STEP_UP, true);
 /** Writes allowed under a view-as token (sign-out, end view-as); every other non-GET is 403 `impersonation_read_only`. */
 export const ImpersonationOk = () => SetMetadata(IMPERSONATION_OK, true);
 export type LimitName = "auth" | "write" | "read";
-export const Limit = (name: LimitName) => Throttle({ default: { limit: { auth: 10, write: 60, read: 600 }[name], ttl: 60_000 } });
+export const Limit = (name: LimitName) => Throttle({ default: { limit: scaled({ auth: 10, write: 60, read: 600 }[name]), ttl: 60_000 } });
 
 export const CurrentUser = createParamDecorator(
   (_: unknown, ctx: ExecutionContext): SessionUser | null => ctx.switchToHttp().getRequest<{ user?: SessionUser }>().user ?? null,

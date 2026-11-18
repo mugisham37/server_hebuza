@@ -1,3 +1,4 @@
+import { scaled } from "./rate";
 import type { ExecutionContext } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ThrottlerModule } from "@nestjs/throttler";
@@ -11,8 +12,8 @@ export const ThrottleModule = ThrottlerModule.forRootAsync({
   inject: [ConfigService],
   useFactory: (config: ConfigService<Env, true>) => ({
     throttlers: [
-      { name: "default", ttl: 60_000, limit: 600 },
-      { name: "write", ttl: 60_000, limit: 60, skipIf: isRead },
+      { name: "default", ttl: 60_000, limit: scaled(600) },
+      { name: "write", ttl: 60_000, limit: scaled(60), skipIf: isRead },
     ],
     storage: new ThrottlerStorageRedisService(config.get("REDIS_URL", { infer: true })),
   }),

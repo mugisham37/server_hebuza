@@ -69,12 +69,13 @@ export async function call(
   };
   if (o.jar) headers.cookie = o.jar;
   if (o.body !== undefined) headers["content-type"] = "application/json";
-  const r = await fetch(API + path, {
-    method,
-    headers,
-    body: o.body === undefined ? undefined : JSON.stringify(o.body),
-    redirect: "manual",
-  });
+  let r: Response;
+  // A live API rate-limits per client IP (forged X-Forwarded-For is ignored); wait out 429s instead of counting them.
+  for (let tries = 0; ; tries++) {
+    r = await fetch(API + path, { method, headers, body: o.body === undefined ? undefined : JSON.stringify(o.body), redirect: "manual" });
+    if (r.status !== 429 || tries >= 8) break;
+    await new Promise((res) => setTimeout(res, 1000 * Math.max(1, Number(r.headers.get("retry-after")) || 5)));
+  }
   const text = await r.text();
   let json: { errorType?: string; data?: unknown } | null = null;
   try {

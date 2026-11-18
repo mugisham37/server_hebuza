@@ -57,6 +57,7 @@ export const envSchema = z.object({
   // marketing WhatsApp (unset → sends are logged)
   WHATSAPP_ACCESS_TOKEN: z.string().optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  RATE_LIMIT_FACTOR: z.coerce.number().min(1).max(1000).default(1), // staging test runs only; forced to 1 in production (core/auth/rate.ts)
   WORKER_MODE: z.enum(["separate", "inline", "off"]).default("separate"), // inline: API process also runs jobs; off: no worker monitor (tests)
   GIT_SHA: z.string().optional(), // appended to package.json version for the API/worker version check
   LOG_LEVEL: z
