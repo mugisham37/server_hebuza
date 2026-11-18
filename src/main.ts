@@ -1,3 +1,4 @@
+import { makeTrustProxy } from "./core/http/client-ip";
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
@@ -9,12 +10,11 @@ import helmet from "@fastify/helmet";
 import multipart from "@fastify/multipart";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
-import { envSchema, type Env } from "./core/config/env";
+import type { Env } from "./core/config/env";
 
 async function bootstrap() {
-  const hops = envSchema.shape.TRUST_PROXY.parse(process.env.TRUST_PROXY);
   const adapter = new FastifyAdapter({
-    trustProxy: (_addr: string, i: number) => i < hops, // trust exactly `hops` proxies, not `true` (XFF spoofing)
+    trustProxy: makeTrustProxy(), // our own Railway hops only (core/http/client-ip.ts), never client-forgeable XFF
     bodyLimit: 1_048_576,
     maxParamLength: 300, // default 100 404s long catalogue slugs (some are 120+ chars)
     genReqId: (req: IncomingMessage) => {

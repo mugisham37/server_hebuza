@@ -5,7 +5,6 @@ export const envSchema = z.object({
     .enum(["development", "test", "production"])
     .default("development"),
   PORT: z.coerce.number().int().default(4000),
-  TRUST_PROXY: z.coerce.number().int().min(0).default(1), // proxy hops in front of the API
   WEB_ORIGIN: z.string().min(1), // comma-separated allow-list
   DATABASE_URL: z.string().url(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -25,6 +24,10 @@ export const envSchema = z.object({
   // Cloudflare AI Gateway in front of Anthropic: https://gateway.ai.cloudflare.com/v1/<account>/<gateway> + its run token.
   AI_GATEWAY_URL: z.string().url().optional(),
   AI_GATEWAY_TOKEN: z.string().optional(),
+  // Daily audit-log copy to the locked R2 bucket (write-only token scoped to that bucket).
+  AUDIT_S3_BUCKET: z.string().optional(),
+  AUDIT_S3_ACCESS_KEY: z.string().optional(),
+  AUDIT_S3_SECRET_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   VOYAGE_API_KEY: z.string().optional(), // assistant embeddings (voyage-3.5); unset → full-text retrieval only
   AI_MODEL: z.string().default("claude-sonnet-5-5"), // public assistant answers

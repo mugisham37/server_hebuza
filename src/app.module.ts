@@ -1,3 +1,4 @@
+import { InfraCheck } from "./core/http/infra-check";
 import { Module } from "@nestjs/common";
 import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from "@nestjs/core";
 import { TerminusModule } from "@nestjs/terminus";
@@ -81,6 +82,7 @@ import { WorkerFeaturesModule } from "./worker.module";
   ],
   controllers: [HealthController, OpenApiController],
   providers: [
+    InfraCheck,
     { provide: APP_PIPE, useClass: ZodValidationPipe },
     { provide: APP_INTERCEPTOR, useClass: EnvelopeInterceptor },
     { provide: APP_FILTER, useClass: AppExceptionFilter },

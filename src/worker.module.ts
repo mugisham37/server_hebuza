@@ -1,3 +1,4 @@
+import { AuditExport } from "./core/db/audit-export";
 import { Global, Module } from "@nestjs/common";
 import { TokenService } from "./core/auth/tokens";
 import { PasswordService } from "./core/auth/password";
@@ -40,7 +41,7 @@ class WorkerAuthModule {}
 // Feature modules that own *.jobs.ts are appended here (their providers carry @Job/@Cron).
 @Module({
   imports: [DiscoveryModule, NotificationsModule, AuthWorkerModule, SystemWorkerModule, SubscriptionsWorkerModule, OpsWorkerModule, BookingWorkerModule, DocumentsWorkerModule, CmsWorkerModule, ReportsWorkerModule, FieldWorkerModule, WorkWorkerModule, PaymentsWorkerModule, ProcurementWorkerModule, MarketingWorkerModule, FinanceWorkerModule, AssistantWorkerModule],
-  providers: [JobExplorer, OutboxRelay, WorkerHeartbeat],
+  providers: [JobExplorer, OutboxRelay, WorkerHeartbeat, AuditExport],
 })
 export class WorkerFeaturesModule {}
 

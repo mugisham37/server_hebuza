@@ -1,3 +1,4 @@
+import { clientIpFromChain, xffChain } from "./client-ip";
 import { ClsModule, ClsService, ClsStore } from "nestjs-cls";
 import type { IncomingMessage } from "node:http";
 import type { Role } from "@/domain/auth/roles";
@@ -13,12 +14,7 @@ const pickLocale = (req: IncomingMessage) => {
   return l && LOCALES.includes(l) ? l : "en";
 };
 
-/** Client ip as Fastify computes it for `trustProxy: <hops>`: walk that many proxies back from the socket through X-Forwarded-For. */
-const clientIp = (req: IncomingMessage) => {
-  const xff = String(req.headers["x-forwarded-for"] ?? "").split(",").map((s) => s.trim()).filter(Boolean);
-  const chain = [req.socket.remoteAddress ?? "", ...xff.reverse()];
-  return chain[Math.min(Number(process.env.TRUST_PROXY ?? 1), chain.length - 1)];
-};
+const clientIp = (req: IncomingMessage) => clientIpFromChain(xffChain(req.socket.remoteAddress, req.headers["x-forwarded-for"]));
 
 // Fastify hands Nest middleware the raw IncomingMessage (no req.id/ip/cookies), so read everything from headers/socket.
 // requestId: main.ts genReqId writes the final id back into x-request-id.
