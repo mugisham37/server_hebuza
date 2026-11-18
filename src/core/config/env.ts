@@ -21,6 +21,10 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().min(1),
   SMS_PROVIDER: z.string().optional(),
+  // Africa's Talking (SMS_PROVIDER=africastalking). AT_USERNAME "sandbox" uses the sandbox host.
+  AT_USERNAME: z.string().optional(),
+  AT_API_KEY: z.string().optional(),
+  AT_SENDER_ID: z.string().optional(),
   // Cloudflare AI Gateway in front of Anthropic: https://gateway.ai.cloudflare.com/v1/<account>/<gateway> + its run token.
   AI_GATEWAY_URL: z.string().url().optional(),
   AI_GATEWAY_TOKEN: z.string().optional(),
