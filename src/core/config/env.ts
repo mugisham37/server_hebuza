@@ -63,6 +63,8 @@ export const envSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   RATE_LIMIT_FACTOR: z.coerce.number().min(1).max(1000).default(1), // staging test runs only; forced to 1 in production (core/auth/rate.ts)
   WORKER_MODE: z.enum(["separate", "inline", "off"]).default("separate"), // inline: API process also runs jobs; off: no worker monitor (tests)
+  ORIGIN_AUTH_SECRET: z.string().min(32).optional(), // Phase L: Cloudflare Transform Rule header x-origin-auth; unset → no gate
+  SENTRY_DSN: z.string().url().optional(), // unset → Sentry off (core/sentry.ts)
   GIT_SHA: z.string().optional(), // appended to package.json version for the API/worker version check
   LOG_LEVEL: z
     .enum(["fatal", "error", "warn", "info", "debug", "trace"])

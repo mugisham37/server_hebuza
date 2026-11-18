@@ -60,5 +60,11 @@ Scripts there: `set-vars.mjs` (all variables per env) and `set-config.mjs` (depl
 2. Add GitHub secrets `RAILWAY_TOKEN_STAGING` and `RAILWAY_TOKEN_PRODUCTION`: Railway → project hebuza → Settings → Tokens, one per environment. `deploy.yml` uses them.
 3. Delete the stray empty Railway project **"web"** (created by mistake on 2026-11-18).
 4. Provide `RESEND_API_KEY` (email), `ANTHROPIC_API_KEY` (assistant) and payment sandbox keys in `~/.config/hebuza/providers.env`, then rerun `set-vars.mjs` for each environment. Until then, emails/OTP don't send and the assistant runs FAQ-only.
-5. Railway Pro: enable Postgres PITR (`railway postgres pitr enable`) and raise replicas (api/web 2+). Web needs the shared Redis cache handler before it runs more than 1 replica.
+5. Railway Pro: enable Postgres PITR (`railway postgres pitr enable`) and raise replicas (api/web 2+). Web: set `REDIS_URL` (shared cache) before it runs more than 1 replica (see "How to switch on").
 6. Domain on Cloudflare: Phase L of the plan (DNS, WAF, rate limits, cache rules, origin-auth, Turnstile domain).
+
+## How to switch on (code is in place, dormant until the variable is set)
+
+- **Origin auth (Phase L, after the domain is proxied by Cloudflare):** generate one secret (≥32 chars), set `ORIGIN_AUTH_SECRET` on **api and web**, and add a Cloudflare Transform Rule (Modify Request Header) on both hostnames: set `x-origin-auth` = that secret. API then 403s requests without it, except `/health`, `/health/ready` and private-network calls (web → api over `railway.internal`); it takes the client IP from `cf-connecting-ip` on authenticated requests. Web 403s page requests without it except Railway health checks (Host `healthcheck.railway.app`; health path `/en` unchanged). Set the rule first, then the variables; verify the `*.up.railway.app` URL returns 403.
+- **Shared Next cache (Pro, before web replicas > 1):** set `REDIS_URL` on web (reference the Redis service's private URL), redeploy, then raise web replicas. `'use cache'` entries and `revalidateTag` invalidations are then shared via Redis (`web/cache-handler.js`); unset → Next's in-memory default.
+- **Sentry:** set `SENTRY_DSN` on api and worker. Captures 5xx from `AppExceptionFilter` and uncaught errors (10% traces). Web is not instrumented (`@sentry/nextjs` needs a build wrapper + instrumentation files; revisit when needed).

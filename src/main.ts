@@ -1,4 +1,5 @@
-import { makeTrustProxy } from "./core/http/client-ip";
+import "./core/sentry";
+import { makeTrustProxy, originGate } from "./core/http/client-ip";
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
 import type { IncomingMessage } from "node:http";
@@ -32,6 +33,13 @@ async function bootstrap() {
   app.useLogger({ log: quiet(base.log), warn: base.warn.bind(base), error: base.error.bind(base), debug: quiet(base.debug), verbose: quiet(base.verbose), fatal: base.fatal.bind(base) });
   const cfg: ConfigService<Env, true> = app.get(ConfigService);
 
+  // Phase L origin protection + Cloudflare client IP; no-op while ORIGIN_AUTH_SECRET is unset (core/http/client-ip.ts).
+  const originSecret = cfg.get("ORIGIN_AUTH_SECRET", { infer: true });
+  app.getHttpAdapter().getInstance().addHook("onRequest", async (req, reply) => {
+    const g = originGate({ url: req.url, headers: req.headers, socket: req.raw.socket }, originSecret);
+    if (g === "forbidden") return reply.code(403).send({ success: false, message: "Forbidden", errorType: "forbidden", data: null });
+    if (g) Object.defineProperty(req, "ip", { value: g });
+  });
   await app.register(helmet);
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 5, fields: 20 } });

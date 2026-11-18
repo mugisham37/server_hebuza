@@ -1,6 +1,7 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpException, Logger } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 import { ZodValidationException } from "nestjs-zod";
+import * as Sentry from "@sentry/nestjs";
 
 export class AppError extends Error {
   constructor(readonly status: number, readonly errorType: string, message: string, readonly fields?: Record<string, string>, readonly data?: Record<string, unknown>) {
@@ -34,7 +35,7 @@ export class AppExceptionFilter implements ExceptionFilter {
       errorType = status === 401 ? "unauthorized" : status === 403 ? "forbidden" : status === 404 ? "not_found" : status === 429 ? "rate_limited" : status === 413 ? "payload_too_large" : status === 415 ? "unsupported_media_type" : status >= 500 ? "internal" : "bad_request";
       if (status < 500) message = err.message;
     }
-    if (status >= 500) this.log.error(err);
+    if (status >= 500) { this.log.error(err); Sentry.captureException(err); } // no-op unless SENTRY_DSN (core/sentry.ts)
 
     void reply.status(status).send({ success: false, message, errorType, data, ...(detail && { detail }) });
   }
