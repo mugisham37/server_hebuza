@@ -40,6 +40,7 @@ async function bootstrap() {
     if (/^\/api\/(x_)?field\//.test(r.url)) r.bodyLimit = 40 * 1024 * 1024;
   });
 
-  await app.listen({ port: cfg.get("PORT", { infer: true }), host: "0.0.0.0" });
+  // "::" is dual-stack: Railway private networking is IPv6, public traffic IPv4.
+  await app.listen({ port: cfg.get("PORT", { infer: true }), host: "::" });
 }
 void bootstrap();

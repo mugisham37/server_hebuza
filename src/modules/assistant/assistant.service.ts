@@ -278,7 +278,11 @@ export class AssistantService {
     config: ConfigService<Env, true>,
   ) {
     const key = config.get("ANTHROPIC_API_KEY", { infer: true });
-    this.ai = key ? new Anthropic({ apiKey: key, maxRetries: 1 }) : null;
+    const gw = config.get("AI_GATEWAY_URL", { infer: true });
+    const gwToken = config.get("AI_GATEWAY_TOKEN", { infer: true });
+    this.ai = key
+      ? new Anthropic({ apiKey: key, maxRetries: 1, ...(gw && { baseURL: `${gw}/anthropic`, defaultHeaders: gwToken ? { "cf-aig-authorization": `Bearer ${gwToken}` } : {} }) })
+      : null;
     this.voyage = config.get("VOYAGE_API_KEY", { infer: true }) ?? null;
     this.model = config.get("AI_MODEL", { infer: true });
     this.fast = config.get("AI_FAST_MODEL", { infer: true });

@@ -6,7 +6,7 @@ ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build \
  && mkdir -p /out/src/db && cp -r dist openapi.json package.json pnpm-lock.yaml /out/ && cp -r src/db/migrations /out/src/db/ \

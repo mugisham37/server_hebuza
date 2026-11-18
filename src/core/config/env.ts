@@ -22,6 +22,9 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().min(1),
   SMS_PROVIDER: z.string().optional(),
+  // Cloudflare AI Gateway in front of Anthropic: https://gateway.ai.cloudflare.com/v1/<account>/<gateway> + its run token.
+  AI_GATEWAY_URL: z.string().url().optional(),
+  AI_GATEWAY_TOKEN: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   VOYAGE_API_KEY: z.string().optional(), // assistant embeddings (voyage-3.5); unset → full-text retrieval only
   AI_MODEL: z.string().default("claude-sonnet-5-5"), // public assistant answers

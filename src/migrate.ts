@@ -5,8 +5,9 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { join } from "node:path";
 import postgres from "postgres";
 
-const url = process.env.DATABASE_URL;
-if (!url) throw new Error("DATABASE_URL is required");
+// Migrations need a session-mode connection: use the direct URL when a transaction-mode pooler sits in front.
+const url = process.env.DIRECT_DATABASE_URL ?? process.env.DATABASE_URL;
+if (!url) throw new Error("DIRECT_DATABASE_URL or DATABASE_URL is required");
 const client = postgres(url, { max: 1 });
 migrate(drizzle(client), { migrationsFolder: process.env.MIGRATIONS_DIR ?? join(__dirname, "../src/db/migrations") })
   .then(() => console.log("migrations applied"))
