@@ -1,0 +1,48 @@
+# Production-shaped example (single host). Real prod: managed Postgres (PITR) + managed Redis + S3, secrets from a vault.
+# Images: docker build -t hebuza-api:$SHA server/ ; docker build --build-arg DEPLOYMENT_VERSION=$SHA -t hebuza-web:$SHA web/
+# Release order: `docker compose -f infra/docker-compose.prod.yml run --rm migrate` → `up -d api worker web`. Never seed prod.
+x-api-env: &api-env
+  env_file: [./api.prod.env]   # every var in docs/RUNBOOK.md §Env; NODE_ENV=production, PAYMENTS_STUB=false
+  restart: unless-stopped
+
+services:
+  migrate:
+    image: hebuza-api:${TAG:-latest}
+    command: ["node", "dist/migrate.js"]   # applies pending migrations, exits
+    environment: { DATABASE_URL: "${MIGRATE_DATABASE_URL}" }   # owner role, direct (not via pgbouncer)
+    profiles: [release]
+
+  api:
+    image: hebuza-api:${TAG:-latest}
+    <<: *api-env
+    read_only: true
+    deploy: { replicas: 2 }
+    expose: ["4000"]
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    image: hebuza-api:${TAG:-latest}
+    <<: *api-env
+    read_only: true
+    command: ["node", "--enable-source-maps", "dist/worker.js"]
+    deploy: { replicas: 1 }   # scale on queue depth; crons are leader-safe via BullMQ repeatables
+
+  web:
+    image: hebuza-web:${TAG:-latest}
+    read_only: true
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:4000
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      REVALIDATE_SECRET: ${REVALIDATE_SECRET}
+      NEXT_SERVER_ACTIONS_ENCRYPTION_KEY: ${NEXT_SERVER_ACTIONS_ENCRYPTION_KEY}   # identical on every instance
+    tmpfs: [/app/.next/cache]
+    deploy: { replicas: 2 }
+    expose: ["3000"]
+    depends_on: { api: { condition: service_healthy } }
+
+  # TLS-terminating proxy (Caddy/nginx/ALB) in front of web; API reached same-origin via web's /api proxy. TRUST_PROXY = hops.
