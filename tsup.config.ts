@@ -3,7 +3,7 @@ import { defineConfig } from "tsup";
 
 // SWC (auto-enabled by emitDecoratorMetadata + @swc/core) keeps Nest's decorator metadata.
 export default defineConfig({
-  entry: ["src/main.ts", "src/worker.ts", "src/openapi.ts", "src/migrate.ts", "src/admin-create.ts"],
+  entry: { main: "src/main.ts", worker: "src/worker.ts", openapi: "src/openapi.ts", migrate: "src/migrate.ts", "admin-create": "src/admin-create.ts", seed: "src/db/seed/index.ts" },
   format: "cjs",
   target: "node22",
   sourcemap: true,

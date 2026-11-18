@@ -1,7 +1,9 @@
 // Dev/staging catalogue seed. Categories, subcategories, services, tiers, bands and copy come from the public site's seed
 // (web/src/content (copied to ./content)/seed/*.json) so API prices match the site; builder structures and ops sub-statuses come from the
 // reference seed. Idempotent: existing rows (by id) are left alone.
-import { readFileSync } from "node:fs";
+import servicesJson from "./content/services.json";
+import detailsJson from "./content/service-details.json";
+import plansJson from "./content/plans.json";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 import type { ExtractTablesWithRelations } from "drizzle-orm";
 import { EMPTY_META } from "@/domain/catalogue/rules";
@@ -19,8 +21,9 @@ import { serviceSubStatuses } from "../schema/schema-catalogue";
 
 type Db = PgDatabase<PgQueryResultHKT, typeof schema, ExtractTablesWithRelations<typeof schema>>;
 type L3 = { rw: string; en: string; fr: string };
-const json = <T>(name: string): T =>
-  JSON.parse(readFileSync(new URL(`./content/${name}.json`, import.meta.url), "utf8")) as T;
+// Static imports so the seed also bundles into dist/seed.js (no runtime file paths).
+const CONTENT = { services: servicesJson, "service-details": detailsJson, plans: plansJson } as const;
+const json = <T>(name: keyof typeof CONTENT): T => CONTENT[name] as unknown as T;
 
 type Ref = {
   id: string; slug: string; name_rw: string; name_en: string; name_fr: string; description?: string | null;

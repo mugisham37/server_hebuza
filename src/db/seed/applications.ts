@@ -1,3 +1,4 @@
+import { assertSeedAllowed } from "./guard";
 // Dev/staging seed for the client core (port of .ref applications.seed, part 1): contract users, seed services, cases,
 // status history, document requests, notifications and support tickets. Idempotent (fixed ids + ON CONFLICT DO NOTHING),
 // relative dates, anonymised people. Never run in production. Documents/deliverables: seed/documents.ts (run after).
@@ -115,7 +116,7 @@ const APPS: AppSeed[] = [
 ];
 
 export async function seedApplications(root: Db) {
-  if (process.env.NODE_ENV === "production") throw new Error("refusing to seed production");
+  assertSeedAllowed();
   // FORCE RLS binds the table owner too: the seed acts as `system` inside its own transaction.
   await root.transaction(async (db) => {
   await db.execute(sql`select set_config('app.roles', 'system', true)`);

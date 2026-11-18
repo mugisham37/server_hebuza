@@ -1,3 +1,4 @@
+import { assertSeedAllowed } from "./guard";
 // Dev/staging seed runner: `pnpm db:seed` (DATABASE_URL, FIELD_KEY, BLIND_INDEX_KEY). Every seed is idempotent.
 // Runs in one transaction as `system` (FORCE RLS binds the table owner too). Never in production.
 import { sql } from "drizzle-orm";
@@ -25,7 +26,10 @@ import { seedFinance } from "./finance";
 import { seedProcurement } from "./procurement";
 import { seedMarketing } from "./marketing";
 
-if (process.env.NODE_ENV === "production") throw new Error("refusing to seed production");
+// SEED_SCOPE=reference loads only real business reference data (catalogue, plans, CMS pages; the assistant indexes them itself) and is
+// allowed in production. Everything else is demo data and stays staging/dev-only.
+const reference = process.env.SEED_SCOPE === "reference";
+if (!reference) assertSeedAllowed();
 const url = process.env.DATABASE_URL;
 const fieldKey = process.env.FIELD_KEY;
 const blindKey = process.env.BLIND_INDEX_KEY;
@@ -40,10 +44,18 @@ const hashPw = (pw: string) => hash(pw, { memoryCost: 65536, timeCost: 3, parall
 
 const client = postgres(url, { max: 1 });
 const db = drizzle(client, { schema });
-try {
+// Wrapped (not top-level await) so it also bundles as CommonJS into dist/seed.js.
+const run = async () => {
+  try {
   await db.transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.roles', 'system', true)`);
     const step = async (name: string, fn: () => Promise<unknown>) => (await fn(), console.log(`seeded ${name}`));
+    if (reference) {
+      await step("catalogue", () => seedCatalogue(tx));
+      await step("plans", () => seedPlans(tx));
+      await step("cms", () => seedCms(tx));
+      return;
+    }
     await step("auth", () => seedAuth(tx, { hash: hashPw, encrypt }));
     await step("system", () => seedSystem(tx));
     await step("compliance", () => seedCompliance(tx));
@@ -66,6 +78,8 @@ try {
     await step("procurement", () => seedProcurement(tx, { encrypt, blind }));
     await step("marketing", () => seedMarketing(tx));
   });
-} finally {
-  await client.end();
-}
+  } finally {
+    await client.end();
+  }
+};
+run().catch((e) => { console.error(e); process.exitCode = 1; });

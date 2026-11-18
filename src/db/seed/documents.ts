@@ -1,3 +1,4 @@
+import { assertSeedAllowed } from "./guard";
 // Dev/staging seed (port of .ref applications.seed, part 2): deliverables, the client document library with versions
 // and expiry, and case documents. Run after seedApplications. `put` (optional) writes placeholder PDFs to storage.
 import { sql } from "drizzle-orm";
@@ -13,7 +14,7 @@ const PDF = new TextEncoder().encode("%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n
 const id = (code: string) => `app_seed_${code.slice(4).toLowerCase()}`;
 
 export async function seedDocuments(root: Db, deps: { put?: (key: string, body: Uint8Array, type: string) => Promise<void> } = {}) {
-  if (process.env.NODE_ENV === "production") throw new Error("refusing to seed production");
+  assertSeedAllowed();
   // FORCE RLS binds the table owner too: the seed acts as `system` inside its own transaction.
   await root.transaction(async (db) => {
   await db.execute(sql`select set_config('app.roles', 'system', true)`);
