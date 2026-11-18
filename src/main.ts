@@ -25,7 +25,11 @@ async function bootstrap() {
     },
   });
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, adapter, { bufferLogs: true });
-  app.useLogger(app.get(Logger));
+  // Drop Nest's ~900 boot lines (route table, module loading): Railway rate-limits log bursts and would drop real warnings with them.
+  const NOISY = new Set(["RoutesResolver", "RouterExplorer", "InstanceLoader", "LegacyRouteConverter"]);
+  const base = app.get(Logger);
+  const quiet = (fn: (m: unknown, ...p: unknown[]) => void) => (m: unknown, ...p: unknown[]) => { if (!NOISY.has(String(p.at(-1)))) fn.call(base, m, ...p); };
+  app.useLogger({ log: quiet(base.log), warn: base.warn.bind(base), error: base.error.bind(base), debug: quiet(base.debug), verbose: quiet(base.verbose), fatal: base.fatal.bind(base) });
   const cfg: ConfigService<Env, true> = app.get(ConfigService);
 
   await app.register(helmet);
