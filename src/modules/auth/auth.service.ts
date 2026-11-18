@@ -198,14 +198,16 @@ export class AuthService {
       (select data->'extraRoles' from system_records where kind = 'userMeta' and id = ${id}) as grants,
       (select data->>'activeOrgId' from system_records where kind = 'acct' and id = ${id + ":orgs"}) as org,
       exists (select 1 from partner_profiles where user_id = ${id}) as partner,
+      coalesce((select twofa_enabled from staff_profiles where user_id = ${id}), false) as mfa,
       exists (select 1 from agent_profiles where user_id = ${id}) or exists (select 1 from field_agents where user_id = ${id} and revoked_at is null) as agent`)) as unknown as {
-      grants: { role: string; expiresAt: string | null }[] | null; org: string | null; partner: boolean; agent: boolean;
+      grants: { role: string; expiresAt: string | null }[] | null; org: string | null; partner: boolean; agent: boolean; mfa: boolean;
     }[]; // cast: execute() rows are untyped
     const grants = (r?.grants ?? []).filter((g) => !g.expiresAt || Date.parse(g.expiresAt) > Date.now()).map((g) => g.role);
     const su: SessionUser = {
       id, sid, act: view?.act,
       roles: normalizeRoles({ roles: [u.role, ...grants] }),
       scopes: { ...(r?.org && { orgId: r.org }), ...(r?.partner && { partnerId: id }), ...(r?.agent && { agentId: id }) },
+      mfa: !!r?.mfa, // the web proxy sends un-enrolled staff to 2FA setup (fails closed in production without this claim)
     };
     const ttl = view ? Math.max(1, Math.min(ACCESS_TTL_S, Math.floor((view.until.getTime() - Date.now()) / 1000))) : ACCESS_TTL_S;
     return { su, ttl, token: this.tokens.signAccess(su, ttl), expiresAt: new Date(Date.now() + ttl * 1000) };
