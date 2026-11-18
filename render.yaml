@@ -1,0 +1,76 @@
+# Render Blueprint: api (web service) + worker (background worker) from one image, managed Postgres + Key Value.
+# Guide: docs/DEPLOY.md. Secrets are `sync: false` (prompted once in the dashboard); generated keys are 32-byte base64.
+envVarGroups:
+  - name: hebuza-server
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: TRUST_PROXY, value: "1" }
+      - { key: PAYMENTS_STUB, value: "false" }
+      - { key: LOG_LEVEL, value: info }
+      - { key: WEB_ORIGIN, sync: false }
+      - { key: API_PUBLIC_URL, sync: false }
+      - { key: JWT_PRIVATE_KEY, sync: false }
+      - { key: JWT_PUBLIC_KEY, sync: false }
+      - { key: FIELD_KEY, generateValue: true }
+      - { key: BLIND_INDEX_KEY, generateValue: true }
+      - { key: PAYMENTS_WEBHOOK_SECRET, generateValue: true }
+      - { key: REVALIDATE_SECRET, sync: false }
+      - { key: S3_ENDPOINT, sync: false }
+      - { key: S3_BUCKET, sync: false }
+      - { key: S3_ACCESS_KEY, sync: false }
+      - { key: S3_SECRET_KEY, sync: false }
+      - { key: S3_REGION, sync: false }
+      - { key: MAIL_FROM, sync: false }
+      - { key: RESEND_API_KEY, sync: false }
+      - { key: ANTHROPIC_API_KEY, sync: false }
+      - { key: VOYAGE_API_KEY, sync: false }
+      - { key: TURNSTILE_SECRET_KEY, sync: false }
+      - { key: CLAMAV_HOST, sync: false }
+
+services:
+  - type: web
+    name: hebuza-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: starter
+    healthCheckPath: /health
+    preDeployCommand: node dist/migrate.js
+    envVars:
+      - fromGroup: hebuza-server
+      - key: DATABASE_URL
+        fromDatabase: { name: hebuza-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: hebuza-redis, property: connectionString }
+
+  - type: worker
+    name: hebuza-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node --enable-source-maps dist/worker.js
+    region: frankfurt
+    plan: starter
+    envVars:
+      - fromGroup: hebuza-server
+      - key: DATABASE_URL
+        fromDatabase: { name: hebuza-db, property: connectionString }
+      - key: REDIS_URL
+        fromService: { type: keyvalue, name: hebuza-redis, property: connectionString }
+
+  - type: keyvalue
+    name: hebuza-redis
+    region: frankfurt
+    plan: starter
+    maxmemoryPolicy: noeviction # BullMQ must never lose job keys
+    ipAllowList: [] # private network only
+
+databases:
+  - name: hebuza-db
+    databaseName: hebuza
+    user: hebuza
+    region: frankfurt
+    plan: basic-1gb
+    postgresMajorVersion: "16"
+    ipAllowList: [] # private network only
