@@ -121,6 +121,7 @@ export class DeliverableDto extends dto(
     name: z.string().max(255).optional(),
     size: UploadIn.shape.size.optional(),
     type: UploadIn.shape.mime.optional(),
+    signature: z.boolean().optional(),
   }),
 ) {}
 

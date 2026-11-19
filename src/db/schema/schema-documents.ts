@@ -1,6 +1,6 @@
 // P3 documents tables (new): released deliverables per case, and the library's expiry date
 // (kept beside client_documents so the pulled table stays untouched until the cutover ALTER).
-import { pgTable, varchar, timestamp, integer, date, index } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, integer, date, index, boolean, text } from "drizzle-orm/pg-core";
 import { applications, clientDocuments, users } from "./schema";
 
 export const deliverables = pgTable("deliverables", {
@@ -16,6 +16,8 @@ export const deliverables = pgTable("deliverables", {
   releasedAt: timestamp("released_at", { withTimezone: true, mode: "string" }),
   createdBy: varchar("created_by", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  /** DLV-10: staff asked the client to sign this file. */
+  signatureRequired: boolean("signature_required").default(false).notNull(),
 }, (t) => [index("ix_deliverables_application_id").on(t.applicationId)]);
 
 export const clientDocumentExpiry = pgTable("client_document_expiry", {
@@ -50,3 +52,23 @@ export const documentRetentionFlags = pgTable("document_retention_flags", {
   reason: varchar({ length: 500 }),
   shreddedAt: timestamp("shredded_at", { withTimezone: true, mode: "string" }),
 }, (t) => [index("ix_document_retention_flags_open").on(t.decision, t.flaggedAt), index("ix_document_retention_flags_source").on(t.source, t.sourceId)]);
+
+/**
+ * DLV-10 built-in e-signature: typed or drawn signature over the exact file bytes (file_sha256), sealed by audit_hash =
+ * sha256 of the canonical signing record. provider/provider_ref stay null until an external e-sign provider is wired.
+ */
+export const deliverableSignatures = pgTable("deliverable_signatures", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  deliverableId: varchar("deliverable_id", { length: 64 }).notNull().references(() => deliverables.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  method: varchar({ length: 8 }).notNull(), // typed | drawn
+  signerName: varchar("signer_name", { length: 255 }).notNull(),
+  imagePng: text("image_png"), // drawn signature as a data: URL (≤ 200 kB)
+  fileSha256: varchar("file_sha256", { length: 64 }).notNull(),
+  auditHash: varchar("audit_hash", { length: 64 }).notNull(),
+  ip: varchar({ length: 64 }),
+  userAgent: varchar("user_agent", { length: 255 }),
+  provider: varchar({ length: 32 }),
+  providerRef: varchar("provider_ref", { length: 128 }),
+  signedAt: timestamp("signed_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_deliverable_signatures_deliverable").on(t.deliverableId)]);

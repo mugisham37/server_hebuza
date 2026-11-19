@@ -437,6 +437,8 @@ async function docsOf(db: Exec, r: CaseRow, clientName: string) {
           (d.qcStatus as "pending" | "accepted" | "rejected") ??
           "pending",
         qc_notes: qc ? { reason: qc.reason, note: qc.note } : null,
+        // F-DOC-12: advisory OCR kind suggestion for QC (null until OCR is configured and has run).
+        ocr_suggestion: (d.ocr as { guess?: { kind: string; confidence: number } } | null)?.guess ?? null,
         is_active: d.isActive,
         created_at: d.createdAt,
         source: "upload" as const,
@@ -1340,9 +1342,18 @@ export async function uploadDeliverable(
     name?: string;
     size?: number;
     type?: string;
+    signature?: boolean;
   },
 ) {
   const r = await leadOnly(ctx.db, ctx.session!, code, true);
+  // DLV-10: mark a slot "client must sign"; the released file then asks the client for a signature.
+  if (b.signature !== undefined && b.slot && !b.name) {
+    const sl = r.x.slots.find((x) => x.key === b.slot);
+    if (!sl) throw new AppError(422, "validation", "Unknown slot");
+    sl.signature = b.signature;
+    await saveCase(ctx.db, r);
+    return deliv(ctx.db, ctx.session!, r);
+  }
   if (b.clientNote !== undefined) {
     r.x.clientNote = b.clientNote.slice(0, 2000);
     await saveCase(ctx.db, r);

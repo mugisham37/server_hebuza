@@ -13,7 +13,8 @@ export const LibDoc = z.object({
   fileSizeBytes: z.number().int(), currentVersion: z.number().int(), createdAt: z.string(), updatedAt: z.string(), previewable: z.boolean(),
   usedIn: z.array(UsedIn), versions: z.array(Version), expiresOn: z.string().nullable(),
 }).meta({ id: "ClientDocumentItemResponse" });
-const DlvFile = z.object({ id: z.string(), title: z.string(), mime: z.string(), sizeBytes: z.number().int(), version: z.number().int(), issuedAt: z.string(), issuer: z.string().nullable() });
+const DlvFile = z.object({ id: z.string(), title: z.string(), mime: z.string(), sizeBytes: z.number().int(), version: z.number().int(), issuedAt: z.string(), issuer: z.string().nullable(),
+  signatureRequired: z.boolean(), signedAt: z.string().nullable() });
 export const DlvGroup = z.object({
   code: z.string(), service: z.string(), state: z.enum(["in_progress", "ready", "locked"]), step: z.number().int(), totalSteps: z.number().int(),
   expectedAt: z.string().nullable().optional(), balance: z.number().int().optional(), currency: z.string().optional(),
@@ -41,3 +42,5 @@ export const CaseUploadOut = z.object({ id: z.string(), code: z.string(), upload
 export class NpsDto extends dto(z.object({ score: z.number().int().min(0).max(10), comment: z.string().trim().max(1000).optional() })) {}
 export const NpsDue = z.object({ due: z.boolean() }).meta({ id: "NpsDueResponse" });
 export class RetentionDecisionDto extends dto(z.object({ decision: z.enum(["shred", "keep"]), reason: z.string().trim().max(500).optional() })) {}
+export class SignDto extends dto(z.object({ method: z.enum(["typed", "drawn"]), name: z.string().trim().min(2).max(255), image: z.string().max(200_000).nullish(), agree: z.literal(true) })) {}
+export class RequireSignatureDto extends dto(z.object({ required: z.boolean() })) {}

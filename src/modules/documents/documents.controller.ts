@@ -1,5 +1,5 @@
-import { Body, Controller, Query, Delete, Get, Param, Patch, Post, Res } from "@nestjs/common";
-import type { FastifyReply } from "fastify";
+import { Body, Controller, Query, Req, Delete, Get, Param, Patch, Post, Res } from "@nestjs/common";
+import type { FastifyReply, FastifyRequest } from "fastify";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { RawResponse } from "../../core/http/envelope.interceptor";
@@ -35,6 +35,16 @@ export class DocumentsController {
   @Route({ auth: ["client"], permission: "doc.library", out: D.Deleted })
   remove(@Param("id") id: string, @CurrentUser() me: SessionUser) {
     return this.svc.delete(me, id);
+  }
+  @Post("deliverables/:id/require-signature")
+  @Route({ auth: ["staff:agent", "staff:service_manager", "ext:agent"], limit: "write" })
+  requireSignature(@Param("id") id: string, @Body() b: D.RequireSignatureDto, @CurrentUser() me: SessionUser) {
+    return this.svc.requireSignature(me, id, b.required);
+  }
+  @Post("me/deliverables/:id/sign")
+  @Route({ auth: ["client"], permission: "dlv.download", limit: "write" })
+  sign(@Param("id") id: string, @Body() b: D.SignDto, @CurrentUser() me: SessionUser, @Req() req: FastifyRequest) {
+    return this.svc.sign(me, id, b, { ip: req.ip ?? null, ua: (req.headers["user-agent"] as string | undefined) ?? null });
   }
   @Get("admin/documents/retention")
   @Route({ auth: ["staff:service_manager", "staff:sysadmin"] })

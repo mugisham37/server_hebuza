@@ -1340,6 +1340,14 @@ export async function publish(db: Exec, slug: string) {
   };
 }
 
+/** Public: the published client form (fields only, no internal meta) the apply wizard renders. */
+export async function getPublicForm(db: Exec, slug: string) {
+  const s = await requireService(db, slug);
+  const p = publishedOf(s);
+  const step = (defOf(p).steps[0] ?? {}) as { fields?: unknown[] };
+  return { serviceSlug: s.slug, version: p?.version ?? null, fields: (step.fields ?? []) as Record<string, unknown>[] };
+}
+
 export async function getPublished(db: Exec, slug: string) {
   const s = await requireService(db, slug);
   const p = publishedOf(s);
@@ -1560,6 +1568,10 @@ export class CatalogueService {
     const rows = ids ? ids.flatMap((id) => all.filter((s) => s.service_id === id)) : all;
     const { results, facets } = facetsOf(rows, f);
     return { services: results, facets };
+  }
+  async getPublicForm(slug: string) {
+    await this.getPublicService(slug); // 404 for services that are not public
+    return this.cache.get("catalogue", `form:${slug}`, () => this.read((t) => getPublicForm(t, slug)));
   }
   getPublicService(slug: string) {
     return this.cache.get("catalogue", `service:${slug}`, () => this.read((t) => getPublicService(t, slug)));

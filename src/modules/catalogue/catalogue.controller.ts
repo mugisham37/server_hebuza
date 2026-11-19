@@ -28,6 +28,11 @@ export class CatalogueController {
   getPublic(@Param("slug") slug: string) {
     return this.svc.getPublicService(slug);
   }
+  @Get("services/:slug/form")
+  @Route({ auth: "public", limit: "read", out: D.PublicFormOut })
+  form(@Param("slug") slug: string) {
+    return this.svc.getPublicForm(slug);
+  }
   @Get("service-categories")
   @Route({ auth: "public", limit: "read", out: D.CategoryListOut })
   publicCategories() {

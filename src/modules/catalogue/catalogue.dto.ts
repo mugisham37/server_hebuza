@@ -389,3 +389,4 @@ export const SubStatusListOut = z.object({ items: z.array(SubStatusOut) });
 export const OkOut = z.object({ ok: z.boolean() });
 /** Path version: non-negative integer. */
 export const Ver = z.coerce.number().int().min(0);
+export const PublicFormOut = z.object({ serviceSlug: z.string(), version: z.number().int().nullable(), fields: z.array(z.record(z.string(), z.unknown())) }).meta({ id: "PublicServiceForm" });

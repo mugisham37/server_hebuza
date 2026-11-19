@@ -1442,6 +1442,57 @@
         ]
       }
     },
+    "/api/services/{slug}/form": {
+      "get": {
+        "operationId": "CatalogueController_form",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PublicServiceForm"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Catalogue"
+        ]
+      }
+    },
     "/api/service-categories": {
       "get": {
         "operationId": "CatalogueController_publicCategories",
@@ -14004,6 +14055,124 @@
         ]
       }
     },
+    "/api/deliverables/{id}/require-signature": {
+      "post": {
+        "operationId": "DocumentsController_requireSignature",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequireSignatureDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/me/deliverables/{id}/sign": {
+      "post": {
+        "operationId": "DocumentsController_sign",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
     "/api/admin/documents/retention": {
       "get": {
         "operationId": "DocumentsController_retention",
@@ -14648,6 +14817,13 @@
                                     "issuer": {
                                       "nullable": true,
                                       "type": "string"
+                                    },
+                                    "signatureRequired": {
+                                      "type": "boolean"
+                                    },
+                                    "signedAt": {
+                                      "nullable": true,
+                                      "type": "string"
                                     }
                                   },
                                   "required": [
@@ -14657,7 +14833,9 @@
                                     "sizeBytes",
                                     "version",
                                     "issuedAt",
-                                    "issuer"
+                                    "issuer",
+                                    "signatureRequired",
+                                    "signedAt"
                                   ],
                                   "additionalProperties": false
                                 }
@@ -27082,7 +27260,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SignDto"
+                "$ref": "#/components/schemas/SignDto2"
               }
             }
           }
@@ -28123,7 +28301,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SignDto"
+                "$ref": "#/components/schemas/SignDto2"
               }
             }
           }
@@ -42738,6 +42916,105 @@
         ]
       }
     },
+    "/api/me/testimonial-requests": {
+      "get": {
+        "operationId": "MarketingClientController_requests",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingClient"
+        ]
+      }
+    },
+    "/api/me/testimonial-requests/{id}": {
+      "post": {
+        "operationId": "MarketingClientController_answer",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentDto2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingClient"
+        ]
+      }
+    },
     "/api/procurement/summary": {
       "get": {
         "operationId": "ProcApprovalsController_summary",
@@ -56982,6 +57259,19 @@
               "medium",
               "large"
             ]
+          },
+          "vatRegistered": {
+            "type": "boolean"
+          },
+          "vatPeriod": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly"
+            ]
+          },
+          "employer": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -57104,6 +57394,19 @@
               "medium",
               "large"
             ]
+          },
+          "vatRegistered": {
+            "type": "boolean"
+          },
+          "vatPeriod": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly"
+            ]
+          },
+          "employer": {
+            "type": "boolean"
           }
         }
       },
@@ -58137,6 +58440,50 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
           }
         }
+      },
+      "RequireSignatureDto": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "required"
+        ]
+      },
+      "SignDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "typed",
+              "drawn"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255
+          },
+          "image": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200000
+          },
+          "agree": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "method",
+          "name",
+          "agree"
+        ]
       },
       "RetentionDecisionDto": {
         "type": "object",
@@ -61675,7 +62022,7 @@
           "type"
         ]
       },
-      "SignDto": {
+      "SignDto2": {
         "type": "object",
         "properties": {
           "typedName": {
@@ -62509,7 +62856,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1623_0"
+              "$ref": "#/components/schemas/__s1639_0"
             }
           }
         },
@@ -63414,6 +63761,9 @@
               "image/webp",
               "image/heic"
             ]
+          },
+          "signature": {
+            "type": "boolean"
           }
         }
       },
@@ -64548,7 +64898,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s2059_0"
+            "$ref": "#/components/schemas/__s2076_0"
           },
           "channel": {
             "type": "string",
@@ -64573,7 +64923,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s2063_0"
+            "$ref": "#/components/schemas/__s2080_0"
           }
         },
         "required": [
@@ -64591,7 +64941,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2067_0"
+                "$ref": "#/components/schemas/__s2084_0"
               }
             ]
           }
@@ -64835,7 +65185,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2119_0"
+                "$ref": "#/components/schemas/__s2136_0"
               }
             ]
           },
@@ -65111,6 +65461,17 @@
         },
         "required": [
           "page"
+        ]
+      },
+      "ConsentDto2": {
+        "type": "object",
+        "properties": {
+          "consent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consent"
         ]
       },
       "ProposalDto": {
@@ -69220,6 +69581,33 @@
         ],
         "additionalProperties": false
       },
+      "PublicServiceForm": {
+        "type": "object",
+        "properties": {
+          "serviceSlug": {
+            "type": "string"
+          },
+          "version": {
+            "nullable": true,
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": {}
+            }
+          }
+        },
+        "required": [
+          "serviceSlug",
+          "version",
+          "fields"
+        ],
+        "additionalProperties": false
+      },
       "StructureCatalogueRowResponse": {
         "type": "object",
         "properties": {
@@ -72071,7 +72459,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1623_0": {
+      "__s1639_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -72093,7 +72481,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1623_0"
+              "$ref": "#/components/schemas/__s1639_0"
             }
           }
         },
@@ -72103,7 +72491,7 @@
           "label"
         ]
       },
-      "__s1624_0": {
+      "__s1640_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -72125,7 +72513,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1624_0"
+              "$ref": "#/components/schemas/__s1640_0"
             }
           }
         },
@@ -72135,7 +72523,7 @@
           "label"
         ]
       },
-      "__s1625_0": {
+      "__s1641_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -72157,7 +72545,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1625_0"
+              "$ref": "#/components/schemas/__s1641_0"
             }
           }
         },
@@ -72167,7 +72555,7 @@
           "label"
         ]
       },
-      "__s2059_0": {
+      "__s2076_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72228,7 +72616,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2059_0"
+                  "$ref": "#/components/schemas/__s2076_0"
                 }
               ]
             }
@@ -72239,7 +72627,7 @@
           "rules"
         ]
       },
-      "__s2060_0": {
+      "__s2077_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72300,7 +72688,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2060_0"
+                  "$ref": "#/components/schemas/__s2077_0"
                 }
               ]
             }
@@ -72311,7 +72699,7 @@
           "rules"
         ]
       },
-      "__s2061_0": {
+      "__s2078_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72372,7 +72760,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2061_0"
+                  "$ref": "#/components/schemas/__s2078_0"
                 }
               ]
             }
@@ -72383,7 +72771,7 @@
           "rules"
         ]
       },
-      "__s2062_0": {
+      "__s2079_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72444,7 +72832,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2062_0"
+                  "$ref": "#/components/schemas/__s2079_0"
                 }
               ]
             }
@@ -72455,7 +72843,7 @@
           "rules"
         ]
       },
-      "__s2063_0": {
+      "__s2080_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72516,7 +72904,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2063_0"
+                  "$ref": "#/components/schemas/__s2080_0"
                 }
               ]
             }
@@ -72527,7 +72915,7 @@
           "rules"
         ]
       },
-      "__s2064_0": {
+      "__s2081_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72588,7 +72976,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2064_0"
+                  "$ref": "#/components/schemas/__s2081_0"
                 }
               ]
             }
@@ -72599,7 +72987,7 @@
           "rules"
         ]
       },
-      "__s2065_0": {
+      "__s2082_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72660,7 +73048,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2065_0"
+                  "$ref": "#/components/schemas/__s2082_0"
                 }
               ]
             }
@@ -72671,7 +73059,7 @@
           "rules"
         ]
       },
-      "__s2066_0": {
+      "__s2083_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72732,7 +73120,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2066_0"
+                  "$ref": "#/components/schemas/__s2083_0"
                 }
               ]
             }
@@ -72743,7 +73131,7 @@
           "rules"
         ]
       },
-      "__s2067_0": {
+      "__s2084_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72804,7 +73192,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2067_0"
+                  "$ref": "#/components/schemas/__s2084_0"
                 }
               ]
             }
@@ -72815,7 +73203,7 @@
           "rules"
         ]
       },
-      "__s2068_0": {
+      "__s2085_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72876,7 +73264,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2068_0"
+                  "$ref": "#/components/schemas/__s2085_0"
                 }
               ]
             }
@@ -72887,7 +73275,7 @@
           "rules"
         ]
       },
-      "__s2069_0": {
+      "__s2086_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72948,7 +73336,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2069_0"
+                  "$ref": "#/components/schemas/__s2086_0"
                 }
               ]
             }
@@ -72959,7 +73347,7 @@
           "rules"
         ]
       },
-      "__s2070_0": {
+      "__s2087_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73020,7 +73408,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2070_0"
+                  "$ref": "#/components/schemas/__s2087_0"
                 }
               ]
             }
@@ -73031,7 +73419,7 @@
           "rules"
         ]
       },
-      "__s2119_0": {
+      "__s2136_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73092,7 +73480,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2119_0"
+                  "$ref": "#/components/schemas/__s2136_0"
                 }
               ]
             }
@@ -73103,7 +73491,7 @@
           "rules"
         ]
       },
-      "__s2120_0": {
+      "__s2137_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73164,7 +73552,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2120_0"
+                  "$ref": "#/components/schemas/__s2137_0"
                 }
               ]
             }
@@ -73175,7 +73563,7 @@
           "rules"
         ]
       },
-      "__s2121_0": {
+      "__s2138_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73236,7 +73624,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2121_0"
+                  "$ref": "#/components/schemas/__s2138_0"
                 }
               ]
             }
@@ -73247,7 +73635,7 @@
           "rules"
         ]
       },
-      "__s2122_0": {
+      "__s2139_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73308,7 +73696,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2122_0"
+                  "$ref": "#/components/schemas/__s2139_0"
                 }
               ]
             }
@@ -73319,7 +73707,7 @@
           "rules"
         ]
       },
-      "__s2123_0": {
+      "__s2140_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73380,7 +73768,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2123_0"
+                  "$ref": "#/components/schemas/__s2140_0"
                 }
               ]
             }
@@ -73391,7 +73779,7 @@
           "rules"
         ]
       },
-      "__s2124_0": {
+      "__s2141_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73452,7 +73840,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2124_0"
+                  "$ref": "#/components/schemas/__s2141_0"
                 }
               ]
             }
@@ -73463,7 +73851,7 @@
           "rules"
         ]
       },
-      "__s2125_0": {
+      "__s2142_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73524,7 +73912,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2125_0"
+                  "$ref": "#/components/schemas/__s2142_0"
                 }
               ]
             }
@@ -73535,7 +73923,7 @@
           "rules"
         ]
       },
-      "__s2126_0": {
+      "__s2143_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73596,7 +73984,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2126_0"
+                  "$ref": "#/components/schemas/__s2143_0"
                 }
               ]
             }
@@ -73607,7 +73995,7 @@
           "rules"
         ]
       },
-      "__s2127_0": {
+      "__s2144_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73668,7 +74056,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2127_0"
+                  "$ref": "#/components/schemas/__s2144_0"
                 }
               ]
             }
@@ -73679,7 +74067,7 @@
           "rules"
         ]
       },
-      "__s2128_0": {
+      "__s2145_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73740,7 +74128,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2128_0"
+                  "$ref": "#/components/schemas/__s2145_0"
                 }
               ]
             }
@@ -73751,7 +74139,7 @@
           "rules"
         ]
       },
-      "__s2129_0": {
+      "__s2146_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73812,7 +74200,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2129_0"
+                  "$ref": "#/components/schemas/__s2146_0"
                 }
               ]
             }

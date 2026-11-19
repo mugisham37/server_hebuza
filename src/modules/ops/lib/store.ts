@@ -56,6 +56,8 @@ export type DeliverableSlot = {
   key: string;
   label: string;
   required: boolean;
+  /** DLV-10: the released file must be signed by the client. */
+  signature?: boolean;
   versions: DeliverableVersion[];
 };
 export type TimeEntry = {
@@ -744,6 +746,7 @@ export async function releaseDeliverables(db: Exec, c: CaseRow, by: string | nul
       releasedAt: now,
       createdBy: by,
       createdAt: now,
+      signatureRequired: !!sl.signature,
     }];
   });
   if (!rows.length) return 0;

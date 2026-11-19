@@ -7,6 +7,8 @@ import { Injectable } from "@nestjs/common";
 import { createTicket } from "../applications/support.service";
 import { createHash } from "node:crypto";
 import sharp from "sharp";
+import { auditHash, sha256, type SigningRecord } from "@/domain/documents/signature";
+import { eSignProvider } from "../../core/esign/provider";
 import { textPdf } from "../chat/chat.service";
 import {
   and,
@@ -32,6 +34,7 @@ import {
   supportTickets,
   downloadTokens,
   documentRetentionFlags,
+  deliverableSignatures,
   deliverables,
   documentRequests,
   messageAttachments,
@@ -350,7 +353,7 @@ export async function attachToCase(
   return oneDoc(db, s, id);
 }
 
-type DlvFile = { id: string; title: string; mime: string; sizeBytes: number; version: number; issuedAt: string; issuer: string | null };
+type DlvFile = { id: string; title: string; mime: string; sizeBytes: number; version: number; issuedAt: string; issuer: string | null; signatureRequired: boolean; signedAt: string | null };
 export type DlvGroup = {
   code: string; service: string; state: "in_progress" | "ready" | "locked"; step: number; totalSteps: number;
   expectedAt?: string | null; balance?: number; currency?: string; review?: "accepted" | "changes_requested" | null; rating?: number; files: DlvFile[];
@@ -392,6 +395,9 @@ export async function myDeliverables(db: Tx, s: SessionUser) {
       apps.map((a) => a.code),
     ),
   ]);
+  // DLV-10: latest signature per file.
+  const sigs = new Map(files.length ? (await db.select({ id: deliverableSignatures.deliverableId, at: deliverableSignatures.signedAt }).from(deliverableSignatures)
+    .where(inArray(deliverableSignatures.deliverableId, files.map((f) => f.id)))).map((r) => [r.id, r.at]) : []);
   const requests = apps.flatMap((a): DlvGroup[] => {
     const st = normalizeStatus(a.status);
     const mine = files.filter((f) => f.applicationId === a.applicationId);
@@ -415,6 +421,8 @@ export async function myDeliverables(db: Tx, s: SessionUser) {
       version: d.version,
       issuedAt: d.releasedAt!,
       issuer: d.issuer,
+      signatureRequired: d.signatureRequired,
+      signedAt: sigs.get(d.id) ?? null,
     }));
     if (!mine.length)
       return [
@@ -895,6 +903,42 @@ export class DocumentsService {
       const { d } = await readableDeliverable(db, s, id, { download });
       if (download) await this.audit.record(db, { action: "deliverable.downloaded", entity: "deliverable", entityId: id });
       return this.storage.presignGet(d.storagePath, download ? d.title : undefined);
+    });
+  }
+
+  /** DLV-10: staff (case readers, assignee or SM) ask the client to sign a deliverable. */
+  requireSignature(s: SessionUser, id: string, on: boolean) {
+    return this.tx.run(async (db) => {
+      const { a } = await readableDeliverable(db, s, id, { download: false });
+      if (a.clientId === s.id) throw forbidden();
+      await db.update(deliverables).set({ signatureRequired: on }).where(eq(deliverables.id, id));
+      if (on && a.clientId)
+        await this.notifications.notify(db, { userId: a.clientId, kind: "deliverable", title: `${a.code}: a document needs your signature`, link: "/documents?tab=deliverables", channels: ["email"] });
+      await this.audit.record(db, { action: on ? "deliverable.signature_requested" : "deliverable.signature_cancelled", entity: "deliverable", entityId: id });
+      return { signatureRequired: on };
+    });
+  }
+
+  /**
+   * DLV-10 built-in signing: hashes the exact stored bytes, seals the record (domain/documents/signature) and keeps
+   * IP + user agent. A configured external provider (core/esign) also receives it; none is configured today.
+   */
+  sign(s: SessionUser, id: string, b: { method: "typed" | "drawn"; name: string; image?: string | null; agree: true }, meta: { ip: string | null; ua: string | null }) {
+    return this.tx.run(async (db) => {
+      const { d, a } = await readableDeliverable(db, s, id, { download: true });
+      if (a.clientId !== s.id) throw forbidden();
+      if (!d.signatureRequired) throw new AppError(409, "not_requested", "This file does not need a signature.");
+      if (b.method === "drawn" && !/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(b.image ?? "")) throw new AppError(422, "validation", "Draw your signature.", { image: "Draw your signature." });
+      const fileSha256 = sha256(Buffer.concat(await (await this.storage.getStream(d.storagePath)).toArray()));
+      const rec: SigningRecord = { deliverableId: id, fileSha256, signerId: s.id, signerName: b.name.trim(), method: b.method, imageSha256: b.image ? sha256(b.image) : null, signedAt: new Date().toISOString() };
+      const hash = auditHash(rec);
+      const provider = eSignProvider();
+      const ext = provider ? await provider.send({ deliverableId: id, signerName: rec.signerName, signerEmail: null, fileUrl: await this.storage.presignGet(d.storagePath) }) : null;
+      await db.insert(deliverableSignatures).values({ id: generateId("sig"), deliverableId: id, userId: s.id, method: b.method, signerName: rec.signerName, imagePng: b.image ?? null,
+        fileSha256, auditHash: hash, ip: meta.ip, userAgent: meta.ua?.slice(0, 255) ?? null, provider: provider?.name ?? null, providerRef: ext?.ref ?? null, signedAt: rec.signedAt });
+      if (a.assignedAgentId) await this.notifications.notify(db, { userId: a.assignedAgentId, kind: "document", title: `${a.code}: client signed ${d.title}`, link: `/agent/case/${a.code}` });
+      await this.audit.record(db, { action: "deliverable.signed", entity: "deliverable", entityId: id, after: { method: b.method, fileSha256, auditHash: hash } });
+      return { signedAt: rec.signedAt, auditHash: hash, fileSha256 };
     });
   }
 
