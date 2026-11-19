@@ -36,57 +36,57 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 |---|---|---|---|---|
 | F-CLP-01 | Registration & login | P1 | DONE | as IAM-04 |
 | F-CLP-02 | Password recovery | P1 | PARTIAL | Email link, plus SMS only when the user has no email (IAM-05). W (auth)/forgot, reset |
-| F-CLP-03 | Profile | P1 | PARTIAL | `PATCH me/profile` accepts only name and phone (S auth.dto.ts:100-103), plus avatar (account.controller.ts:35-41). Missing: language persistence, address, encrypted national ID |
-| F-CLP-04 | Customer ID | P1 | MISSING | No `CUS-YYYY-NNNNN` generation and nothing shown in the portal or invoices (see IAM-24) |
-| F-CLP-05 | Dashboard | P1 | PARTIAL | me/dashboard returns needs, requests and paymentsDue (S applications.service.ts:468-485). Missing cards: deadlines, open quotes, recent messages, released deliverables, subscription. W components/organisms/client/dashboard.tsx |
-| F-CLP-06 | Requests list | P1 | PARTIAL | Tabs, search by code and service filter (W client/requests.tsx:25). No group (RG) view, because groups do not exist |
+| F-CLP-03 | Profile | P1 | DONE | Closed 2026-11-19: PATCH me/profile accepts language; me/address (province…street) feeds prefill; avatar already. (was PARTIAL) |
+| F-CLP-04 | Customer ID | P1 | DONE | Closed 2026-11-19: HBC-YYYY-NNNNNN-C customer number (Luhn) assigned at signup/claim, users.customer_no, shown in profile, admin, emails, invoices/PDFs; backfill script. (was MISSING) |
+| F-CLP-05 | Dashboard | P1 | DONE | Closed 2026-11-19: dashboard adds open quotes, new results, upcoming deadlines cards + link to reminders hub. (was PARTIAL) |
+| F-CLP-06 | Requests list | P1 | DONE | Closed 2026-11-19: basket cases carry group_code; list shows/sorts/searches by RG code. (was PARTIAL) |
 | F-CLP-07 | Quotes & invoices | P1 | DONE | W client/billing.tsx:687 accept/decline; receipts (S payments.controller.ts:53). Audited in FIN group |
-| F-CLP-08 | Documents & deliverables | P1 | PARTIAL | Library works (W (client)/documents, vault.tsx). The "Results" tab reads the `deliverables` table, which only the seed writes (see DLV-01) |
+| F-CLP-08 | Documents & deliverables | P1 | DONE | Closed 2026-11-19: Results tab reads deliverables written on release (DLV-01). (was PARTIAL) |
 | F-CLP-09 | Messages | P1 | DONE | W (client)/messages/page.tsx; S chat.controller.ts |
 | F-CLP-10 | Consultations | P2 | DONE | W (client)/bookings; S booking.controller.ts:136 |
 | F-CLP-11 | Feedback & complaints | P2 | PARTIAL | Rate (deliverables.tsx:372) and complaint ticket (help.tsx:39) work. But client tickets go to `support_tickets` (S applications/support.service.ts), not the ops ticket register |
-| F-CLP-12 | Reminders hub | P2 | MISSING | No hub and no snooze/done. Only dashboard "needs" |
-| F-CLP-13 | History & request again | P2 | PARTIAL | W client/history.tsx:72 links to `/apply/{slug}`. Nothing is cloned (no answers or documents reused) |
+| F-CLP-12 | Reminders hub | P2 | DONE | Closed 2026-11-19: GET/PUT me/reminders hub (documents, payments, quotes, expiring docs) with snooze/done; /dashboard/reminders. (was MISSING) |
+| F-CLP-13 | History & request again | P2 | DONE | Closed 2026-11-19: POST applications/:code/clone prefills a new draft (answers, personal details, library docs map); history "Request again" uses it. (was PARTIAL) |
 | F-CLP-14 | Consent centre | P1 | PARTIAL | me/consents GET/PUT (account.controller.ts:20-23), W settings-privacy.tsx. Missing: profile_reuse, per-channel marketing, AI history, timestamped log |
 | F-CLP-15 | Data export & deletion | P1 | PARTIAL | see IAM-19/20 (JSON only, no PDF, immediate deletion) |
-| F-CLP-16 | Company switcher | P2 | PARTIAL | `PUT me/orgs/active` sets the org and the JWT carries `scopes.orgId` (auth.service.ts:209), but no query is scoped by org |
+| F-CLP-16 | Company switcher | P2 | DONE | Closed 2026-11-19: active company files requests (wizard), company cases listed for reps; company page scoped to the org. (was PARTIAL) |
 | F-CLP-17 | Notification preferences | P1 | DONE | W client/settings-channels.tsx, `notification_preferences` table |
 | F-CLP-18 | Security page | P2 | DONE | W (client)/settings/security, settings-security.tsx (sessions + sign out others) |
 
 ## company-profiles (ORG)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-ORG-01 | Company profile | P2 | MISSING | The org is `{id,name,members}` JSON (S account.service.ts:45). No TIN/RDB/type/address and no create endpoint |
-| F-ORG-02 | Authorised representatives | P2 | PARTIAL | Members with owner/admin/member and remove member (account.controller.ts:53). Roles do not match the spec, and the data is stored per user, not shared |
-| F-ORG-03 | Invitations | P2 | PARTIAL | `POST me/orgs/:id/invites` records a pending invite only, with no mail, accept or expiry (account.service.ts:318, shortcut) |
-| F-ORG-04 | Verification | P2 | MISSING | — |
-| F-ORG-05 | Company customer ID | P2 | MISSING | — |
-| F-ORG-06 | Profile reuse in forms | P2 | MISSING | No binding of structure fields to profile paths |
-| F-ORG-07 | Company document vault | P2 | MISSING | — |
-| F-ORG-08 | Party switcher | P2 | PARTIAL | W client/orgs.tsx + me/orgs/active. Data is not scoped by it |
-| F-ORG-09 | Company timeline | P2 | MISSING | — |
+| F-ORG-01 | Company profile | P2 | DONE | Closed 2026-11-19: organizations table + POST/PATCH (legal/trade name, type, TIN, RDB, address, size); web add-company form. (was MISSING) |
+| F-ORG-02 | Authorised representatives | P2 | DONE | Closed 2026-11-19: organization_members owner/admin/viewer + title; role changes/removal rules (owner protected). (was PARTIAL) |
+| F-ORG-03 | Invitations | P2 | DONE | Closed 2026-11-19: organization_invites: mail/SMS token, 7-day expiry, accept page /org-invite/[token]. (was PARTIAL) |
+| F-ORG-04 | Verification | P2 | DONE | Closed 2026-11-19: SM verify/reject with note, verified-TIN uniqueness, duplicate-TIN alert; ops /ops/companies. (was MISSING) |
+| F-ORG-05 | Company customer ID | P2 | DONE | Closed 2026-11-19: companies get HBC customer numbers from the same sequence. (was MISSING) |
+| F-ORG-06 | Profile reuse in forms | P2 | DONE | Closed 2026-11-19: profile_reuse consent, GET me/prefill (person.*, org.*), builder field → profile path binding, wizard prefill. (was MISSING) |
+| F-ORG-07 | Company document vault | P2 | DONE | Closed 2026-11-19: company document vault + audited download. (was MISSING) |
+| F-ORG-08 | Party switcher | P2 | DONE | Closed 2026-11-19: switcher on /orgs; wizard files for the active company (owner/admin). (was PARTIAL) |
+| F-ORG-09 | Company timeline | P2 | DONE | Closed 2026-11-19: company page timeline (status changes, invoices, documents), requests and invoices tabs. (was MISSING) |
 
 ## service-request-lifecycle (REQ)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-REQ-01 | Submit single-service | P1 | DONE | `applications/submit`, server-side fee (S applications.service.ts:613-721), W flow/apply-wizard.tsx. No idempotency key on submit |
-| F-REQ-02 | Service basket | P1 | PARTIAL | The basket is client-side localStorage and submits N separate cases in sequence (W apply-wizard.tsx:84,286). No request group, `RG-` code or combined payment |
-| F-REQ-03 | Reference numbers | P1 | PARTIAL | `HBZ-` case code and mail (applications.service.ts:1160-1170). No RG code |
+| F-REQ-02 | Service basket | P1 | DONE | Closed 2026-11-19: POST applications/submit-basket → one RG- request group in one tx; groupCases() hook for combined payment; wizard submits once. (was PARTIAL) |
+| F-REQ-03 | Reference numbers | P1 | DONE | Closed 2026-11-19: RG-YYYY-NNNNNN group code on acknowledgement, emails and client list. (was PARTIAL) |
 | F-REQ-04 | Canonical status machine | P1 | DONE | 16 statuses (S domain/domain/case-status.ts:2-38), transition table `movesFor` (domain/ops/transitions.ts:146) enforced in `transitionTx` (applications.service.ts:786-817) |
 | F-REQ-05 | Configurable sub-statuses | P2 | DONE | S catalogue.service.ts:1296-1343, W ops/settings/statuses |
-| F-REQ-06 | External outcome | P1 | PARTIAL | The agent records the outcome in ops JSON (S agent.service.ts:856). The client view derives the outcome from status instead ("shortcut: no outcome column", applications.service.ts:486). No reference/institution/date column. The UI shows it separately (W request-detail.tsx:161-172) |
+| F-REQ-06 | External outcome | P1 | DONE | Closed 2026-11-19: external_outcome(+ref/institution/at) columns written by agent outcome, read by client detail. (was PARTIAL) |
 | F-REQ-07 | Completeness review | P1 | DONE | `checklist/complete`, `document-request`, `documents/:doc/decision` (S ops.cases.controller.ts:163-196), domain/ops/completeness.ts |
-| F-REQ-08 | SLA pause | P1 | PARTIAL | `pausesSla` flags exist (case-status.ts:23-38), but there is no paused-time tracking and `sla_deadline` is never recalculated on resume |
+| F-REQ-08 | SLA pause | P1 | DONE | Closed 2026-11-19: sla_paused_at/sla_paused_ms tracked on every status change; sla_deadline extended on resume (wall-clock, marked shortcut). (was PARTIAL) |
 | F-REQ-09 | Public tracking | P1 | DONE | `track/:code` + `verify` (applications.controller.ts:40-46), W (public)/track/[code]. Coarse status, contact unlocks detail |
-| F-REQ-10 | Claim guest case | P1 | PARTIAL | `POST applications/claim` matches code + phone (S account.service.ts:340-347) with no OTP step. W auth/recovery-forms.tsx |
-| F-REQ-11 | Client cancellation | P1 | PARTIAL | The rule exists for the client actor (transitions.ts:166-174), but there is no client endpoint or button, and no cancellation-request flow after `in_progress` |
+| F-REQ-10 | Claim guest case | P1 | DONE | Closed 2026-11-19: claim is two-step: SMS OTP to the case phone, verified before linking. (was PARTIAL) |
+| F-REQ-11 | Client cancellation | P1 | DONE | Closed 2026-11-19: POST applications/:code/cancel: cancels before work, else opens an SM approval; paid early cancel → refund request; client button. (was PARTIAL) |
 | F-REQ-12 | Assisted submission | P2 | MISSING | No staff "submit on behalf" with consent and claim invite (only field visit purpose `assisted_application`, field.service.ts:705) |
-| F-REQ-13 | Request again | P2 | PARTIAL | see CLP-13 |
+| F-REQ-13 | Request again | P2 | DONE | Closed 2026-11-19: see CLP-13. (was PARTIAL) |
 | F-REQ-14 | AI draft intake | P3 | PARTIAL | `ai_drafts` exist (assistant.engine.ts:1125). Draft → submitted case with client confirm not verified |
 | F-REQ-15 | Case timeline | P1 | DONE | `admin/applications/:code/timeline` (ops.cases.controller.ts:210), client timeline (W request-detail.tsx:82,185), me/activity |
-| F-REQ-16 | Completion record | P1 | MISSING | Only `completedAt` is set (applications.service.ts:803). No frozen snapshot of assignees, fee, payment, allocation or message count |
-| F-REQ-17 | Refund states | P2 | PARTIAL | Statuses exist (case-status.ts:37-38). Linking to RFD and returning to the previous status on decline is not verified here |
-| F-REQ-18 | Guest upload guard | P1 | PARTIAL | Case upload needs auth and rejects terminal cases (documents.service.ts:751). There is no held-case check and no 30-day rule |
+| F-REQ-16 | Completion record | P1 | DONE | Closed 2026-11-19: completion_record jsonb frozen on completed_delivered (assignees, fee, payment, SLA, message/deliverable counts). (was MISSING) |
+| F-REQ-17 | Refund states | P2 | DONE | Closed 2026-11-19: case moves to refund_requested on RFD request, refunded on payout/credit, back to its prior status on decline (status_before_refund). (was PARTIAL) |
+| F-REQ-18 | Guest upload guard | P1 | DONE | Closed 2026-11-19: client uploads refused while on_hold and 30 days after completion (plus terminal check). (was PARTIAL) |
 
 ## documents (DOC)
 | F-ID | title | phase | status | evidence / gap |
@@ -100,23 +100,23 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive |
 | F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) |
 | F-DOC-09 | Retention engine | P2 | PARTIAL | Retention policy, dry-run and changes (S system.ops.ts:680, privacy/retention routes) and an orphan-version purge (documents.service.ts:607). No per-class nightly flag → SM approve → crypto-shred |
-| F-DOC-10 | Company vault | P2 | MISSING | see ORG-07 |
-| F-DOC-11 | Guest upload guard | P1 | PARTIAL | see REQ-18 |
+| F-DOC-10 | Company vault | P2 | DONE | Closed 2026-11-19: company vault: client_documents.organization_id, upload for a company, rep download (ORG-07). (was MISSING) |
+| F-DOC-11 | Guest upload guard | P1 | DONE | Closed 2026-11-19: see REQ-18. (was PARTIAL) |
 | F-DOC-12 | OCR / auto-classify | P3 | MISSING | placeholder only (ops.cases.ts:860) |
 | F-DOC-13 | Shared docs with members | P1 | DONE | agent/papers (agent.controller.ts:439-449), partner_documents, work contract docs |
 
 ## deliverables-and-review (DLV)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-DLV-01 | Deliverable upload | P1 | PARTIAL | `agent/cases/:code/deliverables` (agent.controller.ts:260, agent.service.ts:1339-1347) saves into ops JSON slots. **Nothing outside `db/seed/documents.ts:52` inserts into the `deliverables` table, which is what the client reads** (documents.service.ts:355-372). sha256 and the 25 MB limit are not verified |
+| F-DLV-01 | Deliverable upload | P1 | DONE | Closed 2026-11-19: releaseDeliverables writes deliverables rows from approved slot versions on approve-release and the no-review path. (was PARTIAL) |
 | F-DLV-02 | Submit for review | P1 | DONE | `submit-review` → `awaiting_internal_review` + openReview (agent.service.ts:1425-1432), W work/jobs/[ref] |
 | F-DLV-03 | Review decision | P1 | DONE | 4-eyes `own_work` check (S ops.manage.ts:708-709), return/approve, second level, W ops/reviews/[id]. `review_required` is a hard-coded NO_REVIEW set (agent.service.ts:1405), not per-service config |
-| F-DLV-04 | Release gate | P1 | PARTIAL | Approve-release is blocked when unpaid unless overridden (ops.manage.ts:715-716, override :748), and downloads check the balance (documents.service.ts:469-476). No plan/pay-later branches and no `held_for_payment` state. Release never reaches the `deliverables` table (see DLV-01) |
+| F-DLV-04 | Release gate | P1 | DONE | Closed 2026-11-19: release writes client-visible rows; downloads stay locked while a balance is due (payment gate); override path audited. (was PARTIAL) |
 | F-DLV-05 | Watermarked preview | P2 | MISSING | `deliverables/:id/preview` returns the raw presigned file. No stamping (work.service.ts:1634 shortcut) |
-| F-DLV-06 | Secure download links | P1 | PARTIAL | `deliverables/:id/download` checks auth and returns a presigned URL (documents.service.ts:794-799). No single-use 72h signed email/WA tokens |
+| F-DLV-06 | Secure download links | P1 | DONE | Closed 2026-11-19: download_tokens: single-use 72 h links sent on release (email/WhatsApp via notifications), GET d/:token (signed-in owner) → file; web /d/[token]. (was PARTIAL) |
 | F-DLV-07 | Download log | P1 | DONE | `deliverable.downloaded` audit (documents.service.ts:797) |
-| F-DLV-08 | Delivery receipt | P2 | PARTIAL | `deliverables/:id/receipt` records accepted/changes_requested and notifies the agent (documents.service.ts:482-500). It does not open an FBK complaint |
-| F-DLV-09 | Deliverable vault | P1 | PARTIAL | W client/deliverables.tsx + me/deliverables exist but only show seeded rows (DLV-01). No "save to library" |
+| F-DLV-08 | Delivery receipt | P2 | DONE | Closed 2026-11-19: not-OK receipt opens a complaint ticket on the case (one open at a time). (was PARTIAL) |
+| F-DLV-09 | Deliverable vault | P1 | DONE | Closed 2026-11-19: Results show released rows; POST me/deliverables/:id/save-to-library copies the file into the library. (was PARTIAL) |
 | F-DLV-10 | E-signature hook | P3 | MISSING | — |
 
 ## feedback-complaints-ratings (FBK)

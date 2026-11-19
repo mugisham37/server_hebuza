@@ -54,19 +54,19 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-PRT-01 | Partner registry | P3 | MISSING | no schema/module; WA:(partners)/partners/[[...rest]]/page.tsx renders `PlannedPage` placeholder |
-| F-PRT-02 | Contact persons | P3 | MISSING | — |
-| F-PRT-03 | Agreements | P3 | MISSING | — |
-| F-PRT-04 | Objectives & action plans | P3 | MISSING | — |
-| F-PRT-05 | Meetings | P3 | MISSING | — |
-| F-PRT-06 | Correspondence & documents | P3 | MISSING | — |
-| F-PRT-07 | Joint projects | P3 | MISSING | — |
-| F-PRT-08 | Referrals | P3 | MISSING | CRM referrals exist (client programme only) — not partner-linked |
-| F-PRT-09 | Partner revenue sharing | P3 | MISSING | — |
-| F-PRT-10 | Reminders | P3 | MISSING | — |
-| F-PRT-11 | Scorecard | P3 | MISSING | — |
-| F-PRT-12 | Full history / PDF | P3 | MISSING | — |
-| F-PRT-13 | Public partner logos | P3 | PARTIAL | static strip only (as before); no `shown_on_website` flag |
+| F-PRT-01 | Partner registry | P3 | DONE | Closed 2026-11-19: partners registry (type, tier, status, sector, website, logo, owner); /staff/partners + /partners workspace. (was MISSING) |
+| F-PRT-02 | Contact persons | P3 | DONE | Closed 2026-11-19: partner_contacts (primary flag, deactivate keeps history). (was MISSING) |
+| F-PRT-03 | Agreements | P3 | DONE | Closed 2026-11-19: partner_agreements (kind, dates ≥ check, value, commission rate, confidential) + file versions + obligations. (was MISSING) |
+| F-PRT-04 | Objectives & action plans | P3 | DONE | Closed 2026-11-19: partner_objectives → partner_actions (owner, due, status, progress). (was MISSING) |
+| F-PRT-05 | Meetings | P3 | DONE | Closed 2026-11-19: partner_meetings with minutes, decisions → actions, .ics invite. (was MISSING) |
+| F-PRT-06 | Correspondence & documents | P3 | DONE | Closed 2026-11-19: partner_correspondence log (direction, kind, date, subject, summary). (was MISSING) |
+| F-PRT-07 | Joint projects | P3 | DONE | Closed 2026-11-19: partner_opportunities pipeline idea → proposal → active → won/lost. (was MISSING) |
+| F-PRT-08 | Referrals | P3 | DONE | Closed 2026-11-19: partner_referrals linked to client/case; conversion on paid case. (was MISSING) |
+| F-PRT-09 | Partner revenue sharing | P3 | DONE | Closed 2026-11-19: commissions computed from paid referred cases at the agreement rate; finance approve → payable; refunds reverse proportionally. (was MISSING) |
+| F-PRT-10 | Reminders | P3 | DONE | Closed 2026-11-19: daily: renewal 90/30/7, overdue actions (owner, PM after 7 d), obligations due, 24 h meetings; 10-min 1 h meeting reminder; dormancy. (was MISSING) |
+| F-PRT-11 | Scorecard | P3 | DONE | Closed 2026-11-19: scorecard: health (red/amber/green rules), on-time %, referrals, revenue, expiring. (was MISSING) |
+| F-PRT-12 | Full history / PDF | P3 | DONE | Closed 2026-11-19: unified history JSON + PDF export. (was MISSING) |
+| F-PRT-13 | Public partner logos | P3 | DONE | Closed 2026-11-19: shown_on_website flag → GET public/partners → home strip (revalidated on edit). (was PARTIAL) |
 
 ## CRM, leads & campaigns (CRM)
 
