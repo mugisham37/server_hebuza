@@ -386,3 +386,10 @@ export async function addDisbursement(f: Fin, caseRef: string, b: { vendorId: st
 }
 export const caseDisbursements = (f: Fin, caseRef: string) => where<Disbursement>(f.db, "disbursement", { ref: caseRef });
 const caseInvoicesAll = async (f: Fin, code: string) => (await all<Inv>(f.db, "invoice")).filter((i) => i.caseRef === code);
+
+// ---------------------------------------------------------------- payables from other modules (PRT-09 partner commissions)
+export type Payable = { id: string; source: "partner_commission"; payee: string; amount: number; memo: string; status: "due" | "paid"; at: string; paidAt?: string };
+/** Other modules call this inside their own tx once their approval is done; idempotent per id. */
+export async function upsertPayable(db: Exec, p: Payable) {
+  await put(db, "payable", p.id, p, p.payee);
+}

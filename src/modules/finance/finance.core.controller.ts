@@ -46,7 +46,7 @@ export class FinanceCoreController {
   @Get("finance/x/payables-due")
   @Route({ auth: D.FINX })
   payablesDue() {
-    return core.payablesDue();
+    return this.r.read((f) => core.payablesDue(f.db));
   }
 
   // ---- settings: VAT, terms, deposits, thresholds, WHT, payout day (SET §7)

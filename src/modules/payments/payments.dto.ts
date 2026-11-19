@@ -11,6 +11,8 @@ const Initiate = z
     card_token: z.string().max(256).nullish(),
     operator: z.string().max(16).nullish(),
     payment_request_ref: z.string().max(64).nullish(),
+    /** SUB-10: buy the plan for this company (owner/admin). */
+    organization_id: z.string().max(64).nullish(),
   })
   .refine((b) => !!b.application_code !== !!b.plan_id, {
     message: "Provide exactly one of application_code or plan_id.",

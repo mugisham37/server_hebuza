@@ -64,3 +64,16 @@ export const organizationInvites = pgTable("organization_invites", {
   acceptedAt: timestamp("accepted_at", { withTimezone: true, mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 }, (t) => [index("ix_organization_invites_org").on(t.organizationId)]);
+
+/** SUB-10: a subscription owned by a company; it covers requests its active representatives submit for it. */
+export const organizationSubscriptions = pgTable("organization_subscriptions", {
+  organizationId: varchar("organization_id", { length: 64 }).primaryKey().notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id", { length: 64 }).notNull(),
+  status: varchar({ length: 16 }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true, mode: "string" }).notNull(),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true, mode: "string" }).notNull(),
+  lastPaymentId: varchar("last_payment_id", { length: 64 }),
+  paidBy: varchar("paid_by", { length: 64 }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull(),
+}, () => [check("ck_organization_subscriptions_status", sql`status IN ('active','cancelled','expired')`)]);

@@ -6,6 +6,7 @@ import { Cron, Job } from "../../core/queue/queues";
 import { BookingService } from "../booking/booking.service";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { PaymentsService, type Settled } from "./payments.service";
+import { activateOrgSubscription } from "../subscriptions/subscriptions.service";
 
 @Injectable()
 export class PaymentsJobs {
@@ -37,6 +38,8 @@ export class PaymentsJobs {
   async settled(d: Settled) {
     if (d.booking) return void (await this.booking.settle(d.transactionId));
     const { planId, clientId, paidAt, paymentId } = d;
+    if (planId && d.organizationId && paidAt && paymentId)
+      return void (await this.txs.runAsSystem((tx) => activateOrgSubscription(tx, { organizationId: d.organizationId!, planId, paidAt, paymentId, paidBy: clientId ?? null })));
     if (planId && clientId && paidAt && paymentId)
       await this.txs.runAsSystem((tx) =>
         this.subs.activateFromPayment(tx, {

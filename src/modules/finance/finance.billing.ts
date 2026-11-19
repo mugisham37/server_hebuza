@@ -579,7 +579,11 @@ function newInvoice(
     quoteNo?: string;
   },
 ): Inv {
+  const k = f.D.caseOf(o.caseRef);
+  // ORG: a company's case bills the company (its legal name, TIN, customer ID); otherwise the person.
+  const org = k?.organizationId ? f.D.client(k.organizationId) : undefined;
   const c = f.D.client(o.clientId);
+  const payer = org ?? c;
   const totals = docTotals(o.lines, f.S.vat_bps);
   return {
     id: rid("DRAFT"),
@@ -588,7 +592,9 @@ function newInvoice(
     caseRef: o.caseRef,
     subscriptionId: o.subscriptionId,
     clientId: o.clientId,
-    billTo: { name: c?.name ?? o.clientId, email: c?.email },
+    billTo: { name: payer?.name ?? o.clientId, email: payer?.email || c?.email, ...(payer?.tin && { tin: payer.tin }), ...(payer?.customerNo && { customerNo: payer.customerNo }) },
+    ...(org && { organizationId: org.id }),
+    ...(k?.groupCode && { groupCode: k.groupCode }),
     status: "draft",
     overdue: false,
     lines: o.lines,
@@ -1214,19 +1220,24 @@ export async function clientInvoices(db: Exec, clientId: string) {
   const rows = await db
     .select({ data: financeRecords.data })
     .from(financeRecords)
-    .where(and(eq(financeRecords.kind, "invoice"), dsql`${financeRecords.data}->>'clientId' = ${clientId}`));
+    // ORG: company invoices are visible to every active representative of that company.
+    .where(and(eq(financeRecords.kind, "invoice"), dsql`(${financeRecords.data}->>'clientId' = ${clientId} or ${financeRecords.data}->>'organizationId' in
+      (select organization_id from organization_members where user_id = ${clientId} and status = 'active'))`));
   return rows.map((r) => r.data as Inv).filter((i) => i.no && i.status !== "draft");
 }
 /** Dependency-free text PDF of a priced document (invoice, quote, credit note). */
 export function invoiceDocPdf(
   title: string,
   no: string,
-  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string }; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number; fx?: { currency: string; rate: number; at: string } },
+  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string; tin?: string; customerNo?: string }; groupCode?: string; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number; fx?: { currency: string; rate: number; at: string } },
 ) {
   const rwf = (n: number) => `${n.toLocaleString("en-US")} RWF`;
   return textPdf(`${title} ${no}`, [
     ...(d.billTo ? [`Bill to: ${d.billTo.name}`] : []),
+    ...(d.billTo?.tin ? [`TIN: ${d.billTo.tin}`] : []),
+    ...(d.billTo?.customerNo ? [`Customer ID: ${d.billTo.customerNo}`] : []),
     ...(d.caseRef ? [`Case: ${d.caseRef}`] : []),
+    ...(d.groupCode ? [`Request group: ${d.groupCode}`] : []),
     ...(d.dueAt ? [`Due: ${d.dueAt.slice(0, 10)}`] : []),
     ...(d.validUntil ? [`Valid until: ${d.validUntil.slice(0, 10)}`] : []),
     "",
@@ -1243,5 +1254,5 @@ export function invoiceDocPdf(
 export async function quotePdf(f: Fin, no: string) {
   const { q } = await quoteOr404(f.db, no);
   const c = f.D.client(q.clientId);
-  return invoiceDocPdf(`Quotation v${q.version}`, q.no, { ...q, billTo: c ? { name: c.name } : undefined });
+  return invoiceDocPdf(`Quotation v${q.version}`, q.no, { ...q, billTo: c ? { name: c.name, ...(c.customerNo && { customerNo: c.customerNo }) } : undefined });
 }

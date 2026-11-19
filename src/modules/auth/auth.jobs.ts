@@ -27,18 +27,29 @@ export class AuthJobs {
 
   /**
    * IAM-20: anonymise accounts whose 14-day cooling-off ended. Accounts that gained open cases meanwhile wait.
-   * shortcut: finance documents keep their own copy of the billed name (legal retention); pseudonymising those is finance's job.
+   * Finance records are kept (legal retention, invoices 10 years) but pseudonymised: the billed name becomes the
+   * customer ID and contact details are dropped; company invoices (organizationId) keep the company as billed party.
    */
   @Cron("auth.deletion_sweep", "30 3 * * *")
   async deletionSweep() {
-    const r = await this.txs.runAsSystem((tx) => tx.execute(sql`update users u set name = 'Deleted user',
-        email = case when email is null then null else 'deleted+' || user_id || '@invalid.local' end,
-        phone_e164 = null, is_email_verified = false, is_active = false, deletion_scheduled_at = null, updated_at = now()
-      where deletion_scheduled_at <= now()
-        and not exists (select 1 from applications a where a.client_id = u.user_id
-          and a.status not in ('completed_delivered','cancelled','rejected','refunded'))`));
-    this.log.log(`auth.deletion_sweep anonymised=${r.count ?? 0}`);
-    return { anonymised: r.count ?? 0 };
+    const r = await this.txs.runAsSystem(async (tx) => {
+      const gone = await tx.execute<{ id: string; no: string | null }>(sql`update users u set name = 'Deleted user',
+          email = case when email is null then null else 'deleted+' || user_id || '@invalid.local' end,
+          phone_e164 = null, is_email_verified = false, is_active = false, deletion_scheduled_at = null, updated_at = now()
+        where deletion_scheduled_at <= now()
+          and not exists (select 1 from applications a where a.client_id = u.user_id
+            and a.status not in ('completed_delivered','cancelled','rejected','refunded'))
+        returning user_id as id, customer_no as no`);
+      for (const g of gone) {
+        const alias = g.no ? `Former client ${g.no}` : "Former client";
+        await tx.execute(sql`update finance_records set data = jsonb_set(data #- '{billTo,email}' #- '{billTo,address}', '{billTo,name}', to_jsonb(${alias}::text))
+          where data->>'clientId' = ${g.id} and data ? 'billTo' and not (data ? 'organizationId')`);
+        await tx.execute(sql`update applications set personal_info = jsonb_build_object('fullName', ${alias}::text) where client_id = ${g.id}`);
+      }
+      return gone.length;
+    });
+    this.log.log(`auth.deletion_sweep anonymised=${r}`);
+    return { anonymised: r };
   }
 
   /** Expired/revoked refresh tokens, used/expired reset links, dead sessions, stale devices, old login_attempts. */

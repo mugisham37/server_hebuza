@@ -45,6 +45,7 @@ import {
   type Actor,
   type Fin,
 } from "./finance.store";
+import type { Payable } from "./finance.cases";
 import type { R } from "./finance.refunds";
 import type { Alloc, Batch } from "./finance.revenue";
 
@@ -266,11 +267,11 @@ export async function notes(f: Fin): Promise<{ items: FinNote[] }> {
   };
 }
 /** Payables tile. shortcut: supplier bills belong to procurement (P7); read its open bills here when that module lands. */
-export const payablesDue = () => ({
-  total: 0,
-  count: 0,
-  items: [] as unknown[],
-});
+/** Approved obligations other modules handed to finance (partner commissions) that are not yet paid. */
+export async function payablesDue(db: Exec) {
+  const items = (await all<Payable>(db, "payable")).filter((p) => p.status === "due");
+  return { total: items.reduce((x, p) => x + p.amount, 0), count: items.length, items };
+}
 
 // ---------------------------------------------------------------- tax/limit settings (SET §7)
 async function settingRows(db: Exec): Promise<SettingRow[]> {

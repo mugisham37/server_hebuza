@@ -33,6 +33,7 @@ import { generateId } from "../../core/db/ids";
 import { nextCustomerNo } from "../../core/db/customer-no";
 import { NotificationsService } from "../notifications/notifications.service";
 import { normalizePhone } from "../auth/auth.rules";
+import { orgSubscription } from "../subscriptions/subscriptions.service";
 
 export type OrgProfile = {
   legalName: string;

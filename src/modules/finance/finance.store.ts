@@ -7,7 +7,7 @@ import { AppError } from "../../core/http/errors";
 import type { AuditEntry } from "../../core/db/audit";
 import type { SessionUser } from "../../core/http/context";
 import type { LedgerService } from "../ledger/ledger.service";
-import { applications, clientSubscriptions, opsRecords, services, supportTickets, users } from "@/db/schema";
+import { applications, clientSubscriptions, opsRecords, organizations, services, supportTickets, users } from "@/db/schema";
 import { financeRecords, financeSequences } from "@/db/schema";
 import { formatNo, type NumberSeries } from "@/domain/finance/numbering";
 import type { Role } from "@/domain/auth/roles";
@@ -90,7 +90,8 @@ export type Kind =
   | "report_sub"
   | "report_view"
   | "report_target"
-  | "disbursement";
+  | "disbursement"
+  | "payable";
 
 type Doc = { status?: string; state?: string; rev?: number };
 const statusOf = (d: Doc) =>
@@ -325,6 +326,9 @@ export type Client = {
   email: string;
   language: string;
   flags: string[];
+  /** CRM-01 / ORG-05: shown on invoices, receipts and PDFs. */
+  customerNo?: string | null;
+  tin?: string | null;
   consent?: Partial<Record<"email" | "whatsapp" | "sms", boolean>>;
 };
 export type Worker = { id: string; name: string; external?: boolean };
@@ -340,6 +344,10 @@ export type Case = {
   updatedAt: string;
   flags?: string[];
   disputed?: boolean;
+  /** ORG: the company the case was submitted for (billed party). */
+  organizationId?: string | null;
+  /** REQ-03: the RG- request group it belongs to. */
+  groupCode?: string | null;
 };
 const DISPUTE_TYPES = ["dispute", "complaint", "billing_dispute"];
 const TERMINAL_CASE = ["cancelled", "rejected", "refunded"];
@@ -352,14 +360,15 @@ async function parties(db: Exec) {
       ref: applications.code, service: applications.serviceSlug, clientId: applications.clientId,
       status: applications.status, agent: applications.assignedAgentId, amount: applications.paymentAmount,
       createdAt: applications.createdAt, updatedAt: applications.updatedAt, completedAt: applications.completedAt,
-      urgent: applications.isUrgent,
+      urgent: applications.isUrgent, organizationId: applications.organizationId,
+      groupCode: dsql<string | null>`(select code from request_groups g where g.id = ${applications.groupId})`,
     })
     .from(applications)
     .where(or(notInArray(applications.status, TERMINAL_CASE), dsql`${applications.code} in ${docRefs}`));
   const appClients = [...new Set(apps.map((a) => a.clientId).filter((x): x is string => !!x))];
   const [us, svcs, tickets, opsDisputes, subs] = await Promise.all([
     db
-      .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language })
+      .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language, customerNo: users.customerNo })
       .from(users)
       .where(
         or(
@@ -390,8 +399,13 @@ async function parties(db: Exec) {
     .filter((u) => u.role === "client")
     .map((u) => ({
       id: u.id, name: u.name, type: "individual", phone: u.phone ?? "", email: u.email ?? "", language: u.language,
-      flags: subscribers.has(u.id) ? ["subscriber"] : [],
+      flags: subscribers.has(u.id) ? ["subscriber"] : [], customerNo: u.customerNo,
     }));
+  // ORG: companies billed for their cases appear as company parties keyed by org id.
+  const orgIds = [...new Set(apps.map((a) => a.organizationId).filter((x): x is string => !!x))];
+  if (orgIds.length)
+    for (const o of await db.select().from(organizations).where(inArray(organizations.id, orgIds)))
+      clients.push({ id: o.id, name: o.legalName, type: "company", phone: o.phone ?? "", email: o.email ?? "", language: "en", flags: [], customerNo: o.customerNo, tin: o.tin });
   const workers: Worker[] = us
     .filter((u) => u.role !== "client")
     .map((u) => ({ id: u.id, name: u.name, external: u.role === "ext:agent" }));
@@ -405,6 +419,8 @@ async function parties(db: Exec) {
       updatedAt: a.completedAt ?? a.updatedAt,
       flags: a.urgent ? ["urgent"] : [],
       disputed: disputed.has(a.ref),
+      organizationId: a.organizationId,
+      groupCode: a.groupCode,
     }));
   return { clients, workers, services: svcs as Service[], cases };
 }

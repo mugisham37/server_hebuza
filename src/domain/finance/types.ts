@@ -50,7 +50,9 @@ export type Quote = {
 };
 export type Invoice = {
   no: string | null; series: Series; caseRef?: string; subscriptionId?: string; clientId: string;
-  billTo: { name: string; tin?: string; address?: string; email?: string }; status: InvoiceStatus; overdue: boolean;
+  billTo: { name: string; tin?: string; address?: string; email?: string; customerNo?: string }; status: InvoiceStatus;
+  /** ORG: billed company (cases submitted for a company); REQ-03: request group of the case. */
+  organizationId?: string; groupCode?: string; overdue: boolean;
   lines: DocLine[]; totals: DocTotals; amountPaid: Rwf; amountCredited: Rwf; balanceDue: Rwf; issuedAt?: string;
   dueAt?: string; ebmReceiptNo?: string; voidReason?: string; currency: string; fx?: { currency: string; rate: number; at: string }; rev: number;
 };

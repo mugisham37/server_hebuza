@@ -5,7 +5,7 @@
 // PublicCache.bust("plans") after each write.
 import { Injectable } from "@nestjs/common";
 import { and, asc, count, eq, gte, inArray, lte } from "drizzle-orm";
-import { applications, clientSubscriptions, subscriptionPlans, users } from "@/db/schema";
+import { applications, clientSubscriptions, organizationSubscriptions, subscriptionPlans, users } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { AuditService } from "../../core/db/audit";
@@ -211,6 +211,36 @@ export async function getMine(db: Exec, clientId: string) {
 }
 
 /** Activate or upgrade after a successful plan payment. A plan archived between paying and settling is honoured. */
+/** SUB-10: activate or extend a company subscription from a settled plan payment. Idempotent per payment. */
+export async function activateOrgSubscription(
+  db: Exec,
+  a: { organizationId: string; planId: string; paidAt: string; paymentId: string; paidBy: string | null },
+) {
+  const plan = await getPlan(db, a.planId);
+  if (!plan) throw err.notFound("Plan not found.");
+  const [cur] = await db.select().from(organizationSubscriptions).where(eq(organizationSubscriptions.organizationId, a.organizationId)).for("update");
+  if (cur?.lastPaymentId === a.paymentId) return;
+  const now = new Date();
+  // Renewal before the period ends extends from the current end, otherwise from now.
+  const base = cur && cur.status === "active" && Date.parse(cur.currentPeriodEnd) > now.getTime() ? new Date(cur.currentPeriodEnd) : now;
+  const row = { planId: plan.planId, status: "active", currentPeriodEnd: addPeriod(base, plan.interval), lastPaymentId: a.paymentId, paidBy: a.paidBy, updatedAt: now.toISOString() };
+  await db.insert(organizationSubscriptions).values({ organizationId: a.organizationId, startedAt: now.toISOString(), createdAt: now.toISOString(), ...row })
+    .onConflictDoUpdate({ target: organizationSubscriptions.organizationId, set: row });
+}
+
+/** SUB-10: the company's subscription, expired on read when the period lapsed. */
+export async function orgSubscription(db: Exec, organizationId: string) {
+  const [s] = await db.select({ s: organizationSubscriptions, name: subscriptionPlans.name, kind: subscriptionPlans.kind })
+    .from(organizationSubscriptions).innerJoin(subscriptionPlans, eq(subscriptionPlans.planId, organizationSubscriptions.planId))
+    .where(eq(organizationSubscriptions.organizationId, organizationId));
+  if (!s) return null;
+  if (s.s.status === "active" && Date.parse(s.s.currentPeriodEnd) < Date.now()) {
+    await db.update(organizationSubscriptions).set({ status: "expired", updatedAt: new Date().toISOString() }).where(eq(organizationSubscriptions.organizationId, organizationId));
+    s.s.status = "expired";
+  }
+  return { planId: s.s.planId, planName: s.name, kind: s.kind, status: s.s.status, currentPeriodEnd: s.s.currentPeriodEnd, startedAt: s.s.startedAt };
+}
+
 export async function activateFromPayment(
   db: Exec,
   a: { clientId: string; planId: string; paidAt: string; paymentId: string },

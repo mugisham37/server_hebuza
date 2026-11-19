@@ -268,6 +268,16 @@ const userNames = async (db: Tx, ids: (string | null)[]) => {
 };
 
 async function hasRetainer(db: Tx, clientId: string) {
+  return (await personalRetainer(db, clientId)) || (await orgRetainer(db, clientId));
+}
+/** SUB-10: a company retainer covers its active representatives. */
+async function orgRetainer(db: Tx, clientId: string) {
+  const [r] = (await db.execute(sql`select exists (select 1 from organization_subscriptions s join subscription_plans p on p.plan_id = s.plan_id
+    join organization_members m on m.organization_id = s.organization_id and m.user_id = ${clientId} and m.status = 'active'
+    where s.status = 'active' and s.current_period_end > now() and p.kind = 'retainer') as ok`)) as unknown as { ok: boolean }[]; // cast: execute() rows are untyped
+  return !!r?.ok;
+}
+async function personalRetainer(db: Tx, clientId: string) {
   const [r] = await db
     .select({ n: count() })
     .from(clientSubscriptions)

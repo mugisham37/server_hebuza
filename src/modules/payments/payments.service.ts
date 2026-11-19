@@ -143,6 +143,7 @@ export type Settled = {
   applicationCode?: string;
   planId?: string | null;
   clientId?: string | null;
+  organizationId?: string | null;
   paidAt?: string;
   booking?: boolean;
 };
@@ -294,6 +295,7 @@ export class PaymentsService {
       platform: number;
       clientId: string | null;
       planId: string | null;
+      organizationId?: string | null;
       kind: Kind;
       method: string;
       phone?: string | null;
@@ -326,6 +328,7 @@ export class PaymentsService {
         updatedAt: new Date(now).toISOString(),
         clientId: a.clientId,
         planId: a.planId,
+        organizationId: a.organizationId ?? null,
       })
       .returning();
     return p;
@@ -370,18 +373,26 @@ export class PaymentsService {
             "validation",
             "This plan has no payable amount.",
           );
+        // SUB-10: company plans need an owner/admin seat; the subscription then belongs to the company.
+        const orgId = body.organization_id?.trim() || null;
+        if (orgId) {
+          const [m] = (await tx.execute(sql`select role from organization_members where organization_id = ${orgId} and user_id = ${me.id} and status = 'active'`)) as unknown as { role: string }[]; // cast: execute() rows are untyped
+          if (!m) throw notFound("Organisation");
+          if (m.role === "viewer") throw forbidden();
+        }
         const code = `${PLAN_PREFIX}${plan.planId}`.slice(0, 64);
         await tx.execute(
-          sql`select pg_advisory_xact_lock(hashtext(${`pay:${me.id}:${code}`}))`,
+          sql`select pg_advisory_xact_lock(hashtext(${`pay:${orgId ?? me.id}:${code}`}))`,
         );
         await this.assertNoLivePayment(tx, code);
         return this.insertPending(tx, {
           code,
-          amount: await checkoutAmount(tx, me.id, plan), // F-SUB-08 prorated upgrade
+          amount: orgId ? plan.amountRwf : await checkoutAmount(tx, me.id, plan), // F-SUB-08 prorated upgrade (personal plans)
           government: 0,
           platform: 0,
           clientId: me.id,
           planId: plan.planId,
+          organizationId: orgId,
           kind,
           method: body.method,
           phone: body.phone_number,
@@ -766,6 +777,7 @@ export class PaymentsService {
           applicationCode: np.applicationCode,
           planId: np.planId,
           clientId: np.clientId,
+          organizationId: np.organizationId,
           paidAt: now,
         };
         await this.outbox.add(tx, {

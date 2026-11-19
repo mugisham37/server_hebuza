@@ -30,6 +30,7 @@ import { generateId } from "../../core/db/ids";
 import { Cron } from "../../core/queue/queues";
 import { NotificationsService } from "../notifications/notifications.service";
 import { money, paidRows } from "../applications/applications.service";
+import { upsertPayable } from "../finance/finance.cases";
 
 /** Child record kinds served by the generic CRUD routes (`/staff/partners/:id/:kind`). */
 export const CHILDREN = {
@@ -621,7 +622,7 @@ export class PartnersService {
     });
   }
 
-  /** Finance decision. shortcut: approval does not yet create the payable line in REV/SUP (finance owns that); paid is marked here once settled. */
+  /** Finance decision: approve → finance payable (finance/x/payables-due); paid → payable closed. */
   decideCommission(
     me: SessionUser,
     id: string,
@@ -650,6 +651,15 @@ export class PartnersService {
           "conflict",
           "This commission is not waiting for that decision.",
         );
+      // PRT-09: an approved commission becomes a finance payable; paid closes it.
+      if (b.decision !== "rejected") {
+        const [p] = await tx.select({ name: partners.name }).from(partners).where(eq(partners.id, c.partnerId));
+        await upsertPayable(tx, {
+          id: `prtcom_${c.id}`, source: "partner_commission", payee: p?.name ?? c.partnerId, amount: Number(c.amount),
+          memo: `Partner commission ${c.rateBps / 100}% on ${Number(c.baseAmount)} RWF`, status: b.decision === "paid" ? "paid" : "due",
+          at: c.createdAt, ...(b.decision === "paid" && { paidAt: now() }),
+        });
+      }
       await this.audit.record(tx, {
         action: `partner.commission.${b.decision}`,
         entity: "partner_commission",

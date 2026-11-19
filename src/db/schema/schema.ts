@@ -1189,6 +1189,8 @@ export const payments = pgTable("payments", {
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull(),
 	clientId: varchar("client_id", { length: 64 }),
 	planId: varchar("plan_id", { length: 64 }),
+	/** SUB-10: a plan bought for a company (organizations.id); the payer stays client_id. */
+	organizationId: varchar("organization_id", { length: 64 }),
 }, (table) => [
 	index("ix_payments_application_code").using("btree", table.applicationCode.asc().nullsLast()),
 	index("ix_payments_client_id").using("btree", table.clientId.asc().nullsLast()),
