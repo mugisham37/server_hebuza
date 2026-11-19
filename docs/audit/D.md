@@ -103,16 +103,15 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114 |
 | F-SET-04 | Custom sub-statuses | P1 | DONE | S:modules/catalogue/catalogue.controller.ts:169-189; WA:(ops)/ops/settings/statuses |
 | F-SET-05 | SLA & working calendar | P1 | DONE | Closed 2026-11-19: sla.business_start/end_hour settings drive support SLA + escalation. (was PARTIAL) |
-| F-SET-06 | Numbering formats | P1 | PARTIAL | finance sequences + read view S:finance.core.controller.ts:77. Gap: customer numbering placeholder (see CRM-01); registry entry readonly |
-| F-SET-07 | Company & tax identity | P1 | PARTIAL | registry `general.company_identity` readonly string (settings-registry.ts:64); bank accounts S:finance.core.controller.ts:99. Gap: TIN/VAT/EBM/logo/footer editable fields |
-| F-SET-08 | Payment methods matrix | P1 | PARTIAL | only `flags.card_payments`. Gap: per-method enable/limits/fees per context |
+| F-SET-06 | Numbering formats | P1 | DONE | Closed 2026-11-19: customer numbers assigned (users/orgs customer_no, IAM-24) + finance sequences read view. (was PARTIAL) |
+| F-SET-07 | Company & tax identity | P1 | DONE | Closed 2026-11-19: company.* settings (legal name, TIN, VAT, EBM, address, footer) printed on invoice/quote/credit-note PDFs. (was PARTIAL) |
+| F-SET-08 | Payment methods matrix | P1 | DONE | Closed 2026-11-19: payments.method.* switches enforced at initiate / bank transfer. (was PARTIAL) |
 | F-SET-09 | Channel configuration | P2 | DONE | Closed 2026-11-19: platform quiet hours settings applied in delivery. (was PARTIAL) |
-| F-SET-10 | Languages | P2 | PARTIAL | missing-translation report S:system.config.ts:235, POST :71. Gap: `i18n.enabled_locales` readonly (needs deploy) |
+| F-SET-10 | Languages | P2 | DONE | Closed 2026-11-19: i18n.enabled_locales editable (rw required) → public settings, language switcher, notification language. (was PARTIAL) |
 | F-SET-11 | Maintenance mode | P1 | DONE | Closed 2026-11-19: PlatformGuard: API read-only for clients when on or in the scheduled window. (was PARTIAL) |
 | F-SET-12 | Feature flags | P1 | DONE | Closed 2026-11-19: PlatformGuard route flags (assistant, booking, field cash) + WhatsApp in delivery. (was PARTIAL) |
 | F-SET-13 | Export/import | P3 | DONE | Closed 2026-11-19: settings import (validated, approvals + audit) + UI. (was PARTIAL) |
-| F-SET-14 | Remove dead settings | P1 | PARTIAL | columns still present S:db/schema/schema.ts:907-909 (`data_retention`, `compact_tables`, `enforce_2fa`) |
-
+| F-SET-14 | Remove dead settings | P1 | DONE | Closed 2026-11-19: dead platform_settings columns removed from schema + read model (migration by integrator). (was PARTIAL) |
 ## Audit trail (AUD)
 
 | ID | title | phase | status | evidence / gap |
@@ -126,8 +125,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-AUD-07 | Audit viewer | P1 | DONE | S:system.audit.controller.ts:14/48; W:components/organisms/system/audit.tsx, WA:(system)/system/audit |
 | F-AUD-08 | Export | P2 | DONE | S:system.audit.controller.ts:39, csv/pdf + `data_export.audit.exported` (system.audit.ts:505) |
 | F-AUD-09 | Retention / archive | P3 | DONE | Closed 2026-11-19: daily gzip JSONL copy to locked R2 bucket (core/db/audit-export.ts). (was MISSING) |
-| F-AUD-10 | Per-resource history | P2 | PARTIAL | cases S:ops.cases.controller.ts:230 + W:ops/record.tsx; users S:system.users.controller.ts:56; workers history. Gap: invoices Activity tab not verified |
-
+| F-AUD-10 | Per-resource history | P2 | DONE | Closed 2026-11-19: invoice History tab (HistoryTab resourceType=invoice) + cases/users/workers. (was PARTIAL) |
 ## Cross-cutting
 
 ### Accessibility

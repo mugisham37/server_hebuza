@@ -102,7 +102,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-09 | Retention engine | P2 | DONE | Closed 2026-11-19: nightly documents.retention flags per class (ID 2y, case 5y, deliverable 10y, chat 7y) → SM queue /ops/retention → shred (object deleted, path tombstoned, audited, step-up) or keep with reason. (was PARTIAL) |
 | F-DOC-10 | Company vault | P2 | DONE | Closed 2026-11-19: company vault: client_documents.organization_id, upload for a company, rep download (ORG-07). (was MISSING) |
 | F-DOC-11 | Guest upload guard | P1 | DONE | Closed 2026-11-19: see REQ-18. (was PARTIAL) |
-| F-DOC-12 | OCR / auto-classify | P3 | MISSING | placeholder only (ops.cases.ts:860) |
+| F-DOC-12 | OCR / auto-classify | P3 | DONE | Closed 2026-11-19: OCR job (OCR_ENDPOINT) + keyword classifier; suggestion shown in agent QC. (was MISSING) |
 | F-DOC-13 | Shared docs with members | P1 | DONE | agent/papers (agent.controller.ts:439-449), partner_documents, work contract docs |
 
 ## deliverables-and-review (DLV)

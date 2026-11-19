@@ -50,7 +50,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 |---|---|---|---|---|
 | F-MSG-01 | Case conversation | P1 | DONE | Lanes client/team/internal; `chat/conversations/by-application`; web `agent/inbox`, `requests/[ref]`. |
 | F-MSG-02 | Direct conversations | P1 | DONE | `staff_dm` (`chat.service.ts:1373-1394`). |
-| F-MSG-03 | Support conversation | P1 | PARTIAL | Support kind exists (`chat.service.ts:290`) with link-to-case (l.1709). Visitor/AI handoff and inbound channels do not create one (see F-AIA-06, F-MSG-12). |
+| F-MSG-03 | Support conversation | P1 | DONE | Closed 2026-11-19: assistant handoff → case conversation note / support ticket / handoff queue; inbound channels → tickets. (was PARTIAL) |
 | F-MSG-04 | Rich messages | P1 | DONE | 15-min edit window plus history (`chat.service.ts:67,1031`); `message_edits`, reactions, pins, mentions, references. |
 | F-MSG-05 | Structured cards | P1/P2 | DONE | Closed 2026-11-19: six typed cards (domain/chat/rules), agent composer + client thread, quotation accept/decline. (was PARTIAL) |
 | F-MSG-06 | Receipts & presence | P1 | DONE | read seq (`conversations/{id}/read`), `typing` (l.869), `realtime/focus`. |
@@ -85,9 +85,8 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-NTF-14 | Digests | P1 | DONE | Closed 2026-11-19: daily staff digest (notifications.staff_digest). (was PARTIAL) |
 | F-NTF-15 | Suppression & dedupe | P1 | DONE | Closed 2026-11-19: 10-min dedupe window + suppression list. (was PARTIAL) |
 | F-NTF-16 | Secure links | P1 | DONE | Messages carry a title, body and portal link only (`notifications.jobs.ts:43`); the manage token is sealed in the outbox. |
-| F-NTF-17 | Manual send | P2 | DONE | Closed 2026-11-19: POST staff/clients/:id/notify (rules/preferences/consent apply). (was MISSING) |
-| F-NTF-18 | Web push | P3 | MISSING | — |
-
+| F-NTF-17 | Manual send | P2 | DONE | Closed 2026-11-19: message-client dialog on the ops case page. (was DONE) |
+| F-NTF-18 | Web push | P3 | DONE | Closed 2026-11-19: payload-less Web Push (VAPID), settings toggle, SW handlers. (was MISSING) |
 ## AI assistant (AIA)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
@@ -134,17 +133,16 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-CAL-01 | Deadline rules per service | P1 | DONE | `service_deadline_rules`, `compliance-calendar` CRUD (`compliance.controller.ts:22-49`); web `ops/compliance-rules`. |
-| F-CAL-02 | National compliance calendar | P2 | PARTIAL | Rules plus holidays are editable; the §12 seeded statutory list was not verified. |
-| F-CAL-03 | Obligation generation | P2 | PARTIAL | Generated for subscribed clients with a dedicated agent (`deadlines.service.ts:186-232`). No generation from ORG profile flags (VAT, employer). |
+| F-CAL-02 | National compliance calendar | P2 | DONE | Closed 2026-11-19: national statutory calendar seeded (seedCompliance: RRA/RSSB/RDB rules, verified=false pending legal check) + holidays. (was PARTIAL) |
+| F-CAL-03 | Obligation generation | P2 | DONE | Closed 2026-11-19: org compliance profile (VAT, VAT period, employer) → generateOrgObligations. (was PARTIAL) |
 | F-CAL-04 | Client compliance calendar | P2 | DONE | Closed 2026-11-19: GET me/obligations + ICS feed + /dashboard/calendar. (was MISSING) |
 | F-CAL-05 | Agent/manager calendar | P1 | DONE | `GET agent/calendar` (`agent.controller.ts:81`), `POST agent/obligations/:id/:action`; web `agent/calendar`. |
 | F-CAL-06 | Reminders multi-channel | P2 | DONE | Closed 2026-11-19: client reminders on email/SMS/WhatsApp via delivery rules. (was PARTIAL) |
 | F-CAL-07 | Auto-case creation | P2 | DONE | Closed 2026-11-19: deadlines.autocase opens the case via ApplicationsService at lead time. (was MISSING) |
 | F-CAL-08 | Missed & escalation | P1 | DONE | Closed 2026-11-19: missed → client notice, case flagged urgent, managers alerted. (was PARTIAL) |
 | F-CAL-09 | Holiday calendar | P2 | DONE | `compliance_holidays`, `public-holidays`, weekend/holiday roll (`compliance.service.ts:2,54`). |
-| F-CAL-10 | Case SLA & due dates | P1 | PARTIAL | `dueAt/dueSource/clientPreferredDate` and `recordBreaches` (l.280). The propose/accept change flow was not verified. |
-| F-CAL-11 | Contract/renewal reminders | P2 | PARTIAL | Each module (work, procurement) has its own expiry logic; there is no shared engine. |
-
+| F-CAL-10 | Case SLA & due dates | P1 | DONE | Closed 2026-11-19: agent proposes due date → manager approval (proposeDue/openApproval); SM direct change audited. (was PARTIAL) |
+| F-CAL-11 | Contract/renewal reminders | P2 | DONE | Closed 2026-11-19: shared expiry engine (domain/expiry + core/db/reminder-claim) used by worker contracts. (was PARTIAL) |
 ## Gaps (by phase)
 
 ### P1
