@@ -47,7 +47,7 @@ Status counts below rate the feature as built; "(G0)" marks ones whose real-data
 | F-RFD-06 | Revenue-share reversal | P2    | DONE         | `reversal()` `money.ts:83` used in `finance.refunds.ts` impact; `adjustmentChain` `approvals.ts:35`                                                                                 |
 | F-RFD-07 | Auto refund triggers   | P2    | DONE | wave 3: payment on cancelled/rejected case → auto refund request. duplicate payment `finance.payments.ts:1458-1471`; cancelled booking `finance.refunds.ts:846-863`. Missing: payment-on-cancelled-case trigger for applications; overpayment opt-out |
 | F-RFD-08 | Dispute link           | P2    | DONE | wave 2: ops ticket refund action → `refund.requested` → finance refund request (auto dispute); `createRefundRequest` hook. no dispute→refund coupling found (no `refunded` resolution handler) |
-| F-RFD-09 | Refund reports         | P2    | PARTIAL      | `fin.refunds_credit_notes` report `reports/lib/types.ts`; refund-rate and by-agent breakdown not verified                                                                           |
+| F-RFD-09 | Refund reports         | P2    | DONE | fin.refunds_credit_notes grouped by reason/service/agent with paid invoices + refund rate. `fin.refunds_credit_notes` report `reports/lib/types.ts`; refund-rate and by-agent breakdown not verified |
 
 ## revenue-sharing-and-payouts (REV)
 
@@ -75,7 +75,7 @@ Module is 454 lines: 4 read routes (`subscriptions/subscriptions.controller.ts:1
 | F-ID     | title                       | phase | status  | evidence / gap                                                                                                                                                    |
 | -------- | --------------------------- | ----- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F-SUB-01 | Plan catalogue              | P1    | DONE    | `GET plans`, `plans/:id` `subscriptions.controller.ts:12-17`; web `/pricing`, `billing.tsx`. Localisation of plan text not present (single `name`/`description`)  |
-| F-SUB-02 | Trial                       | P1    | PARTIAL | auto on signup `subscriptions.jobs.ts` (`auth.user.signed_up`), `startTrialForClient` `subscriptions.service.ts:237`; one per client only, not per org            |
+| F-SUB-02 | Trial                       | P1    | DONE | user trial on signup + one trial per company created at org creation (startTrialForOrg). auto on signup `subscriptions.jobs.ts` (`auth.user.signed_up`), `startTrialForClient` `subscriptions.service.ts:237`; one per client only, not per org |
 | F-SUB-03 | Checkout & activation       | P1    | DONE    | `payment.settled` → `activateFromPayment` `payments.jobs.ts:36`, `subscriptions.service.ts:173`. Note: re-payment resets `startedAt=now` and drops remaining days |
 | F-SUB-04 | Renewal invoicing           | P1    | DONE | wave 2: renewal plan invoice T-7 (`renewalInvoices`); renewal extends from period end. no renewal job; `runRenewals` `finance.billing.ts:1176` unused |
 | F-SUB-05 | Renewal & expiry reminders  | P1    | DONE | wave 2: hourly `subscriptions.sweep` T-7/T-3/T0/T+3/T+7 + trial T-3/T-1. no T-7/T-3/T-0/T+3/T+7 reminders |
@@ -83,7 +83,7 @@ Module is 454 lines: 4 read routes (`subscriptions/subscriptions.controller.ts:1
 | F-SUB-07 | Client self-cancel          | P1    | DONE | wave 2: `POST me/subscription/cancel` / `undo-cancel` + billing dialog. no cancel route, no survey/win-back |
 | F-SUB-08 | Upgrade/downgrade proration | P2    | DONE | wave 2: prorated upgrade at checkout, scheduled downgrade (`me/subscription/change`) + client UI. `prorate()` `money.ts:98` unused; paying a new plan just replaces it |
 | F-SUB-09 | Pause                       | P2    | DONE | wave 2: `finance/subscriptions/:id/pause` + /finance/subscriptions page; auto-resume.  |
-| F-SUB-10 | Company subscriptions       | P2    | MISSING | `client_subscriptions` keyed by `clientId` only                                                                                                                   |
+| F-SUB-10 | Company subscriptions       | P2    | DONE | verified 38c73ce: organization_subscriptions via plan checkout; members covered by the company plan in coverageFor. `client_subscriptions` keyed by `clientId` only |
 | F-SUB-11 | Annual billing              | P3    | DONE | wave 4: plan admin API + /finance/subscriptions Plans tab (monthly/yearly). wave 3: `addPeriod` calendar months/years (Kigali, month-end clamp, tested); plans may be `year` (no admin plan editor yet). `interval` column exists but period is fixed `PERIOD_MS = 30d` (`subscriptions.service.ts`) |
 | F-SUB-12 | Usage meter                 | P1    | DONE | wave 2: 80% warning banner + notification. used/cap in `GET me/subscription`; meter `billing.tsx:485`. 80% warning not found |
 | F-SUB-13 | Subscription reports        | P2    | DONE | Closed 2026-11-19: MRR (annual spread) + churn in fin.subscriptions. (was PARTIAL) |
