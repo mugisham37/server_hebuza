@@ -51,6 +51,7 @@ import { openApproval, type Approval } from "../ops/ops.manage";
 import { recList } from "../ops/lib/store";
 import { createRefundRequest } from "../finance/finance.cases";
 import { orgCan, type OrgRole } from "@/domain/org/org";
+import { validateAnswers, visibleAnswers, type FormRuleField } from "@/domain/catalogue/form-rules";
 import type { Env } from "../../core/config/env";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import type { Tx } from "../../core/db/db";
@@ -703,15 +704,22 @@ export async function submitTx(db: Tx, s: SessionUser | null, input: SubmitInput
       throw new AppError(422, "validation", "Choose a date within the next two years.");
   }
   const [structure] = await db
-    .select({ id: serviceStructureVersions.id })
+    .select({ id: serviceStructureVersions.id, definition: serviceStructureVersions.definition })
     .from(serviceStructureVersions)
     .where(and(eq(serviceStructureVersions.serviceId, svc.serviceId), eq(serviceStructureVersions.status, "published")))
     .orderBy(desc(serviceStructureVersions.version))
     .limit(1);
   if (!structure) throw new AppError(422, "validation", "Service is not ready for applications.");
 
-  const serviceData: Record<string, unknown> = { ...(input.service_data ?? {}) };
-  // shortcut: answers are not yet validated against the structure definition (Python validate_service_data); lands with the catalogue builder.
+  // Answers are checked against the published form (same rules as the wizard); hidden branches are dropped.
+  const formFields = ((((structure.definition as { steps?: { fields?: FormRuleField[] }[] } | null)?.steps ?? [])[0]?.fields) ?? []) as FormRuleField[];
+  const raw = input.service_data ?? {};
+  const formErrors = formFields.length ? validateAnswers(formFields, raw) : {};
+  if (Object.keys(formErrors).length)
+    throw new AppError(422, "validation", "Some answers are missing or invalid.", Object.fromEntries(Object.entries(formErrors).map(([k, e]) => [`service_data.${k}`, e])));
+  const serviceData: Record<string, unknown> = formFields.length
+    ? { ...visibleAnswers(formFields, raw), ...Object.fromEntries(Object.entries(raw).filter(([k]) => !formFields.some((f) => f.id === k))) }
+    : { ...raw };
   const info = coalesceIdentity(input.personal_info, serviceData);
   serviceData.full_name ??= info.fullName;
   serviceData.phone ??= info.phone;
