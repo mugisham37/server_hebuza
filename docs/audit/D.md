@@ -100,10 +100,10 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 |---|---|---|---|---|
 | F-SET-01 | Typed settings registry | P1 | DONE | S:domain/system/settings-registry.ts:57-97; S:modules/system/system.config.controller.ts:46/51; WA:(system)/system/settings/[group]. (Values kept in system_records world, not a `settings` table) |
 | F-SET-02 | Change approval | P2 | DONE | requiresApproval → change request S:system.config.ts:156-186; decision S:system.ops.controller.ts:84; finance effective-dated S:finance.core.controller.ts:87/92 |
-| F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114; W:components/organisms/system/audit.tsx |
+| F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114; W:components/organisms/system/audit.tsx W:components/organisms/system/settings.tsx (per-group change history, before/after) |
 | F-SET-04 | Custom sub-statuses | P1 | DONE | S:modules/catalogue/catalogue.controller.ts:169-189; WA:(ops)/ops/settings/statuses |
 | F-SET-05 | SLA & working calendar | P1 | DONE | Closed 2026-11-19: sla.business_start/end_hour settings drive support SLA + escalation. (was PARTIAL); W:components/organisms/system/settings.tsx |
-| F-SET-06 | Numbering formats | P1 | DONE | Closed 2026-11-19: customer numbers assigned (users/orgs customer_no, IAM-24) + finance sequences read view. (was PARTIAL); W:components/organisms/system/user-detail.tsx |
+| F-SET-06 | Numbering formats | P1 | DONE | Closed 2026-11-19: customer numbers assigned (users/orgs customer_no, IAM-24) + finance sequences read view. (was PARTIAL); W:components/organisms/system/user-detail.tsx W:components/organisms/finance/settings-panels.tsx (finance numbering series) |
 | F-SET-07 | Company & tax identity | P1 | DONE | Closed 2026-11-19: company.* settings (legal name, TIN, VAT, EBM, address, footer) printed on invoice/quote/credit-note PDFs. (was PARTIAL); W:components/organisms/system/settings.tsx |
 | F-SET-08 | Payment methods matrix | P1 | DONE | Closed 2026-11-19: payments.method.* switches enforced at initiate / bank transfer. (was PARTIAL); W:components/organisms/system/settings.tsx |
 | F-SET-09 | Channel configuration | P2 | DONE | Closed 2026-11-19: platform quiet hours settings applied in delivery. (was PARTIAL); W:components/organisms/system/settings.tsx |

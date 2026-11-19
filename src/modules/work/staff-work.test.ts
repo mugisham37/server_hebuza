@@ -35,7 +35,14 @@ describe("staffWork (staff decision panel)", () => {
 });
 
 describe("pendingDestinations (finance queue)", () => {
-  it("lists only destinations awaiting verification", async () => {
-    expect(await pendingDestinations(db)).toEqual([{ workerId: "u1", ...ext.payoutDest }]);
+  it("maps SQL rows to worker id + name + destination, falling back to the id", async () => {
+    const rows = [{ workerId: "u1", name: "Grace", dest: ext.payoutDest }, { workerId: "u9", name: null, dest: ext.payoutDest }];
+    const chain: Record<string, unknown> = {};
+    for (const k of ["select", "from", "leftJoin", "where"]) chain[k] = () => chain;
+    chain.orderBy = async () => rows;
+    expect(await pendingDestinations(chain as never)).toEqual([
+      { workerId: "u1", name: "Grace", ...ext.payoutDest },
+      { workerId: "u9", name: "u9", ...ext.payoutDest },
+    ]);
   });
 });

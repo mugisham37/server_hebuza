@@ -9,7 +9,7 @@ import { settings as finSettings } from "../finance/finance.store";
 import { createHash } from "node:crypto";
 import { Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { agentProfiles, applicationDocuments, applicationMessages, applications, financeRecords, services, users } from "@/db/schema";
+import { agentProfiles, applicationDocuments, applicationMessages, applications, financeRecords, opsRecords, services, users } from "@/db/schema";
 import { all as finAll } from "../finance/finance.store";
 import type { Adj, Alloc } from "../finance/finance.revenue";
 import { StorageService } from "../../core/storage/storage.service";
@@ -1938,10 +1938,13 @@ export async function staffWork(db: Exec, uid: string) {
   };
 }
 
-/** Finance queue: external workers whose new payout destination waits for call-back verification (F-WRK, sup.bank.verify). */
+/** Finance queue: external workers whose new payout destination waits for call-back verification (sup.bank.verify). */
 export async function pendingDestinations(db: Exec) {
-  const rows = await recList<ExtState>(db, "work_ext", {}); // shortcut: scans first 500 work_ext rows, filter in SQL on data->payoutDest once workers exceed that
-  return rows
-    .filter((r) => r.data.payoutDest?.status === "pending_verification")
-    .map((r) => ({ workerId: r.ownerId as string, ...r.data.payoutDest! }));
+  const rows = await db
+    .select({ workerId: opsRecords.ownerId, name: users.name, dest: sql<ExtState["payoutDest"]>`${opsRecords.data}->'payoutDest'` })
+    .from(opsRecords)
+    .leftJoin(users, eq(users.userId, opsRecords.ownerId))
+    .where(and(eq(opsRecords.kind, "work_ext"), sql`${opsRecords.data}->'payoutDest'->>'status' = 'pending_verification'`))
+    .orderBy(asc(users.name));
+  return rows.map((r) => ({ workerId: r.workerId as string, name: r.name ?? (r.workerId as string), ...r.dest! }));
 }

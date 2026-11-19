@@ -62,7 +62,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-MSG-12 | Omnichannel threading | P2 | DONE | Closed 2026-11-19: inbound SMS/WhatsApp threads into support tickets (notifications.delivery thread()). (was MISSING) backend-only: inbound channel threading into tickets |
 | F-MSG-13 | Enquiry SLA & escalation | P1 | DONE | Closed 2026-11-19: support first-response SLA in business hours + SM→exec escalation cron. (was MISSING) backend-only: SLA timer + escalation cron |
 | F-MSG-14 | Complaint flag | P2 | DONE | Closed 2026-11-19: flag case conversation as complaint → FBK ticket; ops conversation action. (was MISSING) |
-| F-MSG-15 | Retention & legal hold | P1 | DONE | Closed 2026-11-19: retention archival cron + legal hold endpoint. (was MISSING) backend-only: retention cron + legal-hold endpoint |
+| F-MSG-15 | Retention & legal hold | P1 | DONE | Closed 2026-11-19: retention archival cron + legal hold endpoint. (was MISSING) W:components/organisms/ops/conversations.tsx (legal hold place/release), W:components/organisms/system/dsr.tsx |
 | F-MSG-16 | Attachment safety | P1 | DONE | Goes through the `documents.finalize` job (sniff, scan, EXIF strip; `chat.service.ts:724`) and short-lived download URLs. HEIC→JPEG was not verified. backend-only: documents.finalize scan pipeline |
 | F-MSG-17 | Conversation summary | P3 | DONE | `assistant/copilot/{kind}` "summarise" (`assistant.controller.ts:136`). |
 | F-MSG-18 | Read-only after closure | P1 | DONE | Closed 2026-11-19: client lane read-only 30 days after close (409 lane_closed → support). (was MISSING) backend-only: server 409 lane_closed rule |
