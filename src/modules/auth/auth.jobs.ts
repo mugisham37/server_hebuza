@@ -4,6 +4,7 @@ import { sql } from "drizzle-orm";
 import { Cron, Job } from "../../core/queue/queues";
 import { MailService } from "../../core/notify/mail.service";
 import { SmsService } from "../../core/notify/sms.service";
+import { WhatsappService } from "../../core/notify/whatsapp.service";
 import { TxService } from "../../core/db/tx";
 import { CryptoService } from "../../core/crypto/crypto.service";
 
@@ -12,7 +13,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 @Injectable()
 export class AuthJobs {
   private readonly log = new Logger(AuthJobs.name);
-  constructor(private readonly mail: MailService, private readonly sms: SmsService, private readonly txs: TxService, private readonly crypto: CryptoService) {}
+  constructor(private readonly mail: MailService, private readonly sms: SmsService, private readonly txs: TxService, private readonly crypto: CryptoService, private readonly wa: WhatsappService) {}
 
   @Job("auth.mail")
   sendMail(sealed: { to: string; subject: string; text: string }) {
@@ -20,9 +21,25 @@ export class AuthJobs {
     return this.mail.send({ to: d.to, subject: d.subject, text: d.text, html: `<p>${esc(d.text).replace(/\n/g, "<br>")}</p>`, tags: { module: "auth" } });
   }
 
+  /** F-IAM-05: SMS; for an OTP that fails, the WhatsApp OTP template, then email. A plain SMS failure retries. */
   @Job("auth.sms")
-  sendSms(d: { to: string; text: string }) {
-    return this.sms.send(this.crypto.unseal(d, ["text"]));
+  async sendSms(d: { to: string; text: string; code?: string; email?: string; subject?: string; lang?: string }) {
+    const m = this.crypto.unseal(d, ["text", "code", "email"]);
+    try {
+      return await this.sms.send({ to: m.to, text: m.text });
+    } catch (e) {
+      if (!m.code) throw e;
+      this.log.warn(`otp sms failed, falling back: ${(e as Error).message}`);
+    }
+    if (this.wa.configured)
+      try {
+        // PLACEHOLDER(wa-otp-template): the approved authentication template name in Meta Business Manager.
+        return await this.wa.send({ to: m.to, text: m.text, template: { name: "otp_code", lang: m.lang ?? "en", params: [m.code] } });
+      } catch (e) {
+        this.log.warn(`otp whatsapp failed, falling back: ${(e as Error).message}`);
+      }
+    if (m.email) return this.mail.send({ to: m.email, subject: m.subject ?? "Your Hebuza code", text: m.text, html: `<p>${esc(m.text).replace(/\n/g, "<br>")}</p>`, tags: { module: "auth" } });
+    throw new Error("otp undeliverable: sms, whatsapp and email all unavailable");
   }
 
   /**

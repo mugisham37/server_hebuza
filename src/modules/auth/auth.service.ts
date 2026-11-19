@@ -284,14 +284,22 @@ export class AuthService {
       .orderBy(sql`${authSessions.lastSeenAt} desc`);
   }
 
-  /** Mail when the account has an email, else SMS. Sent by auth.jobs.ts after commit. */
+  /** Mail when the account has an email, else SMS. An OTP goes SMS-first when there is a phone (F-IAM-05): the job
+   *  falls back to the WhatsApp OTP template, then email. Sent by auth.jobs.ts after commit. */
   async notify(
     tx: Tx,
-    u: Pick<User, "email" | "phoneE164">,
+    u: Pick<User, "email" | "phoneE164"> & { language?: string },
     subject: string,
     text: string,
+    otp?: { code: string },
   ) {
-    if (u.email)
+    if (otp && u.phoneE164)
+      await this.outbox.add(tx, {
+        type: "auth.sms",
+        queue: "critical",
+        payload: this.crypto.seal({ to: u.phoneE164, text, code: otp.code, email: u.email ?? "", subject, lang: u.language ?? "en" }, ["text", "code", "email"]),
+      });
+    else if (u.email)
       await this.outbox.add(tx, {
         type: "auth.mail",
         queue: "critical",
@@ -358,6 +366,7 @@ export class AuthService {
       u,
       `Your Hebuza ${label(u.role)} verification code`,
       `Your verification code is ${o.code}.\nThis code is for your Hebuza ${label(u.role)} account only. It expires in ${ttl / 60} minutes. Do not share it with anyone.`,
+      { code: o.code },
     );
   }
   private async checkClientOtp(uid: string, code: string) {
@@ -732,12 +741,14 @@ export class AuthService {
         .set({ usedAt: iso() })
         .where(eq(passwordResetTokens.id, x.r.id));
       await this.revokeAllSessions(tx, u.userId);
+      // F-IAM-18: a reset never carries a trusted device over, so staff confirm MFA on the next sign-in.
+      await tx.delete(authTrustedDevices).where(eq(authTrustedDevices.userId, u.userId));
       await this.audit.record(tx, {
         action: "auth.password.reset",
         entity: "user",
         entityId: u.userId,
       });
-      return { verified: true };
+      return { verified: true, mfaRequired: isStaffRole(u.role) && (await this.mfaEnrolled(tx, u.userId)) };
     });
   }
 
@@ -949,11 +960,12 @@ export class AuthService {
 
   updateProfile(
     me: SessionUser,
-    b: { name?: string | null; phone?: string | null },
+    b: { name?: string | null; phone?: string | null; language?: "rw" | "en" | "fr" | null },
   ) {
     return this.txs.run(async (tx) => {
       const u = await this.activeUser(tx, me);
       const set: Partial<User> = {};
+      if (b.language) set.language = b.language;
       if (b.name != null) {
         if (!b.name.trim()) throw authErr.validation("Name cannot be empty.");
         set.name = b.name.trim();

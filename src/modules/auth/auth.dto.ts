@@ -27,7 +27,7 @@ export const AuthFlowData = z
 export const SessionData = z
   .object({ session: SessionWithRoles })
   .meta({ id: "SessionData" });
-export const Verified = z.object({ verified: z.boolean() });
+export const Verified = z.object({ verified: z.boolean(), mfaRequired: z.boolean().optional() });
 const Code = z.string().trim().min(6).max(16);
 
 export const SignupIn = z
@@ -101,6 +101,8 @@ export const ChangePasswordIn = z.object({
 export const ProfileIn = z.object({
   name: z.string().max(255).nullish(),
   phone: z.string().max(32).nullish(),
+  /** CLP-03: preferred language for mail/SMS and the portal. */
+  language: z.enum(["rw", "en", "fr"]).nullish(),
 });
 export const PasswordIn = z.object({ password: z.string().min(1) });
 export const MySessions = z.object({
