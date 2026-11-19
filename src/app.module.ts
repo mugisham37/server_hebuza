@@ -39,6 +39,7 @@ import { MarketingModule } from "./modules/marketing/marketing.module";
 import { ProcurementModule } from "./modules/procurement/procurement.module";
 import { FinanceModule } from "./modules/finance/finance.module";
 import { AssistantModule } from "./modules/assistant/assistant.module";
+import { PartnersModule } from "./modules/partners/partners.module";
 import { WorkerMonitorModule } from "./core/queue/worker-monitor";
 import { WorkerFeaturesModule } from "./worker.module";
 @Module({
@@ -77,6 +78,7 @@ import { WorkerFeaturesModule } from "./worker.module";
     ProcurementModule,
     FinanceModule,
     AssistantModule,
+    PartnersModule,
     // Read raw env at decoration time (ConfigModule validates the same value at boot).
     ...(process.env.WORKER_MODE === "inline" ? [WorkerFeaturesModule] : []),
   ],

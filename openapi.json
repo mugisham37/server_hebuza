@@ -3490,6 +3490,159 @@
         ]
       }
     },
+    "/api/finance/subscriptions/plans": {
+      "get": {
+        "operationId": "SubscriptionsController_finPlans",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SubscriptionPlanListResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionsController_createPlan",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SubscriptionPlanResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subscriptions"
+        ]
+      }
+    },
+    "/api/finance/subscriptions/plans/{id}": {
+      "patch": {
+        "operationId": "SubscriptionsController_updatePlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SubscriptionPlanResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subscriptions"
+        ]
+      }
+    },
     "/api/finance/subscriptions": {
       "get": {
         "operationId": "SubscriptionsController_finList",
@@ -18186,6 +18339,46 @@
         ]
       }
     },
+    "/api/admin/ops/register": {
+      "get": {
+        "operationId": "OpsOversightController_register",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpsOversight"
+        ]
+      }
+    },
     "/api/admin/ops/tickets/{ref}": {
       "get": {
         "operationId": "OpsOversightController_ticket",
@@ -29488,6 +29681,249 @@
       "get": {
         "operationId": "ReportsController_definitions",
         "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/targets": {
+      "get": {
+        "operationId": "ReportsController_targets",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      },
+      "put": {
+        "operationId": "ReportsController_setTarget",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TargetDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/{key}/views": {
+      "get": {
+        "operationId": "ReportsController_views",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      },
+      "post": {
+        "operationId": "ReportsController_saveView",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ViewDto2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/views/{id}": {
+      "delete": {
+        "operationId": "ReportsController_deleteView",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "2XX": {
             "description": "",
@@ -51318,6 +51754,816 @@
           "Assistant"
         ]
       }
+    },
+    "/api/public/partners": {
+      "get": {
+        "operationId": "PartnersController_publicList",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/commissions": {
+      "get": {
+        "operationId": "PartnersController_commissions",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "computed",
+                "approved",
+                "paid",
+                "rejected"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/commissions/{id}/decision": {
+      "post": {
+        "operationId": "PartnersController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommissionDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners": {
+      "get": {
+        "operationId": "PartnersController_list",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "prospect",
+                "active",
+                "dormant",
+                "archived"
+              ]
+            }
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "government",
+                "bank",
+                "mfi",
+                "ngo",
+                "embassy",
+                "association",
+                "vendor",
+                "referral",
+                "academic",
+                "other"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      },
+      "post": {
+        "operationId": "PartnersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}": {
+      "get": {
+        "operationId": "PartnersController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      },
+      "patch": {
+        "operationId": "PartnersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PartnerPatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/archive": {
+      "post": {
+        "operationId": "PartnersController_archive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/history": {
+      "get": {
+        "operationId": "PartnersController_history",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/meetings/{mid}/event.ics": {
+      "get": {
+        "operationId": "PartnersController_ics",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mid",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/meetings/{mid}/decisions/to-action": {
+      "post": {
+        "operationId": "PartnersController_toAction",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mid",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecisionToActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/{kind}": {
+      "post": {
+        "operationId": "PartnersController_add",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
+    },
+    "/api/staff/partners/{id}/{kind}/{cid}": {
+      "patch": {
+        "operationId": "PartnersController_edit",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChildDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      },
+      "delete": {
+        "operationId": "PartnersController_remove",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Partners"
+        ]
+      }
     }
   },
   "info": {
@@ -52509,6 +53755,70 @@
         },
         "required": [
           "planId"
+        ]
+      },
+      "PlanDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "interval": {
+            "type": "string",
+            "enum": [
+              "month",
+              "year"
+            ]
+          },
+          "amountRwf": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100000000
+          },
+          "maxApplicationsPerMonth": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 2000
+          },
+          "features": {
+            "type": "array",
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          "isPublic": {
+            "type": "boolean"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000
+          }
+        },
+        "required": [
+          "name",
+          "interval",
+          "amountRwf",
+          "maxApplicationsPerMonth",
+          "description",
+          "features",
+          "isPublic",
+          "isActive",
+          "sortOrder"
         ]
       },
       "PauseDto": {
@@ -58188,7 +59498,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1487_0"
+              "$ref": "#/components/schemas/__s1503_0"
             }
           }
         },
@@ -58386,6 +59696,58 @@
           "contact",
           "topic",
           "message"
+        ]
+      },
+      "TargetDto": {
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "metric": {
+            "type": "string",
+            "maxLength": 48
+          },
+          "monthly": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          }
+        },
+        "required": [
+          "report",
+          "metric",
+          "monthly",
+          "direction"
+        ]
+      },
+      "ViewDto2": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "filters": {
+            "type": "object",
+            "default": {},
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        },
+        "required": [
+          "name"
         ]
       },
       "SubscriptionDto": {
@@ -60020,7 +61382,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1883_0"
+            "$ref": "#/components/schemas/__s1909_0"
           },
           "channel": {
             "type": "string",
@@ -60045,7 +61407,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1887_0"
+            "$ref": "#/components/schemas/__s1913_0"
           }
         },
         "required": [
@@ -60063,7 +61425,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1891_0"
+                "$ref": "#/components/schemas/__s1917_0"
               }
             ]
           }
@@ -60307,7 +61669,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1943_0"
+                "$ref": "#/components/schemas/__s1969_0"
               }
             ]
           },
@@ -63372,6 +64734,216 @@
             ]
           }
         }
+      },
+      "CommissionDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected",
+              "paid"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "PartnerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "government",
+              "bank",
+              "mfi",
+              "ngo",
+              "embassy",
+              "association",
+              "vendor",
+              "referral",
+              "academic",
+              "other"
+            ]
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "strategic",
+              "operational"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "prospect",
+              "active",
+              "dormant",
+              "archived"
+            ]
+          },
+          "sector": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 128
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "website": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 255
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1024,
+            "format": "uri"
+          },
+          "shownOnWebsite": {
+            "type": "boolean"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 5000
+          },
+          "organizationId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "name",
+          "type"
+        ]
+      },
+      "PartnerPatchDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 255
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "government",
+              "bank",
+              "mfi",
+              "ngo",
+              "embassy",
+              "association",
+              "vendor",
+              "referral",
+              "academic",
+              "other"
+            ]
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "strategic",
+              "operational"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "prospect",
+              "active",
+              "dormant",
+              "archived"
+            ]
+          },
+          "sector": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 128
+          },
+          "country": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "website": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 255
+          },
+          "logoUrl": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 1024,
+            "format": "uri"
+          },
+          "shownOnWebsite": {
+            "type": "boolean"
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 5000
+          },
+          "organizationId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          }
+        }
+      },
+      "DecisionToActionDto": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "ownerUserId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "dueOn": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "required": [
+          "index"
+        ]
+      },
+      "ChildDto": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": {}
       },
       "TicketResponse": {
         "type": "object",
@@ -67093,7 +68665,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1487_0": {
+      "__s1503_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -67115,7 +68687,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1487_0"
+              "$ref": "#/components/schemas/__s1503_0"
             }
           }
         },
@@ -67125,7 +68697,7 @@
           "label"
         ]
       },
-      "__s1488_0": {
+      "__s1504_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -67147,7 +68719,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1488_0"
+              "$ref": "#/components/schemas/__s1504_0"
             }
           }
         },
@@ -67157,7 +68729,7 @@
           "label"
         ]
       },
-      "__s1489_0": {
+      "__s1505_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -67179,7 +68751,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1489_0"
+              "$ref": "#/components/schemas/__s1505_0"
             }
           }
         },
@@ -67189,7 +68761,7 @@
           "label"
         ]
       },
-      "__s1883_0": {
+      "__s1909_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67250,7 +68822,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1883_0"
+                  "$ref": "#/components/schemas/__s1909_0"
                 }
               ]
             }
@@ -67261,7 +68833,7 @@
           "rules"
         ]
       },
-      "__s1884_0": {
+      "__s1910_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67322,7 +68894,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1884_0"
+                  "$ref": "#/components/schemas/__s1910_0"
                 }
               ]
             }
@@ -67333,7 +68905,7 @@
           "rules"
         ]
       },
-      "__s1885_0": {
+      "__s1911_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67394,7 +68966,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1885_0"
+                  "$ref": "#/components/schemas/__s1911_0"
                 }
               ]
             }
@@ -67405,7 +68977,7 @@
           "rules"
         ]
       },
-      "__s1886_0": {
+      "__s1912_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67466,7 +69038,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1886_0"
+                  "$ref": "#/components/schemas/__s1912_0"
                 }
               ]
             }
@@ -67477,7 +69049,7 @@
           "rules"
         ]
       },
-      "__s1887_0": {
+      "__s1913_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67538,7 +69110,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1887_0"
+                  "$ref": "#/components/schemas/__s1913_0"
                 }
               ]
             }
@@ -67549,7 +69121,7 @@
           "rules"
         ]
       },
-      "__s1888_0": {
+      "__s1914_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67610,7 +69182,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1888_0"
+                  "$ref": "#/components/schemas/__s1914_0"
                 }
               ]
             }
@@ -67621,7 +69193,7 @@
           "rules"
         ]
       },
-      "__s1889_0": {
+      "__s1915_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67682,7 +69254,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1889_0"
+                  "$ref": "#/components/schemas/__s1915_0"
                 }
               ]
             }
@@ -67693,7 +69265,7 @@
           "rules"
         ]
       },
-      "__s1890_0": {
+      "__s1916_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67754,7 +69326,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1890_0"
+                  "$ref": "#/components/schemas/__s1916_0"
                 }
               ]
             }
@@ -67765,7 +69337,7 @@
           "rules"
         ]
       },
-      "__s1891_0": {
+      "__s1917_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67826,7 +69398,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1891_0"
+                  "$ref": "#/components/schemas/__s1917_0"
                 }
               ]
             }
@@ -67837,7 +69409,7 @@
           "rules"
         ]
       },
-      "__s1892_0": {
+      "__s1918_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67898,7 +69470,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1892_0"
+                  "$ref": "#/components/schemas/__s1918_0"
                 }
               ]
             }
@@ -67909,7 +69481,7 @@
           "rules"
         ]
       },
-      "__s1893_0": {
+      "__s1919_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67970,7 +69542,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1893_0"
+                  "$ref": "#/components/schemas/__s1919_0"
                 }
               ]
             }
@@ -67981,7 +69553,7 @@
           "rules"
         ]
       },
-      "__s1894_0": {
+      "__s1920_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68042,7 +69614,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1894_0"
+                  "$ref": "#/components/schemas/__s1920_0"
                 }
               ]
             }
@@ -68053,7 +69625,7 @@
           "rules"
         ]
       },
-      "__s1943_0": {
+      "__s1969_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68114,7 +69686,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1943_0"
+                  "$ref": "#/components/schemas/__s1969_0"
                 }
               ]
             }
@@ -68125,7 +69697,7 @@
           "rules"
         ]
       },
-      "__s1944_0": {
+      "__s1970_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68186,7 +69758,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1944_0"
+                  "$ref": "#/components/schemas/__s1970_0"
                 }
               ]
             }
@@ -68197,7 +69769,7 @@
           "rules"
         ]
       },
-      "__s1945_0": {
+      "__s1971_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68258,7 +69830,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1945_0"
+                  "$ref": "#/components/schemas/__s1971_0"
                 }
               ]
             }
@@ -68269,7 +69841,7 @@
           "rules"
         ]
       },
-      "__s1946_0": {
+      "__s1972_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68330,7 +69902,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1946_0"
+                  "$ref": "#/components/schemas/__s1972_0"
                 }
               ]
             }
@@ -68341,7 +69913,7 @@
           "rules"
         ]
       },
-      "__s1947_0": {
+      "__s1973_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68402,7 +69974,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1947_0"
+                  "$ref": "#/components/schemas/__s1973_0"
                 }
               ]
             }
@@ -68413,7 +69985,7 @@
           "rules"
         ]
       },
-      "__s1948_0": {
+      "__s1974_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68474,7 +70046,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1948_0"
+                  "$ref": "#/components/schemas/__s1974_0"
                 }
               ]
             }
@@ -68485,7 +70057,7 @@
           "rules"
         ]
       },
-      "__s1949_0": {
+      "__s1975_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68546,7 +70118,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1949_0"
+                  "$ref": "#/components/schemas/__s1975_0"
                 }
               ]
             }
@@ -68557,7 +70129,7 @@
           "rules"
         ]
       },
-      "__s1950_0": {
+      "__s1976_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68618,7 +70190,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1950_0"
+                  "$ref": "#/components/schemas/__s1976_0"
                 }
               ]
             }
@@ -68629,7 +70201,7 @@
           "rules"
         ]
       },
-      "__s1951_0": {
+      "__s1977_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68690,7 +70262,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1951_0"
+                  "$ref": "#/components/schemas/__s1977_0"
                 }
               ]
             }
@@ -68701,7 +70273,7 @@
           "rules"
         ]
       },
-      "__s1952_0": {
+      "__s1978_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68762,7 +70334,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1952_0"
+                  "$ref": "#/components/schemas/__s1978_0"
                 }
               ]
             }
@@ -68773,7 +70345,7 @@
           "rules"
         ]
       },
-      "__s1953_0": {
+      "__s1979_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68834,7 +70406,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1953_0"
+                  "$ref": "#/components/schemas/__s1979_0"
                 }
               ]
             }

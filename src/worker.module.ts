@@ -21,6 +21,7 @@ import { SystemWorkerModule } from "./modules/system/system.worker.module";
 import { BookingWorkerModule } from "./modules/booking/booking.worker.module";
 import { SubscriptionsWorkerModule } from "./modules/subscriptions/subscriptions.worker.module";
 import { OpsWorkerModule } from "./modules/ops/ops.worker.module";
+import { PartnersWorkerModule } from "./modules/partners/partners.module";
 import { DocumentsWorkerModule } from "./modules/documents/documents.worker.module";
 import { WorkWorkerModule } from "./modules/work/work.worker.module";
 import { CmsWorkerModule } from "./modules/cms/cms.worker.module";
@@ -40,7 +41,7 @@ class WorkerAuthModule {}
 // Job-running part of the worker; also imported by AppModule when WORKER_MODE=inline (one source of truth).
 // Feature modules that own *.jobs.ts are appended here (their providers carry @Job/@Cron).
 @Module({
-  imports: [DiscoveryModule, NotificationsModule, AuthWorkerModule, SystemWorkerModule, SubscriptionsWorkerModule, OpsWorkerModule, BookingWorkerModule, DocumentsWorkerModule, CmsWorkerModule, ReportsWorkerModule, FieldWorkerModule, WorkWorkerModule, PaymentsWorkerModule, ProcurementWorkerModule, MarketingWorkerModule, FinanceWorkerModule, AssistantWorkerModule],
+  imports: [DiscoveryModule, NotificationsModule, AuthWorkerModule, SystemWorkerModule, SubscriptionsWorkerModule, OpsWorkerModule, BookingWorkerModule, DocumentsWorkerModule, CmsWorkerModule, ReportsWorkerModule, FieldWorkerModule, WorkWorkerModule, PaymentsWorkerModule, ProcurementWorkerModule, MarketingWorkerModule, FinanceWorkerModule, AssistantWorkerModule, PartnersWorkerModule],
   providers: [JobExplorer, OutboxRelay, WorkerHeartbeat, AuditExport],
 })
 export class WorkerFeaturesModule {}
