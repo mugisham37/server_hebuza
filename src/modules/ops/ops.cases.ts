@@ -1433,6 +1433,7 @@ const offerOut = (r: { id: string; data: OfferData }) => {
     viewedAt: o.viewedAt,
     endedAt: o.endedAt,
     declineReason: o.declineReason,
+    counter: o.counter,
   };
 };
 

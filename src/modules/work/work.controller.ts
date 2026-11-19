@@ -419,6 +419,12 @@ export class WorkController {
 export class WorkStaffController {
   constructor(private readonly w: WorkRunner) {}
 
+  /** Staff view of an external worker's pending items (onboarding, access, rates, invoices, payout) for the decisions below. */
+  @Get("staff/workers/:id/work")
+  @Route({ auth: [...SM_READ, ...FIN_ONLY] })
+  staffWork(@Req() r: OpsReq, @Param("id") id: string) {
+    return this.w.run(r, (c) => w.staffWork(c.db, id));
+  }
   @Post("staff/workers/:id/onboarding/decision")
   @Route({
     auth: SM,

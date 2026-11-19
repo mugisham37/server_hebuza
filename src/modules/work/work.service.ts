@@ -1921,3 +1921,19 @@ export async function credentialRow(tx: Exec, owner: string, e: ExtState, now: n
   });
   return gone.length;
 }
+
+/** Staff read for the worker profile's external-work panel; ids feed the staff decision routes. */
+export async function staffWork(db: Exec, uid: string) {
+  const e = await loadExt(db, uid);
+  const owner = rateOwner(uid, e);
+  const access = await recList<AccessReq>(db, "work_access", { ownerId: uid });
+  return {
+    status: e.status,
+    onboarding: { submittedAt: e.onboarding.submittedAt, changes: e.onboarding.changes },
+    payoutDest: e.payoutDest,
+    invoices: e.invoices.filter((i) => i.status === "received").map(({ key: _k, ...i }) => i),
+    rateOwner: owner,
+    rates: (await loadRates(db, owner)).filter((x) => x.status === "proposed"),
+    access: access.map((x) => x.data).filter((x) => x.status === "pending"),
+  };
+}
