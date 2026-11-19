@@ -16,6 +16,8 @@ export const OrgIn = z.object({
   registeredOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullish(), sectorCode: opt(16),
   province: opt(64), district: opt(64), sector: opt(64), cell: opt(64), phone: opt(32),
   email: z.string().email().max(255).nullish().or(z.literal("")), website: opt(255), sizeBand: z.enum(["micro", "small", "medium", "large"]).nullish(),
+  // F-CAL-03 compliance profile
+  vatRegistered: z.boolean().optional(), vatPeriod: z.enum(["monthly", "quarterly"]).optional(), employer: z.boolean().optional(),
 });
 export const OrgPatchIn = OrgIn.partial();
 export const MemberPatchIn = z.object({ role: z.enum(["admin", "viewer"]).optional(), title: z.string().trim().max(128).nullish() });

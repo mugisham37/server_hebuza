@@ -1,5 +1,5 @@
 // ORG (company profiles): organisations, their authorised representatives, and pending invites.
-import { pgTable, varchar, timestamp, date, index, primaryKey, check, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, date, index, primaryKey, check, uniqueIndex, boolean } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { users } from "./schema";
 
@@ -22,6 +22,10 @@ export const organizations = pgTable("organizations", {
   email: varchar({ length: 255 }),
   website: varchar({ length: 255 }),
   sizeBand: varchar("size_band", { length: 16 }),
+  // F-CAL-03: compliance profile — drives which statutory obligations are generated for the company.
+  vatRegistered: boolean("vat_registered").default(false).notNull(),
+  vatPeriod: varchar("vat_period", { length: 16 }).default("monthly").notNull(), // monthly | quarterly
+  employer: boolean().default(false).notNull(),
   verificationStatus: varchar("verification_status", { length: 24 }).default("unverified").notNull(),
   verificationNote: varchar("verification_note", { length: 1000 }),
   verifiedBy: varchar("verified_by", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),

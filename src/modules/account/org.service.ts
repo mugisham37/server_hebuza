@@ -55,6 +55,9 @@ export type OrgProfile = {
   email?: string | null;
   website?: string | null;
   sizeBand?: string | null;
+  vatRegistered?: boolean;
+  vatPeriod?: string;
+  employer?: boolean;
 };
 type Org = typeof organizations.$inferSelect;
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -214,6 +217,9 @@ export class OrgService {
       email: o.email,
       website: o.website,
       sizeBand: o.sizeBand,
+      vatRegistered: o.vatRegistered,
+      vatPeriod: o.vatPeriod,
+      employer: o.employer,
       customerNo: o.customerNo,
       verificationStatus: o.verificationStatus,
       verificationNote: o.verificationNote,

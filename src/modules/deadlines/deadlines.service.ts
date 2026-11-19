@@ -22,6 +22,9 @@ import {
   serviceDeadlineRules,
   services,
   users,
+  complianceRules,
+  organizations,
+  organizationMembers,
 } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
 import { usersWithRole } from "../../core/db/system-records";
@@ -465,11 +468,53 @@ export async function sendReminders(db: Tx, notify: Notify, now: Date) {
   return sent;
 }
 
+/** F-CAL-03: rule codes a company profile makes applicable (national calendar, seed COMPLIANCE). */
+export function orgRuleCodes(o: { orgType: string; tin: string | null; vatRegistered: boolean; vatPeriod: string; employer: boolean }): string[] {
+  const codes: string[] = [];
+  if (o.vatRegistered) codes.push(o.vatPeriod === "quarterly" ? "RRA_VAT_QUARTERLY" : "RRA_VAT_MONTHLY");
+  if (o.employer) codes.push("RRA_PAYE", "RSSB_CONTRIB");
+  if (o.tin && o.orgType !== "sole_proprietor") codes.push("RRA_CIT_ANNUAL", "RRA_CIT_PREPAY", "RDB_ANNUAL_RETURN");
+  if (o.tin && o.orgType === "sole_proprietor") codes.push("RRA_PIT_ANNUAL");
+  return codes;
+}
+
+/** F-CAL-03: obligations from each verified company's compliance profile, owned by the company's owner(s) so they
+ *  show on their calendar. Idempotent (unique client + service + period). Rules without a linked service are skipped. */
+export async function generateOrgObligations(db: Tx, now: Date) {
+  const today = kigaliToday(now);
+  const horizon = addDays(today, OBLIGATION_HORIZON_DAYS);
+  const orgs = await db.select().from(organizations).where(and(eq(organizations.verificationStatus, "verified"), isNull(organizations.archivedAt)));
+  if (!orgs.length) return 0;
+  const rules = await db.select().from(complianceRules).where(eq(complianceRules.active, true));
+  const svc = new Map((await db.select({ id: services.serviceId, slug: services.slug }).from(services)).map((x) => [x.slug, x.id]));
+  let created = 0;
+  for (const o of orgs) {
+    const codes = new Set(orgRuleCodes(o));
+    const owners = await db.select({ id: organizationMembers.userId }).from(organizationMembers)
+      .where(and(eq(organizationMembers.organizationId, o.id), eq(organizationMembers.role, "owner"), eq(organizationMembers.status, "active")));
+    for (const rule of rules.filter((r) => codes.has(r.code))) {
+      const serviceId = rule.serviceSlug ? svc.get(rule.serviceSlug) : undefined;
+      if (!serviceId) continue;
+      for (const day of occurrences(rule.recurrence as Recurrence, today, horizon))
+        for (const ow of owners) {
+          const r = await db.insert(clientObligations).values({
+            id: generateId("obl"), clientId: ow.id, serviceId, ruleId: null, periodKey: `org:${o.id}:${rule.code}:${day}`,
+            label: { ...(rule.label as Record<string, string>), en: `${(rule.label as Record<string, string>).en} · ${o.legalName}` },
+            dueDate: day, leadDays: rule.leadDays, remindOffsets: (rule.remindOffsets as number[]).map((x) => Math.abs(x)),
+            status: "upcoming", createdAt: now.toISOString(), updatedAt: now.toISOString(),
+          }).onConflictDoNothing().returning({ id: clientObligations.id });
+          created += r.length;
+        }
+    }
+  }
+  return created;
+}
+
 /** Everything the 07:00 Kigali cron does. Safe to run more than once. */
 export async function runDaily(db: Tx, notify: Notify, now = new Date()) {
   // shortcut: Python also sends the agent daily summary and the admin digest; port with P5 (ops/agent workspace).
   return {
-    obligationsCreated: await generateObligations(db, now),
+    obligationsCreated: (await generateObligations(db, now)) + (await generateOrgObligations(db, now)),
     obligationsMissed: await markMissed(db, now, notify),
     breachesRecorded: await recordBreaches(db, now),
     remindersSent: await sendReminders(db, notify, now),
