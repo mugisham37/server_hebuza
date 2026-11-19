@@ -2,7 +2,7 @@ import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI, generateKeyPair, exportJWK, calculateJwkThumbprint, type JWK, type CryptoKey } from "jose";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { authSessions, platformSettings, refreshTokens, users } from "@/db/schema";
 import { normalizeRoles } from "@/domain/auth/roles";
 import type { Env } from "../config/env";
@@ -121,16 +121,21 @@ export class TokenService implements OnModuleInit {
   /**
    * IAM-11: a session ends at the earlier of idle (last seen + platform session_timeout_minutes) and absolute
    * lifetime (created + 24 h clients / 8 h staff).
-   * shortcut: idle is measured at refresh (every ACCESS_TTL_S), and an open tab's session poll refreshes too; upgrade with client activity pings if idle must mean "no input".
+   * Idle counts from the last activity ping (real input in the web app), so background polling never keeps a session alive.
    */
   async sessionEndsAt(tx: Tx, sid: string): Promise<Date> {
-    const [r] = await tx.select({ created: authSessions.createdAt, seen: authSessions.lastSeenAt, role: users.role })
+    const [r] = await tx.select({ created: authSessions.createdAt, seen: sql<string>`coalesce(${authSessions.lastActivityAt}, ${authSessions.createdAt})`, role: users.role })
       .from(authSessions).innerJoin(users, eq(users.userId, authSessions.userId)).where(eq(authSessions.id, sid));
     if (!r) return new Date(0);
     const [p] = await tx.select({ m: platformSettings.sessionTimeoutMinutes }).from(platformSettings).limit(1);
     const idle = Date.parse(r.seen) + (p?.m ?? 60) * 60_000;
     const abs = Date.parse(r.created) + (r.role.startsWith("staff:") || r.role === "ext:agent" ? 8 : 24) * 3_600_000;
     return new Date(Math.min(idle, abs));
+  }
+
+  /** IAM-11: the user did something (throttled ping from the web app). */
+  async touchActivity(tx: Tx, sid: string) {
+    await tx.update(authSessions).set({ lastActivityAt: new Date().toISOString() }).where(and(eq(authSessions.id, sid), isNull(authSessions.revokedAt)));
   }
 
   async revokeSession(tx: Tx, sid: string) {

@@ -18,6 +18,8 @@ export const authSessions = pgTable(
     city: varchar({ length: 64 }),
     createdAt: ts("created_at").notNull(),
     lastSeenAt: ts("last_seen_at").notNull(),
+    /** IAM-11: last real user input (web activity ping); the idle timeout counts from here, not from token refreshes. */
+    lastActivityAt: ts("last_activity_at"),
     revokedAt: ts("revoked_at"),
   },
   (t) => [index("ix_auth_sessions_user_id").on(t.userId)],

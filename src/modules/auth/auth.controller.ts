@@ -193,6 +193,13 @@ export class AuthController {
     );
   }
 
+  // IAM-11: throttled client ping on real input; returns the new session end for the expiry warning.
+  @Post("auth/activity") @ImpersonationOk()
+  @Route({ auth: "user", limit: "read", out: z.object({ expiresAt: z.string() }) })
+  activity(@CurrentUser() me: SessionUser) {
+    return this.auth.activity(me);
+  }
+
   @Get("me/sessions")
   @Route({ auth: "user", out: D.MySessions })
   mySessions(@CurrentUser() me: SessionUser) {

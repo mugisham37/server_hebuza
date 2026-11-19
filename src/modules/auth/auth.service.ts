@@ -1025,6 +1025,13 @@ export class AuthService {
     return r;
   }
 
+  activity(me: SessionUser) {
+    return this.txs.run(async (tx) => {
+      await this.tokens.touchActivity(tx, me.sid);
+      return { expiresAt: (await this.tokens.sessionEndsAt(tx, me.sid)).toISOString() };
+    });
+  }
+
   mySessions(me: SessionUser) {
     return this.txs.run(async (tx) => ({
       sessions: (await this.liveSessions(tx, me.id)).map((r) => ({
