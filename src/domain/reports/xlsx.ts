@@ -15,7 +15,7 @@ function sheet(rows: (string | number | null)[][]) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
 }
 
-function zip(files: [string, string][]) {
+export function zip(files: [string, string][]) {
   const parts: Buffer[] = [], central: Buffer[] = [];
   let off = 0;
   for (const [name, text] of files) {

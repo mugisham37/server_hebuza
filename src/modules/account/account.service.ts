@@ -3,11 +3,15 @@
 // Uploads go straight to object storage via presigned PUT; the API only stores the key.
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { zip } from "@/domain/reports/xlsx";
+import { clientInvoices } from "../finance/finance.billing";
 import {
   applicationClaimOtps,
   applicationDocuments,
+  applicationMessages,
   applications,
+  clientDocuments,
   notifications,
   systemRecords,
   users,
@@ -43,6 +47,7 @@ type Export = {
   key?: string | null;
 };
 type Upload = {
+  expiresAt?: string | null;
   owner: string;
   key: string;
   name: string;
@@ -244,11 +249,14 @@ export class AccountService {
       status: d.status,
       requestedAt: d.requestedAt,
       url: d.key
-        ? await this.storage.presignGet(d.key, "hebuza-data-export.json")
+        && (!d.expiresAt || Date.parse(d.expiresAt) > Date.now())
+        ? await this.storage.presignGet(d.key, "hebuza-data-export.zip")
         : null,
     };
   }
-  /** Builds the bundle inline: one user's rows are small. shortcut: synchronous build, move to a job when bundles include files. */
+  /** F-IAM-19: ZIP (profile, requests, messages, invoices, document list, consents) kept 24 h; the user gets an email
+   *  pointing at /settings/privacy, which presigns a fresh download. Built inline: one user's rows are small (file
+   *  contents stay in the vault; the bundle lists them). */
   requestExport(me: SessionUser) {
     return this.txs.run(async (tx) => {
       const [u] = await tx
@@ -284,33 +292,34 @@ export class AccountService {
       const key = StorageService.key(me.id, "export");
       await this.storage.putObject(
         key,
-        JSON.stringify(
-          {
-            generatedAt: requestedAt,
-            profile: u ?? null,
-            consents: await this.getDoc(tx, `${me.id}:consents`, NO_CONSENT),
-            applications: apps,
-            notifications: ntf,
-          },
-          null,
-          2,
-        ),
-        "application/json",
+        zip([
+          ["README.txt", `HEBUZA personal data export for ${u?.name ?? me.id}, generated ${requestedAt}.\nFiles: profile, consents, requests, messages, invoices, documents (list; download originals from your vault).`],
+          ["profile.json", j(u ?? null)],
+          ["consents.json", j(await this.getDoc(tx, `${me.id}:consents`, NO_CONSENT))],
+          ["requests.json", j(apps)],
+          ["messages.json", j(msgs)],
+          ["invoices.json", j(invs)],
+          ["documents.json", j(docs)],
+          ["notifications.json", j(ntf)],
+        ]),
+        "application/zip",
       );
       await this.putDoc(tx, `${me.id}:export`, {
         status: "ready",
         requestedAt,
         key,
+      expiresAt: d.expiresAt ?? null,
       });
       await this.audit.record(tx, {
-        action: "privacy.export.requested",
+        action: "data_export.client_data.exported",
         entity: "user",
         entityId: me.id,
       });
       return {
         status: "ready" as const,
         requestedAt,
-        url: await this.storage.presignGet(key, "hebuza-data-export.json"),
+        url: await this.storage.presignGet(key, "hebuza-data-export.zip"),
+        expiresAt,
       };
     });
   }
@@ -335,8 +344,17 @@ export class AccountService {
           type: "auth.sms",
           queue: "critical",
           payload: this.crypto.seal({ to: phone, text: `HEBUZA code to claim ${code}: ${o.code}. Valid 10 minutes.` }, ["text"]),
+      const appIds = (await tx.select({ id: applications.applicationId }).from(applications).where(eq(applications.clientId, me.id))).map((a) => a.id);
+      const msgs = appIds.length
+        ? await tx.select({ applicationId: applicationMessages.applicationId, from: applicationMessages.senderRole, content: applicationMessages.content, at: applicationMessages.createdAt })
+            .from(applicationMessages)
+            .where(and(inArray(applicationMessages.applicationId, appIds), eq(applicationMessages.isInternal, false)))
+        : [];
+      const docs = await tx.select({ name: clientDocuments.originalFilename, at: clientDocuments.createdAt }).from(clientDocuments).where(eq(clientDocuments.clientId, me.id));
+      const invs = (await clientInvoices(tx, me.id)).map((i) => ({ no: i.no, status: i.status, total: i.totals.total, balanceDue: i.balanceDue, issuedAt: i.issuedAt, lines: i.lines }));
         });
         return { claimed: false, otpSent: true };
+      const j = (x: unknown) => JSON.stringify(x, null, 2);
       }
       const [own] = await tx.select({ u: applicationClaimOtps.userId }).from(applicationClaimOtps).where(eq(applicationClaimOtps.applicationId, a.id));
       const res = own?.u === me.id ? await checkOtp(tx, applicationClaimOtps, applicationClaimOtps.applicationId, a.id, b.otp) : "dead";
@@ -352,11 +370,23 @@ export class AccountService {
       });
       return { claimed: true, otpSent: false };
     });
+      const expiresAt = new Date(Date.now() + 24 * 3_600_000).toISOString();
   }
 
   // ── generic uploads ──
   /** Anonymous uploads only for the public /join application (qualification files). Returns a presigned PUT + a stable href. */
+        expiresAt,
   upload(
+      if (u?.email)
+        await this.outbox.add(tx, {
+          type: "auth.mail",
+          queue: "critical",
+          payload: this.crypto.seal({
+            to: u.email,
+            subject: "Your HEBUZA data export is ready",
+            text: `Your data export is ready for 24 hours. Download it from your privacy settings: ${(process.env.WEB_ORIGIN ?? "").split(",")[0].trim()}/settings/privacy`,
+          }, ["text"]),
+        });
     me: SessionUser | null,
     ip: string,
     b: { purpose?: string; name: string; contentType: string; size: number },
