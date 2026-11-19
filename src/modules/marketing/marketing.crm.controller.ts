@@ -17,6 +17,18 @@ export class MarketingCrmController {
     private readonly crypto: CryptoService,
   ) {}
 
+  /** F-CRM-16 first-party analytics beacon (public; the web sends it only after analytics consent). */
+  @Post("events")
+  @Route({ auth: "public", limit: "write" })
+  event(@Req() r: OpsReq, @Body() b: D.SiteEventDto) {
+    return this.m.run(null, (c) => crm.recordEvent(c, b));
+  }
+  @Get("admin/mkt/events/summary")
+  @Route({ auth: MKT })
+  eventSummary(@Req() r: OpsReq, @Query() q: D.EventSummaryQueryDto) {
+    return this.m.run(r, (c) => crm.eventSummary(c, q.days ?? 30));
+  }
+
   @Post("leads")
   @Route({ auth: "public", limit: "auth" })
   capture(@Req() r: OpsReq, @Body() b: D.PublicLeadDto) {

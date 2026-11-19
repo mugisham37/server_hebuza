@@ -87,7 +87,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-CRM-13 | Renewal reminders | P2 | PARTIAL | subscription renewals in SUB; client-registered licence expiry (`client_document_expiry`) reminder path not verified |
 | F-CRM-14 | Re-engagement | P2 | PARTIAL | inactive rule S:marketing.campaigns.controller.ts:169. Gap: auto segment + reactivation tracking not verified |
 | F-CRM-15 | GA4 + Consent Mode + MP | P2 | PARTIAL | gtag only after consent W:components/organisms/site/tracking.tsx:19. Gap: no server-side GA4 Measurement Protocol events, no Search Console verification setting verified |
-| F-CRM-16 | First-party visitor analytics | P2 | MISSING | no events table / endpoint (`page_view`, etc.) |
+| F-CRM-16 | First-party visitor analytics | P2 | DONE | `site_events` + `POST /api/events` (consent-gated page_view beacon in `tracking.tsx`), `GET admin/mkt/events/summary`. |
 | F-CRM-17 | Social media monitoring | P3 | PARTIAL | manual entry + CSV import S:marketing.insights.controller.ts:65-75; no Meta/LinkedIn API |
 | F-CRM-18 | Tasks & notes | P2 | DONE | S:marketing.crm.controller.ts:98-113 |
 | F-CRM-19 | Enquiries inbox | P1 | DONE | S:marketing.crm.controller.ts:121-131; WA:(marketing)/marketing/inbox |

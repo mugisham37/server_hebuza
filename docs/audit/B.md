@@ -12,20 +12,20 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 ## Catalogue (CAT)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-CAT-01 | Category tree | P1 | PARTIAL | Server: CRUD at `modules/catalogue/catalogue.controller.ts:31-78`; colour and icon columns on `services`. Web: the public tree comes from the seed plus the static `content/families` file, not `/api/service-categories`. |
-| F-CAT-02 | Service record | P1 | PARTIAL | Server: localised columns in `db/schema/schema.ts` (services) plus tiers. Admin: `ops/catalogue/[slug]`. Public page reads the seed. |
+| F-CAT-01 | Category tree | P1 | DONE | Public tree from `/api/service-categories` (web `lib/catalogue.ts`); static file only supplies art. |
+| F-CAT-02 | Service record | P1 | DONE | Public pages read `/api/services*` (seed deleted). |
 | F-CAT-03 | Versioned form builder | P1 | DONE | `service_structure_versions`; draft/publish/versions/in-flight-count routes at `catalogue.controller.ts:132-162`; `applications.structureVersionId` pins each case. Web: `ops/catalogue/[slug]` calls `/structure/*`. |
 | F-CAT-04 | Pricing modes | P1 | DONE | `pricingMode`, `service_price_bands`, `urgentSurcharge*`, `governmentFee` in tiers. Web: `services/[slug]` price card and the urgent toggle (`organisms/site/interactive.tsx:90`). Public data comes from the seed. |
-| F-CAT-05 | Structured service facts | P1 | PARTIAL | Only `required_documents` exists, derived from the structure (`catalogue.service.ts:220`). No `eligibility[]`, `deliverables[]`, `turnaround_days_min/max` or `delivery_mode` columns; turnaround exists only as `etaBusinessDays` per tier. |
-| F-CAT-06 | Catalogue search | P1 | PARTIAL | Client-side fuzzy search over the seed (`web/src/components/molecules/site/search.ts:1`). No server FTS, `pg_trgm` or facets; `GET /services` has no query parameter (`catalogue.controller.ts:21`). |
-| F-CAT-07 | Dedicated service pages | P1 | PARTIAL | `services/[slug]/page.tsx` emits `Service` JSON-LD (l.56). The FAQ block is generic site copy (l.193), not per service. No FAQPage or BreadcrumbList on this page. No per-language SEO slug, meta or OG fields on the service record. |
-| F-CAT-08 | Consultation-only services | P1 | MISSING | No `engagement_type` enum on services, and the service page CTA does not switch to booking. |
-| F-CAT-09 | Related & bundled | P2 | PARTIAL | "Related" is just the first 3 services in the same family (`services/[slug]/page.tsx:50`). No manual links, no "often together", no basket suggestions. |
-| F-CAT-10 | Price change approval | P2 | MISSING | Pricing PUT writes directly. No pending change, finance approval or effective date. |
+| F-CAT-05 | Structured service facts | P1 | DONE | `eligibility`, `deliverables`, `turnaround_days_min/max`, `delivery_mode` on services; admin facts panel; shown on service page. |
+| F-CAT-06 | Catalogue search | P1 | DONE | `GET /services?q=&category=&max_price=&max_days=&engagement=&mode=` (pg_trgm on generated `search_text`) + facets (`domain/catalogue/search.ts`); catalogue box calls it. |
+| F-CAT-07 | Dedicated service pages | P1 | DONE | Per-locale SEO + `locale_slugs` with hreflang, 308 to locale slug, BreadcrumbList; per-service CMS FAQs (FAQPage). |
+| F-CAT-08 | Consultation-only services | P1 | DONE | `services.engagement_type`; consultation CTA → `/book?service=`. |
+| F-CAT-09 | Related & bundled | P2 | DONE | `related_slugs` manual links first, then family. |
+| F-CAT-10 | Price change approval | P2 | DONE | `service_price_changes`: pricing saves are pending; finance (not proposer) decides; effective-date cron; in `/finance/approvals`. |
 | F-CAT-11 | Service availability | P2 | DONE | Status set `draft/published/paused/archived` (`catalogue.service.ts:63`); the public page renders the paused state. |
-| F-CAT-12 | Revenue rule per service | P2 | PARTIAL | Revenue rules live in finance (`finance/revenue/rules/new`). There is no per-service default % on the catalogue record; not verified further. |
-| F-CAT-13 | Indicative fee explainer | P3 | MISSING | No approved explainer text field. |
-| F-CAT-14 | Cross-border flag | P3 | MISSING | No `markets[]` field and no currency display. |
+| F-CAT-12 | Revenue rule per service | P2 | DONE | `services.revenue_agent_bps` used by `allocateCase` via `withServiceDefault` (below explicit service rules). |
+| F-CAT-13 | Indicative fee explainer | P3 | DONE | `fee_explainer` {rw,en,fr} under the price card. |
+| F-CAT-14 | Cross-border flag | P3 | DONE | `markets[]` (ISO codes) in facts, "Where" and JSON-LD areaServed. |
 
 ## Consultation booking (BKG)
 | F-ID | title | phase | status | evidence / gap |
@@ -93,7 +93,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-AIA-01 | Chat widget | P3 | DONE | `organisms/booking/launcher-lazy.tsx`, `assistant.tsx`; `(public)/assistant`; mounted in the public and client layouts; streaming sessions API. |
-| F-AIA-02 | Approved KB | P3 | PARTIAL | `ai_kb_sources`/`chunks`/`embeddings` and reindex (`assistant.engine.ts:6,267`). Sources come from the CMS and catalogue tables, which the public site does not serve (see top). pgvector is only used when the Voyage key is set. |
+| F-AIA-02 | Approved KB | P3 | DONE | KB sources are the CMS/catalogue tables the public site now renders (no seed), so AI and site agree. |
 | F-AIA-03 | Model routing | P3 | DONE | Anthropic SDK (`assistant.engine.ts:8`); model is config-driven; fast model for copilot (l.767). |
 | F-AIA-04 | Tools | P3 | PARTIAL | A deterministic router handles case status, booking, intake, lead and handoff; Claude gets 3 read tools (`assistant.engine.ts:1-5`). No `estimate_fee` against the pricing engine and no `create_booking_hold` tool was found. |
 | F-AIA-05 | Guided intake & draft | P3 | DONE | `ai_drafts`, `GET assistant/drafts/:id`; the draft is handed to the wizard, so the assistant never submits. |
@@ -111,24 +111,24 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 ## CMS & knowledge centre (CMS)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-CMS-01 | Content types | P1/P2 | PARTIAL | All 10 types exist (`web/src/shared/marketing/types.ts:8`) with admin screens under `marketing/*`. The public site renders the seed, not `cms_entries`. |
+| F-CMS-01 | Content types | P1/P2 | DONE | Public site reads `GET /api/content/entries` (seed deleted). |
 | F-CMS-02 | Block editor | P1 | DONE | JSON blocks (`BlockShape`, `RichDoc`) in `marketing/content/[entryId]`. |
 | F-CMS-03 | Multilingual entries | P1 | DONE | Variant routes, fallback (`resolveVariant`), `/translate` (machine-translation draft). |
 | F-CMS-04 | Workflow | P1 | DONE | submit/approve/request-changes/schedule/publish/archive, versions and restore, comments, locks (`cms.controller.ts:32-147`). |
-| F-CMS-05 | SEO fields | P1 | PARTIAL | Per-variant SEO plus `marketing/seo` screen. These never reach public pages because of the seed reader. |
+| F-CMS-05 | SEO fields | P1 | DONE | Variant SEO reaches public pages via the CMS reader. |
 | F-CMS-06 | Media library | P1 | DONE | `admin/cms/media` CRUD, complete, usage (`marketing.insights.controller.ts:116-143`); web `marketing/media`. WebP/AVIF variants were not verified. |
-| F-CMS-07 | Navigation & site settings | P1 | PARTIAL | `cms_nav` and `cms_site_settings` APIs plus UI. The public header and footer do not read them (seed and static content). |
-| F-CMS-08 | Knowledge centre | P2 | PARTIAL | `/knowledge` with search and filters over the seed. The `Helpful` widget does not persist (no API). No regulatory-updates subscription. |
-| F-CMS-09 | FAQs | P1 | PARTIAL | `/faq` reads seed FAQs (`lib/marketing/cms/read.ts`); `admin/assistant/unanswered` exists. No per-service FAQs on service pages. |
-| F-CMS-10 | Regulatory updates | P2 | PARTIAL | Type, review_by and `/updates` pages exist. No auto-link to CAL rules and no campaign trigger. |
-| F-CMS-11 | Landing pages | P2 | PARTIAL | `marketing/landing`, `campaign/[slug]`; public pages come from the seed. |
-| F-CMS-12 | Team & credentials | P1 | PARTIAL | `team_member` type and `about/team`. No credential-document verification flow. |
-| F-CMS-13 | Service page content | P1 | PARTIAL | Facts come from CAT (seed). No per-service CMS copy, FAQs or testimonials attached. |
-| F-CMS-14 | Legal documents | P1 | PARTIAL | `legal/[doc]` (seed) and `terms_acceptances` (`auth.service.ts:456`). No re-accept prompt on material change. |
+| F-CMS-07 | Navigation & site settings | P1 | DONE | `GET /api/content/site`; header, mobile and footer read CMS nav + settings. |
+| F-CMS-08 | Knowledge centre | P2 | DONE | `cms_feedback` + `POST /content/feedback` from `Helpful`; subscribe writes `consent_ledger`. |
+| F-CMS-09 | FAQs | P1 | DONE | `/faq` and per-service FAQs from CMS (`serviceSlugs`). |
+| F-CMS-10 | Regulatory updates | P2 | DONE | Publish links compliance-calendar rules (shown on `/updates/[slug]`) and creates a draft campaign (`cms.regulatory_published`). |
+| F-CMS-11 | Landing pages | P2 | DONE | `campaign/[slug]` reads CMS landing pages. |
+| F-CMS-12 | Team & credentials | P1 | DONE | SM credential verify (`POST admin/cms/entries/:id/credential`), Verified badge on `/about/team` (CMS-fed). |
+| F-CMS-13 | Service page content | P1 | DONE | Service page: CAT facts + CMS FAQs. |
+| F-CMS-14 | Legal documents | P1 | PARTIAL | `legal/[doc]` (seed) and `terms_acceptances` (`auth.service.ts:456`). No re-accept prompt on material change. | Legal docs now CMS `legal_doc` (seeded); re-accept prompt still open (IAM).
 | F-CMS-15 | Cookie consent | P1 | PARTIAL | `organisms/site/cookie-consent.tsx` stores the choice in a first-party cookie only. Nothing is written to the NTF consent ledger; Consent Mode wiring is in `tracking.tsx`. |
 | F-CMS-16 | Redirects & slugs | P1 | DONE | `cms_redirects`, `cms_not_found`, `content/not-found` logging, UI. |
-| F-CMS-17 | Preview & caching | P1 | PARTIAL | `content/preview`, preview-token, revalidate, `content/rss`, `web/src/app/sitemap.ts`/`robots.ts`. Effective only for seed content. |
-| F-CMS-18 | Status page | P2 | PARTIAL | `/status` renders `StatusBoard` from static content. No uptime feed. |
+| F-CMS-17 | Preview & caching | P1 | DONE | Draft-mode preview routes (`/preview`), revalidate tags end to end (catalogue writes too), sitemap per-locale. |
+| F-CMS-18 | Status page | P2 | DONE | `/status` reads live `GET /api/status` (already). |
 | F-CMS-19 | Testimonials & logos | P2 | DONE | `admin/fbk/testimonials` with a consent check (`marketing.insights.ts:752`); web `marketing/testimonials`. |
 
 ## Deadlines & compliance calendar (CAL)

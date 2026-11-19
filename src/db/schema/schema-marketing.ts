@@ -35,3 +35,19 @@ export const mktRecords = pgTable(
     index("ix_mkt_records_kind_ref").on(t.kind, t.ref),
   ],
 );
+
+/** F-CRM-16 first-party visitor analytics: one row per event, sent only after analytics consent (no IP, no PII). */
+export const siteEvents = pgTable(
+  "site_events",
+  {
+    id: varchar({ length: 64 }).primaryKey().notNull(),
+    name: varchar({ length: 32 }).notNull(), // page_view | cta_click | search | form_submit
+    path: varchar({ length: 512 }).notNull(),
+    locale: varchar({ length: 2 }),
+    referrer: varchar({ length: 512 }),
+    visitor: varchar({ length: 64 }), // first-party anonymous cookie id
+    props: jsonb().$type<Record<string, string>>(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (t) => [index("ix_site_events_name_at").on(t.name, t.createdAt)],
+);

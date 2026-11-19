@@ -352,3 +352,13 @@ export class TrackingDto extends dto(
 export class SpeedDto extends dto(z.object({ page: z.string().max(300) })) {}
 export class RangeStrDto extends dto(z.object({ range: z.string().max(8).optional() })) {}
 export class UnsubscribeDto extends dto(z.object({ token: z.string().min(16).max(2000) })) {}
+
+export class SiteEventDto extends dto(z.object({
+  name: z.enum(["page_view", "cta_click", "search", "form_submit"]),
+  path: z.string().regex(/^\/(?!\/)/).max(512),
+  locale: z.enum(["rw", "en", "fr"]).optional(),
+  referrer: z.string().max(512).optional(),
+  visitor: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/).optional(),
+  props: z.record(z.string().max(32), z.string().max(200)).refine((o) => Object.keys(o).length <= 10).optional(),
+})) {}
+export class EventSummaryQueryDto extends dto(z.object({ days: z.coerce.number().int().min(1).max(365).optional() })) {}

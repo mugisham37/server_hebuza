@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { consentLedger } from "@/db/schema/schema-notifications";
+import { siteEvents } from "@/db/schema/schema-marketing";
+import { and as dand, eq as deq, gte, sql as dsqlx } from "drizzle-orm";
 import { POLICY_VERSION } from "../notifications/notifications.delivery";
 // P11 CRM services (port of src/mocks/handlers-marketing-crm.ts): lead capture from every channel, the lead pipeline
 // (stage machine, merge, convert, bulk, import, export), tasks, notes, the unified inbox and the customer 360.
@@ -1202,4 +1204,24 @@ export function readUnsubToken(crypto: { decrypt(s: string): string }, raw: stri
     // fall through: any tampering or garbage is the same 422
   }
   throw mktError(422, "invalid_token", null, "This link is not valid.");
+}
+
+// ---------------------------------------------------------------- F-CRM-16 first-party analytics
+export async function recordEvent(c: Caller, b: { name: string; path: string; locale?: string; referrer?: string; visitor?: string; props?: Record<string, string> }) {
+  // Strip query strings: they can carry tokens or personal data.
+  const path = b.path.split("?")[0].slice(0, 512);
+  const referrer = b.referrer ? b.referrer.split("?")[0].slice(0, 512) : null;
+  await c.db.insert(siteEvents).values({ id: `ev_${randomUUID()}`, name: b.name, path, locale: b.locale ?? null, referrer, visitor: b.visitor ?? null, props: b.props ?? null, createdAt: new Date().toISOString() });
+  return { ok: true };
+}
+/** Totals per event and top pages over the last `days`, plus unique visitors. */
+export async function eventSummary(c: Caller, days: number) {
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+  const [byName, topPages, [uv]] = await Promise.all([
+    c.db.select({ name: siteEvents.name, n: dsqlx<number>`count(*)::int` }).from(siteEvents).where(gte(siteEvents.createdAt, since)).groupBy(siteEvents.name),
+    c.db.select({ path: siteEvents.path, n: dsqlx<number>`count(*)::int` }).from(siteEvents)
+      .where(dand(gte(siteEvents.createdAt, since), deq(siteEvents.name, "page_view"))).groupBy(siteEvents.path).orderBy(dsqlx`count(*) desc`).limit(20),
+    c.db.select({ n: dsqlx<number>`count(distinct ${siteEvents.visitor})::int` }).from(siteEvents).where(gte(siteEvents.createdAt, since)),
+  ]);
+  return { days, events: byName, topPages, visitors: uv?.n ?? 0 };
 }
