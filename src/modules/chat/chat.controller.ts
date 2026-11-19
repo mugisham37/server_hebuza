@@ -190,6 +190,18 @@ export class ChatController {
     return this.svc.card(me, id, b);
   }
 
+  @Post("chat/messages/:id/card-action")
+  @Route({ auth: ["client"], limit: "write", audit: "chat.card.answered" })
+  cardAction(@Param("id") id: string, @Body() b: D.CardActionDto, @CurrentUser() me: SessionUser) {
+    return this.svc.cardAction(me, id, b.action);
+  }
+
+  @Post("chat/conversations/:id/legal-hold")
+  @Route({ auth: D.STAFF, limit: "write", audit: "chat.legal_hold.changed" })
+  legalHold(@Param("id") id: string, @Body() b: D.HoldDto, @CurrentUser() me: SessionUser) {
+    return this.svc.setLegalHold(me, id, b.on);
+  }
+
   // ── disputes ──
   @Get("chat/conversations/:id/dispute")
   @Route({ auth: "user" })

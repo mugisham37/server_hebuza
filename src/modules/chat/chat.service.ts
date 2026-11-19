@@ -4,6 +4,7 @@
 // does not exist (404, never 403). Messages are keyset-paged by `seq` (unique (conversation_id, seq) index; seq is
 // allocated under the conversation row lock so it orders exactly like created_at). Every new message / edit / reaction /
 // read receipt is pushed to the conversation's recipients with RealtimeService.emit after the tx commits.
+import { FIRST_RESPONSE_MIN, addBusinessMinutes, clientLaneReadOnly, parseCard, CARD_ACTIONS } from "@/domain/chat/rules";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -249,7 +250,8 @@ export class ChatService {
       if (s.roles.includes("client") && app.clientId === s.id)
         return {
           lanes: ["client"],
-          write: ["client"],
+          // F-MSG-18: read-only 30 days after close (or once archived); new questions go to a support enquiry.
+          write: c.archivedAt || clientLaneReadOnly(c.closedAt ?? app.completedAt) ? [] : ["client"],
           role: "client",
           participant: true,
           admin: false,
@@ -486,9 +488,16 @@ export class ChatService {
         createdAt: now,
       })
       .returning();
+    // F-MSG-13: a client message opens the first-response clock (if none is running); the first staff reply stops it.
+    const sla =
+      cur.kind !== "support" || v.senderRole === "system"
+        ? {}
+        : v.senderRole === "client"
+          ? cur.slaDueAt && !cur.firstResponseAt ? {} : { slaDueAt: addBusinessMinutes(new Date(now), FIRST_RESPONSE_MIN).toISOString(), firstResponseAt: null, escalationLevel: 0 }
+          : cur.slaDueAt && !cur.firstResponseAt ? { firstResponseAt: now } : {};
     await tx
       .update(conversations)
-      .set({ lastSeq: seq, lastMessageAt: now })
+      .set({ lastSeq: seq, lastMessageAt: now, ...sla })
       .where(eq(conversations.conversationId, c.conversationId));
     return m;
   }
@@ -536,6 +545,8 @@ export class ChatService {
     return this.run(async (tx, push) => {
       const { c, a } = await this.open(tx, s, cid);
       if (!a.lanes.includes(b.lane)) throw gone();
+      if (a.role === "client" && !a.write.includes(b.lane))
+        throw new AppError(409, "lane_closed", "This case is closed. Start a support enquiry to ask something new.");
       if (!a.write.includes(b.lane))
         throw new AppError(
           403,
@@ -1185,17 +1196,20 @@ export class ChatService {
       const { c, a } = await this.open(tx, s, cid);
       if (a.role === "client" || !a.write.includes("client"))
         throw new AppError(403, "forbidden", "You can't post cards here.");
+      // F-MSG-05: typed kinds only, payload validated per kind.
+      const card = parseCard(b.kind, b.payload);
+      if ("error" in card) throw new AppError(422, "validation", card.error === "unknown_card" ? "Unknown card type." : "Card details are incomplete.");
       const m = await this.append(tx, c, {
         senderId: s.id,
         senderRole: s.roles[0],
-        content: String(b.payload.title ?? b.kind),
+        content: String(card.payload.title ?? card.kind),
         isInternal: false,
         isSystem: false,
         attachments: [],
         isReadByClient: false,
         lane: "client",
         kind: "card",
-        payload: { card: b.kind, ...b.payload },
+        payload: { card: card.kind, ...card.payload },
       });
       const out = await this.one(tx, m);
       push({
@@ -1204,6 +1218,33 @@ export class ChatService {
         payload: { conversation_id: c.conversationId, message: out },
       });
       return out;
+    });
+  }
+
+  /** F-MSG-05: the client answers an actionable card once (quotation accept/decline). */
+  cardAction(s: SessionUser, mid: string, action: string) {
+    return this.run(async (tx, push) => {
+      const { m, c, a } = await this.message(tx, s, mid, true);
+      const p = (m.payload ?? {}) as Record<string, unknown>;
+      const kind = String(p.card ?? "") as keyof typeof CARD_ACTIONS;
+      if (m.kind !== "card" || a.role !== "client") throw notFound("Card");
+      if (!CARD_ACTIONS[kind]?.includes(action)) throw new AppError(422, "validation", "This card has no such action.");
+      if (p.response) throw new AppError(409, "already_decided", "Already answered.");
+      await tx.update(applicationMessages).set({ payload: { ...p, response: { action, by: s.id, at: iso() } } }).where(eq(applicationMessages.messageId, mid));
+      const sys = await this.postSystem(tx, c, "card_response", `Quotation ${action === "accept" ? "accepted" : "declined"}`, { card_id: mid, action });
+      const out = await this.one(tx, sys);
+      push({ to: await this.recipients(tx, c, a, "client"), type: "chat.message", payload: { conversation_id: c.conversationId, message: out } });
+      return { id: mid, action };
+    });
+  }
+
+  /** F-MSG-15: legal hold blocks retention archival. Managers only. */
+  setLegalHold(s: SessionUser, cid: string, on: boolean) {
+    if (!isManager(s)) throw new AppError(403, "forbidden", "Managers only.");
+    return this.tx.run(async (tx) => {
+      const c = await this.conv(tx, cid, true);
+      await tx.update(conversations).set({ legalHold: on }).where(eq(conversations.conversationId, c.conversationId));
+      return { id: c.conversationId, legal_hold: on };
     });
   }
 

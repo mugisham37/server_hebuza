@@ -1083,6 +1083,12 @@ export const conversations = pgTable("conversations", {
 	lastMessageAt: timestamp("last_message_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 	closedAt: timestamp("closed_at", { withTimezone: true, mode: 'string' }),
+	// MSG-13 support first-response SLA + escalation level (0 none, 1 SM, 2 exec); MSG-15 retention / legal hold.
+	slaDueAt: timestamp("sla_due_at", { withTimezone: true, mode: 'string' }),
+	firstResponseAt: timestamp("first_response_at", { withTimezone: true, mode: 'string' }),
+	escalationLevel: integer("escalation_level").default(0).notNull(),
+	legalHold: boolean("legal_hold").default(false).notNull(),
+	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("ix_conversations_kind").using("btree", table.kind.asc().nullsLast()),
 	index("ix_conversations_last_message_at").using("btree", table.lastMessageAt.asc().nullsLast()),
