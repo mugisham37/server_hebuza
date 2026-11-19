@@ -2,7 +2,7 @@ import { Body, Controller, Get, Headers, Param, Post, Query } from "@nestjs/comm
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { CreateDto, DetailQueryDto, MANAGE, READ, ReviewDto, StatusDto } from "./workforce.dto";
+import { CreateDto, DetailQueryDto, ListQueryDto, MANAGE, READ, ReviewDto, StatusDto } from "./workforce.dto";
 import { WorkforceService } from "./workforce.service";
 
 @Controller("staff/workers")
@@ -10,7 +10,7 @@ export class WorkforceController {
   constructor(private readonly svc: WorkforceService) {}
 
   @Get() @Route({ auth: READ })
-  list() { return this.svc.list(); }
+  list(@Query() q: ListQueryDto) { return this.svc.list(q); }
 
   @Post() @Route({ auth: MANAGE, permission: "wrk.profiles.manage", limit: "write", idempotent: true, status: 201 })
   create(@Body() b: CreateDto, @CurrentUser() me: SessionUser) { return this.svc.create(me, b); }

@@ -17,6 +17,12 @@ export class CreateDto extends dto(
     field: z.boolean().default(false),
   }),
 ) {}
+/** F-WRK-14 talent directory filters (server-side). */
+export class ListQueryDto extends dto(z.object({
+  service: z.string().max(128).optional(), language: z.string().max(8).optional(), district: z.string().max(64).optional(),
+  available: z.enum(["1"]).optional(), minRating: z.coerce.number().min(0).max(5).optional(), type: z.enum(["internal", "external"]).optional(),
+  q: z.string().max(100).optional(),
+})) {}
 export class DetailQueryDto extends dto(z.object({ reveal: z.string().max(2).optional() })) {}
 export class StatusDto extends dto(
   z.object({

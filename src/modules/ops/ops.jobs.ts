@@ -164,6 +164,30 @@ export class OpsJobs {
     });
   }
 
+  /** F-WRK-05: engagement contract expiry reminders at 60/30/7/0 days to the worker and service managers (once each). */
+  @Cron("ops.contract_expiry", "0 7 * * *")
+  contractExpiry() {
+    return this.tx.runAsSystem(async (tx) => {
+      const contracts = await recList<{ status: string; until: string }>(tx, "contract", {}, 5000);
+      const sms = await tx.execute<{ id: string }>(sql`select user_id id from users where role = 'staff:service_manager' and is_active`);
+      let sent = 0;
+      for (const c of contracts) {
+        if (!c.ownerId || !c.data.until || c.data.status === "terminated") continue;
+        const days = Math.ceil((Date.parse(c.data.until.slice(0, 10)) - Date.parse(iso().slice(0, 10))) / 86_400_000);
+        if (![60, 30, 7, 0].includes(days)) continue;
+        const [claimed] = await tx.insert(deadlineNotifications)
+          .values({ id: generateId("dln"), targetType: "contract_expiry", targetId: c.id, offsetDays: days, sentAt: iso() })
+          .onConflictDoNothing().returning({ id: deadlineNotifications.id });
+        if (!claimed) continue;
+        const title = days ? `Engagement contract ends in ${days} days` : "Engagement contract ends today";
+        await notify(tx, { userId: c.ownerId, kind: "contract", title, href: "/work/contract" });
+        for (const u of sms) await notify(tx, { userId: u.id, kind: "contract", title: `${title} (${c.ownerId})`, href: `/ops/workforce/${c.ownerId}` });
+        sent++;
+      }
+      return { sent };
+    });
+  }
+
   /** F-FBK-08: a rating of 2 or less opens a high-priority complaint and alerts service managers (once per case). */
   @Cron("ops.low_rating", "*/10 * * * *")
   lowRatings() {

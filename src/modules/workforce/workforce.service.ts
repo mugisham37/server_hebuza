@@ -248,9 +248,20 @@ export class WorkforceService {
     });
   }
 
-  list() {
+  list(f: { service?: string; language?: string; district?: string; available?: "1"; minRating?: number; type?: "internal" | "external"; q?: string } = {}) {
+    const q = f.q?.trim().toLowerCase();
     return this.tx.run(async (tx) => ({
-      items: (await this.rows(tx)).map((r) => r.row),
+      items: (await this.rows(tx))
+        .map((r) => r.row)
+        .filter((w) =>
+          (!f.service || w.services.includes(f.service)) &&
+          (!f.language || w.languages.includes(f.language)) &&
+          (!f.district || w.districts.includes(f.district)) &&
+          (!f.available || (!w.availableFrom && w.load.open < w.load.cap && w.status === "cleared")) &&
+          (f.minRating == null || w.rating >= f.minRating) &&
+          (!f.type || w.type === f.type) &&
+          (!q || [w.name, ...w.expertise].some((x) => x.toLowerCase().includes(q))),
+        ),
     }));
   }
   private async one(tx: Tx, id: string) {

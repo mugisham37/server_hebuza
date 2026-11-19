@@ -16,6 +16,9 @@ import {
 } from "@/db/schema";
 import { movesFor, type CaseFacts } from "@/domain/ops/transitions";
 import { ineligibleReason } from "@/domain/ops/ranking";
+import { resolveRule } from "@/domain/finance/rules";
+import type { Rule } from "@/domain/finance/types";
+import { all as finAll } from "../finance/finance.store";
 import { rankAgents } from "@/domain/ops/ranking";
 import { evaluate } from "@/domain/ops/completeness";
 import { quoteTotals, type QuoteLine } from "@/domain/ops/quotation";
@@ -1161,8 +1164,15 @@ export async function auditItems(db: Exec, kind: string, id: string) {
 }
 
 // ── lane B: assign flow ─────────────────────────────────────────────────────────────────────────────
-// PLACEHOLDER(internal-cost-pct, revenue-rule): agency/agent split until finance revenue rules (P6) are readable here.
-const REVENUE_RULE = { agency: 70, agent: 30 };
+// PLACEHOLDER(internal-cost-pct): internal cost estimate. F-WRK-07: the agent share is finance's rule in force for the service.
+async function revenueRule(db: Exec, serviceSlug: string) {
+  let bps = 3000; // POLICY.defaultAgentBps when finance has no rule
+  try {
+    bps = resolveRule(await finAll<Rule>(db, "rule"), { serviceSlug, date: new Date().toISOString() }).agentPct;
+  } catch { /* no rule → default */ }
+  const agent = Math.round(bps / 100);
+  return { agency: 100 - agent, agent };
+}
 export async function assignContext(db: Exec, code: string) {
   const r = await loadCase(db, code);
   const [agents, b, contracts] = await Promise.all([
@@ -1175,7 +1185,7 @@ export async function assignContext(db: Exec, code: string) {
   const day = (d: number) => iso(Date.now() + d * 24 * H).slice(0, 10);
   return {
     internalCost: Math.round(fee * 0.4),
-    revenueRule: REVENUE_RULE,
+    revenueRule: await revenueRule(db, r.app.serviceSlug),
     contracts: Object.fromEntries(
       contracts
         .filter((c) => c.ownerId)
