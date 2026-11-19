@@ -3,7 +3,7 @@
 // Fernet-encrypted, reveal audited, call-back verified) and the financial change history + export.
 import { and, desc, gte, or, like } from "drizzle-orm";
 import type { Tx as Exec } from "../../core/db/db";
-import { auditLog } from "@/db/schema";
+import { auditLog, procurementRecords } from "@/db/schema";
 import { servicePriceChanges } from "@/db/schema/schema-catalogue";
 import { eq } from "drizzle-orm";
 import { canSign, settingChain, sign } from "@/domain/finance/approvals";
@@ -266,11 +266,20 @@ export async function notes(f: Fin): Promise<{ items: FinNote[] }> {
       : n.sort((x, y) => y.at.localeCompare(x.at)),
   };
 }
-/** Payables tile. shortcut: supplier bills belong to procurement (P7); read its open bills here when that module lands. */
 /** Approved obligations other modules handed to finance (partner commissions) that are not yet paid. */
 export async function payablesDue(db: Exec) {
   const items = (await all<Payable>(db, "payable")).filter((p) => p.status === "due");
-  return { total: items.reduce((x, p) => x + p.amount, 0), count: items.length, items };
+  // Supplier bills approved in procurement and not yet fully paid are part of what finance owes.
+  const bills = (await db.select({ data: procurementRecords.data }).from(procurementRecords).where(eq(procurementRecords.kind, "bill")))
+    .map((r) => r.data as { status: string; payable: number; amountPaid: number; dueOn: string })
+    .filter((b) => ["approved", "authorised", "partially_paid"].includes(b.status));
+  const supplier = bills.reduce((x, b) => x + Math.max(0, b.payable - b.amountPaid), 0);
+  return {
+    total: items.reduce((x, p) => x + p.amount, 0) + supplier,
+    count: items.length + bills.length,
+    items,
+    supplierBills: { total: supplier, count: bills.length },
+  };
 }
 
 // ---------------------------------------------------------------- tax/limit settings (SET §7)

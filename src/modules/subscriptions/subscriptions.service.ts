@@ -1,8 +1,7 @@
 // Port of the reference subscriptions.service.ts (client + public + payment side). Query functions kept as-is (taking a
 // tx); SubscriptionsService runs them. activateFromPayment / startTrialForClient / coverageFor / assertCanSubmit take the
 // caller's tx so payments, auth and booking stay atomic.
-// shortcut: admin plan CRUD (/api/admin/subscriptions*) is not ported (none in the reference either); when added, call
-// PublicCache.bust("plans") after each write.
+// Plan admin lives at /api/finance/subscriptions/plans (savePlan); SubscriptionsService busts PublicCache "plans" after writes.
 import { Injectable } from "@nestjs/common";
 import { and, asc, count, eq, gte, inArray, lte } from "drizzle-orm";
 import { applications, clientSubscriptions, organizationMembers, organizationSubscriptions, subscriptionPlans, users } from "@/db/schema";

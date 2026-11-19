@@ -9,7 +9,7 @@ import { Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { agentProfiles, applicationDocuments, applicationMessages, applications, financeRecords, services, users } from "@/db/schema";
 import { all as finAll } from "../finance/finance.store";
-import type { Alloc } from "../finance/finance.revenue";
+import type { Adj, Alloc } from "../finance/finance.revenue";
 import { StorageService } from "../../core/storage/storage.service";
 import { AppError, err, notify, type Exec, type Session } from "../ops/lib/ctx";
 import { CLOSED, clientKey, clientsOf, loadCase, logEvent, recGet, recList, recPut, recSeq, saveCase, servicesBySlug, type CaseRow } from "../ops/lib/store";
@@ -885,6 +885,7 @@ export async function statementsOf(
   e: ExtState,
 ): Promise<Statement[]> {
   const rows = await splitsOf(db, [uid]);
+  const adjs = (await finAll<Adj>(db, "adjustment")).filter((x) => x.workerId === uid && ["approved", "in_batch", "settled"].includes(x.status));
   const apps = rows.length
     ? await db
         .select({
@@ -919,10 +920,11 @@ export async function statementsOf(
         : lic && ["due", "overdue", "netted"].includes(lic.status)
           ? lic.amount
           : 0;
-    // shortcut: refund clawbacks (finance adjustments) aren't read yet — adjustments 0; upgrade with finance allocations.
+    // Finance adjustments (refund clawbacks, corrections) approved for this worker in the month; amounts are signed.
+    const adjustments = adjs.filter((x) => monthOf(x.at) === m).reduce((t, x) => t + x.amount, 0);
     const st = statementOf({
       gross,
-      adjustments: 0,
+      adjustments,
       licence: licenceAmt,
       carriedIn: -carry,
     });
@@ -931,7 +933,7 @@ export async function statementsOf(
       month: m,
       number: `ST-${m}-${initials(name)}`, // PLACEHOLDER(statement-ref-format)
       gross,
-      adjustments: 0,
+      adjustments,
       licence: st.licence,
       taxable: st.taxable,
       wht: st.wht,

@@ -1,6 +1,7 @@
 // Dev/staging users = the MSW personas (web mocks personas), ids `mock-<key>` so persona-signed test tokens resolve.
 // Idempotent. Demo credentials only — the seed runner must refuse production. Hashing/encryption are passed in by the
 // runner (server PasswordService.hash + CryptoService.encrypt) so this package stays dependency-free.
+import { userRoles } from "../schema";
 import { createHash } from "node:crypto";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "../schema";
@@ -38,7 +39,7 @@ export async function seedAuth(db: PostgresJsDatabase<typeof schema>, deps: Seed
   const [clientHash, staffHash] = await Promise.all([deps.hash(SEED_CLIENT_PASSWORD), deps.hash(SEED_STAFF_PASSWORD)]);
   const t = "2026-01-01T00:00:00Z";
   for (const p of PERSONAS) {
-    const role = p.roles[0]; // shortcut: one stored role (exec loses staff:service_manager) until role grants are seeded
+    const role = p.roles[0]; // primary role; the rest are user_roles grants (F-IAM-01)
     const staff = isStaff(role);
     const ident = { name: p.name, email: p.email, phoneE164: p.key === "client" ? DEMO_PHONE : null, passwordHash: staff ? staffHash : clientHash, role };
     await db.insert(users)
@@ -49,6 +50,8 @@ export async function seedAuth(db: PostgresJsDatabase<typeof schema>, deps: Seed
       await db.insert(staffProfiles).values({ userId: `mock-${p.key}`, totpSecretEncrypted, twofaEnabled: true, createdAt: t })
         .onConflictDoUpdate({ target: staffProfiles.userId, set: { totpSecretEncrypted, twofaEnabled: true, totpLastStep: null } });
     }
+    for (const extra of p.roles.slice(1))
+      await db.insert(userRoles).values({ userId: `mock-${p.key}`, role: extra, grantedBy: "seed", grantedAt: t }).onConflictDoNothing();
   }
   // Sessions / trusted devices like the settings mocks. Reset to live on every run.
   const day = 86_400_000, ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();

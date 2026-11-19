@@ -4,6 +4,7 @@
 // (tx + caller + deps); FieldService at the bottom runs each in one TxService transaction, audit rows last.
 // Offline outbox: every agent write is replay-safe by (user, client_op_id) in `field_ops` on top of Idempotency-Key;
 // a stale write (base_version < office_version) answers 409 `field_conflict` with the server state in `data.conflict`.
+import { clientInvoicesForCase } from "../finance/finance.billing";
 import { Injectable } from "@nestjs/common";
 import { PaymentsService } from "../payments/payments.service";
 import { ClsService } from "nestjs-cls";
@@ -1275,7 +1276,9 @@ const momoState = (status: string | undefined, cancelled: boolean) =>
 async function visitInvoices(k: K, id: string) {
   await requireAgent(k);
   const v = await ownVisit(k, id);
-  // shortcut: a case's balance is its payment_amount until Finance issues real invoices; read Finance balances then.
+  // The finance case invoice is the balance of record; before finance has invoiced the case, its payable amount.
+  const fin = (await clientInvoicesForCase(k.db, v.caseRef))[0];
+  if (fin) return fin.balanceDue > 0 ? [{ number: invoiceNo(v.caseRef), balance_due: fin.balanceDue }] : [];
   const rows = await k.db
     .select({
       code: applications.code,

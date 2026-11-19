@@ -1,6 +1,8 @@
 // Report engine (RPT §9), ported verbatim from the reference: finance records → grouped rows; drill returns the same
 // records, so every total is Σ of its drill. Pure over an RCtx loaded once per request.
 import type { Tx } from "../../core/db/db";
+import { eq } from "drizzle-orm";
+import { procurementRecords } from "@/db/schema";
 import { ageingBucket, BUCKETS } from "@/domain/finance/ageing";
 import type { ColKind, ReportCol, ReportKey, ReportRow } from "./lib/types";
 import { all, sum, today, type Alloc, type Batch, type CreditNote, type Directory, type Inv, type Payment, type RefundRequest, type Settings, type StatementImport, type StatementLine } from "./reports.store";
@@ -19,6 +21,7 @@ type Data = {
   refunds: RefundRequest[];
   allocs: Alloc[];
   batches: Batch[];
+  bills: { no: string; vendorId: string; vendorName: string; dueOn: string; open: number; status: string }[];
 };
 export type RCtx = { D: Directory; S: Settings; data: Data };
 export async function reportCtx(
@@ -37,10 +40,19 @@ export async function reportCtx(
       all<Alloc>(db, "allocation"),
       all<Batch>(db, "batch"),
     ]);
+  // Supplier bills (procurement) still owed: approved and not fully paid.
+  const vendors = new Map(
+    (await db.select({ data: procurementRecords.data }).from(procurementRecords).where(eq(procurementRecords.kind, "vendor")))
+      .map((r) => r.data as { id: string; legalName: string }).map((v) => [v.id, v.legalName]),
+  );
+  const bills = (await db.select({ data: procurementRecords.data }).from(procurementRecords).where(eq(procurementRecords.kind, "bill")))
+    .map((r) => r.data as { no: string; vendorId: string; dueOn: string; payable: number; amountPaid: number; status: string })
+    .filter((b) => ["approved", "authorised", "partially_paid"].includes(b.status) && b.payable > b.amountPaid)
+    .map((b) => ({ no: b.no, vendorId: b.vendorId, vendorName: vendors.get(b.vendorId) ?? b.vendorId, dueOn: b.dueOn, open: b.payable - b.amountPaid, status: b.status }));
   return {
     D,
     S,
-    data: { invs, cns, pays, imps, lines, refunds, allocs, batches },
+    data: { invs, cns, pays, imps, lines, refunds, allocs, batches, bills },
   };
 }
 
@@ -537,12 +549,19 @@ const DEFS: Record<ReportKey, Def> = {
       return [...billed, ...churn];
     },
   },
-  // shortcut: supplier payables come from procurement (P7); empty "stage12" until it lands.
   "fin.payables_ageing": {
     groups: ["supplier"],
     cols: [["total", "money", true]],
-    recs: () => [],
-    empty: () => "stage12",
+    recs: (c) =>
+      c.data.bills.map((b) => ({
+        date: b.dueOn,
+        dims: { supplier: { key: b.vendorId, label: b.vendorName } },
+        values: { total: b.open },
+        ref: b.no,
+        href: `/procurement/bills/${b.no}`,
+        party: b.vendorName,
+        state: b.status,
+      })),
   },
 };
 

@@ -1,5 +1,5 @@
 // Gapless document numbers (A-4, D6): PREFIX-YYYY-NNNNN per series per year; void keeps its number.
-// shortcut: sequence locking is in-memory per tab session, upgrade is server SELECT … FOR UPDATE.
+// Numbers are allocated server-side in the caller's transaction (finance.store nextNo: row-locked counter upsert).
 export type NumberSeries = "INV" | "QUO" | "RCPT" | "CN" | "RFD";
 
 export const formatNo = (series: NumberSeries, year: number, n: number) => `${series}-${year}-${String(n).padStart(5, "0")}`;
