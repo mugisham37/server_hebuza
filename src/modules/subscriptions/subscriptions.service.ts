@@ -365,6 +365,28 @@ export async function changePlan(db: Exec, clientId: string, planId: string, aud
   return { action: "checkout" as const, planId, amountRwf: await checkoutAmount(db, clientId, plan), effectiveAt: null };
 }
 
+/** Finance list (F-SUB-09): every subscription with client and plan. */
+export async function listForFinance(db: Exec) {
+  const rows = await db
+    .select({ s: clientSubscriptions, plan: subscriptionPlans.name, amount: subscriptionPlans.amountRwf, client: users.name })
+    .from(clientSubscriptions)
+    .innerJoin(subscriptionPlans, eq(subscriptionPlans.planId, clientSubscriptions.planId))
+    .innerJoin(users, eq(users.userId, clientSubscriptions.clientId))
+    .orderBy(asc(clientSubscriptions.currentPeriodEnd));
+  return {
+    items: rows.map((r) => ({
+      subscriptionId: r.s.subscriptionId,
+      clientName: r.client,
+      planName: r.plan,
+      amountRwf: r.amount,
+      status: r.s.status,
+      periodEnd: iso(r.s.currentPeriodEnd),
+      pausedUntil: iso(r.s.pausedUntil),
+      cancelAtPeriodEnd: r.s.cancelAtPeriodEnd,
+    })),
+  };
+}
+
 /** F-SUB-09 (finance): pause coverage for `days`; the period end moves by the same days so nothing is lost. */
 export async function pause(db: Exec, subscriptionId: string, days: number, actorId: string, audit: AuditService) {
   const [s] = await db.select().from(clientSubscriptions).where(eq(clientSubscriptions.subscriptionId, subscriptionId)).for("update");
@@ -523,6 +545,9 @@ export class SubscriptionsService {
   }
   changePlan(clientId: string, planId: string) {
     return this.tx.run((t) => changePlan(t, clientId, planId, this.audit));
+  }
+  listForFinance() {
+    return this.tx.run(listForFinance);
   }
   pause(subscriptionId: string, days: number, actorId: string) {
     return this.tx.run((t) => pause(t, subscriptionId, days, actorId, this.audit));

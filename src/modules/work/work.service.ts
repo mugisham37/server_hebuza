@@ -5,7 +5,9 @@
 import { createHash } from "node:crypto";
 import { Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
-import { agentProfiles, applicationDocuments, applicationMessages, applications, financeRecords, paymentSplits, services, users } from "@/db/schema";
+import { agentProfiles, applicationDocuments, applicationMessages, applications, financeRecords, services, users } from "@/db/schema";
+import { all as finAll } from "../finance/finance.store";
+import type { Alloc } from "../finance/finance.revenue";
 import { StorageService } from "../../core/storage/storage.service";
 import { AppError, err, notify, type Exec, type Session } from "../ops/lib/ctx";
 import { CLOSED, clientKey, clientsOf, loadCase, logEvent, recGet, recList, recPut, recSeq, saveCase, servicesBySlug, type CaseRow } from "../ops/lib/store";
@@ -847,14 +849,25 @@ export async function licencePdfData(db: Exec, s: Session, number: string) {
 }
 
 // ── statements, payouts, invoices (lane E) ────────────────────────────────────────────────────────────
+/** F-REV-11: the worker's shares of finance allocations (voided ones dropped), one row per worker × allocation. */
 async function splitsOf(db: Exec, ids: string[]) {
   if (!ids.length) return [];
-  return db
-    .select()
-    .from(paymentSplits)
-    .where(inArray(paymentSplits.workerId, ids))
-    .orderBy(asc(paymentSplits.frozenAt))
-    .limit(5000);
+  const want = new Set(ids);
+  const allocs = await finAll<Alloc>(db, "allocation");
+  return allocs
+    .filter((a) => a.status !== "voided")
+    .flatMap((a) =>
+      a.shares
+        .filter((sh) => want.has(sh.workerId))
+        .map((sh) => ({
+          workerId: sh.workerId,
+          applicationCode: a.caseRef.startsWith("PLAN:") ? null : a.caseRef,
+          frozenAt: a.frozenAt,
+          baseAmountRwf: a.eligible,
+          workerAmountRwf: sh.amount,
+        })),
+    )
+    .sort((x, y) => x.frozenAt.localeCompare(y.frozenAt));
 }
 const initials = (name: string) =>
   name

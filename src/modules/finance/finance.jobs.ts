@@ -59,6 +59,21 @@ export class FinanceJobs {
     return this.sys((f) => openCaseRefund(f, d));
   }
 
+  /** F-RFD-08: ops ticket "refund" action (complaint/dispute) → refund request on the case's paid invoice. */
+  @Job("refund.requested")
+  ticketRefund(d: { data?: { ticket?: string; caseRef?: string; amount?: number; reason?: string } }) {
+    const x = d.data;
+    if (!x?.caseRef) return;
+    return this.sys((f) =>
+      openCaseRefund(f, {
+        applicationId: x.caseRef!,
+        reason: "quality_dispute",
+        note: `Ticket ${x.ticket ?? ""}: ${x.reason || "refund requested"} (ops asked RWF ${x.amount ?? 0}).`,
+        auto: "dispute",
+      }),
+    );
+  }
+
   @Cron("finance.cases.sync", "*/10 * * * *")
   async casesSync() {
     const r = await this.sys((f) => syncCases(f));

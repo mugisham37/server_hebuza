@@ -1,13 +1,13 @@
 // Finance persistence + shared plumbing: the (kind, id) document store, gapless numbering, the signed-in actor,
 // audit records (before/after/reason, read back by the history and HistoryTab views), effective-dated settings and
 // the party directory (clients, workers, services, cases from users/catalogue/applications) finance prices and pays against.
-import { and, eq, inArray, ne, sql as dsql } from "drizzle-orm";
+import { and, eq, inArray, ne, notInArray, or, sql as dsql } from "drizzle-orm";
 import type { Tx as Exec } from "../../core/db/db";
 import { AppError } from "../../core/http/errors";
 import type { AuditEntry } from "../../core/db/audit";
 import type { SessionUser } from "../../core/http/context";
 import type { LedgerService } from "../ledger/ledger.service";
-import { applications, clientSubscriptions, services, supportTickets, users } from "@/db/schema";
+import { applications, clientSubscriptions, opsRecords, services, supportTickets, users } from "@/db/schema";
 import { financeRecords, financeSequences } from "@/db/schema";
 import { formatNo, type NumberSeries } from "@/domain/finance/numbering";
 import type { Role } from "@/domain/auth/roles";
@@ -310,9 +310,9 @@ export const policyOf = (s: Settings) =>
   }) as never;
 
 // ---------------------------------------------------------------- party directory
-// Read from the real tables: clients = users(role client), workers = agents, services = catalogue, cases = applications
-// (case ref = application code). A case is disputed while a dispute/complaint ticket on it is not resolved.
-// shortcut: loads every row per request; upgrade to per-ref lookups once finance lists page server-side.
+// Read from the real tables, scoped to finance's working set: cases that are still open or that a finance document
+// refers to (case ref = application code), their clients plus clients a finance document bills, and every agent and
+// service (small tables). A case is disputed while a dispute ticket on it (ops or support) is unresolved.
 export type Client = {
   id: string;
   name: string;
@@ -338,31 +338,49 @@ export type Case = {
   disputed?: boolean;
 };
 const DISPUTE_TYPES = ["dispute", "complaint", "billing_dispute"];
+const TERMINAL_CASE = ["cancelled", "rejected", "refunded"];
 async function parties(db: Exec) {
-  const [us, svcs, apps, tickets, subs] = await Promise.all([
+  // Case refs and client ids named by finance documents (quotes, invoices, payments, refunds, allocations).
+  const docRefs = dsql`(select ${financeRecords.data}->>'caseRef' from ${financeRecords} where ${financeRecords.data} ? 'caseRef')`;
+  const docClients = dsql`(select ${financeRecords.data}->>'clientId' from ${financeRecords} where ${financeRecords.data} ? 'clientId')`;
+  const apps = await db
+    .select({
+      ref: applications.code, service: applications.serviceSlug, clientId: applications.clientId,
+      status: applications.status, agent: applications.assignedAgentId, amount: applications.paymentAmount,
+      createdAt: applications.createdAt, updatedAt: applications.updatedAt, completedAt: applications.completedAt,
+      urgent: applications.isUrgent,
+    })
+    .from(applications)
+    .where(or(notInArray(applications.status, TERMINAL_CASE), dsql`${applications.code} in ${docRefs}`));
+  const appClients = [...new Set(apps.map((a) => a.clientId).filter((x): x is string => !!x))];
+  const [us, svcs, tickets, opsDisputes, subs] = await Promise.all([
     db
       .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language })
       .from(users)
-      .where(inArray(users.role, ["client", "staff:agent", "ext:agent"])),
+      .where(
+        or(
+          inArray(users.role, ["staff:agent", "ext:agent"]),
+          and(
+            eq(users.role, "client"),
+            or(inArray(users.userId, appClients.length ? appClients : ["-"]), dsql`${users.userId} in ${docClients}`),
+          ),
+        ),
+      ),
     db.select({ slug: services.slug, name: services.name }).from(services),
-    db
-      .select({
-        ref: applications.code, service: applications.serviceSlug, clientId: applications.clientId,
-        status: applications.status, agent: applications.assignedAgentId, amount: applications.paymentAmount,
-        createdAt: applications.createdAt, updatedAt: applications.updatedAt, completedAt: applications.completedAt,
-        urgent: applications.isUrgent,
-      })
-      .from(applications),
     db
       .select({ caseRef: supportTickets.caseRef })
       .from(supportTickets)
       .where(and(inArray(supportTickets.type, DISPUTE_TYPES), ne(supportTickets.status, "resolved"))),
     db
+      .select({ caseRef: dsql<string>`${opsRecords.data}->>'caseRef'` })
+      .from(opsRecords)
+      .where(and(eq(opsRecords.kind, "ticket"), dsql`${opsRecords.data}->>'kind' = 'dispute'`, ne(opsRecords.state, "resolved"))),
+    db
       .select({ clientId: clientSubscriptions.clientId })
       .from(clientSubscriptions)
       .where(inArray(clientSubscriptions.status, ["active", "past_due"])),
   ]);
-  const disputed = new Set(tickets.map((t) => t.caseRef));
+  const disputed = new Set([...tickets, ...opsDisputes].map((t) => t.caseRef));
   const subscribers = new Set(subs.map((s) => s.clientId));
   const clients: Client[] = us
     .filter((u) => u.role === "client")

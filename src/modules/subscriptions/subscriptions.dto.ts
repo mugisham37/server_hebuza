@@ -62,6 +62,12 @@ export const ChangeOut = z.object({
   planId: z.string(),
   amountRwf: z.number().int(),
   effectiveAt: z.string().nullable(),
-});
+}).meta({ id: "SubscriptionChangeResponse" });
 export class PauseDto extends dto(z.object({ days: z.number().int().min(1).max(90) })) {}
-export const PauseOut = z.object({ subscriptionId: z.string(), status: z.string(), pausedUntil: z.string(), periodEnd: z.string() });
+export const PauseOut = z.object({ subscriptionId: z.string(), status: z.string(), pausedUntil: z.string(), periodEnd: z.string() }).meta({ id: "SubscriptionPauseResponse" });
+export const FinSubList = z.object({
+  items: z.array(z.object({
+    subscriptionId: z.string(), clientName: z.string(), planName: z.string(), amountRwf: z.number().int(), status: z.string(),
+    periodEnd: z.string(), pausedUntil: z.string().nullable(), cancelAtPeriodEnd: z.boolean(),
+  })),
+}).meta({ id: "FinanceSubscriptionList" });
