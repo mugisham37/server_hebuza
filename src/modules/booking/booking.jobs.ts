@@ -2,6 +2,7 @@
 // minute sweep (payments settle, auto no-show, lapsed holds → waitlist offers) and due reminders.
 // Account holders get an in-app notification (+ their preferred channel) via NotificationsService; guests get email or
 // SMS at the booking contact. The manage-link token only ever goes to guests (clients manage from the portal).
+import { CalendarSync } from "./booking.calendar";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Env } from "../../core/config/env";
@@ -57,6 +58,7 @@ export class BookingJobs {
     private readonly txs: TxService,
     private readonly crypto: CryptoService,
     private readonly notifications: NotificationsService,
+    private readonly calendar: CalendarSync,
     config: ConfigService<Env, true>,
   ) {
     this.base = config.get("WEB_ORIGIN", { infer: true }).split(",")[0].trim().replace(/\/$/, "");
@@ -78,6 +80,8 @@ export class BookingJobs {
     let text = fill(tpl[l] ?? tpl.en, { ref: r.reference, when: formatSlot(r.startsAt, l) });
     if (kind === "next_steps" && r.startLinks.length) text += "\n" + r.startLinks.map((x) => `${x.name}: ${this.base}/${l}${x.href}`).join("\n");
     const subject = `HEBUZA ${r.reference}`;
+    // F-BKG-10: confirmed bookings land in the adviser's linked Google/Microsoft calendar (no-op without links).
+    if (kind === "confirmed" && r.adviserId) await this.calendar.push(r.adviserId, { ref: r.reference, title: `${subject} · ${m.language}`, startsAt: r.startsAt, endsAt: r.endsAt, joinUrl: r.joinUrl });
     if (r.clientId) {
       const clientId = r.clientId;
       await this.txs.runAsSystem((tx) => this.notifications.notify(tx, {

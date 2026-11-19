@@ -29,6 +29,21 @@ export class MarketingCrmController {
     return this.m.run(r, (c) => crm.eventSummary(c, q.days ?? 30));
   }
 
+  @Get("admin/mkt/promos")
+  @Route({ auth: MKT_EX })
+  promos(@Req() r: OpsReq) {
+    return this.m.run(r, (c) => crm.listPromos(c));
+  }
+  @Put("admin/mkt/promos/:code")
+  @Route({ auth: MKT, audit: "campaign.promo_saved" })
+  savePromo(@Req() r: OpsReq, @Param("code") code: string, @Body() b: D.PromoDto) {
+    return this.m.run(r, (c) => crm.savePromo(c, { ...b, code: code.toUpperCase() }));
+  }
+  @Get("promos/:code")
+  @Route({ auth: "public", limit: "auth" })
+  checkPromo(@Param("code") code: string, @Query() q: D.PromoCheckDto) {
+    return this.m.run(null, (c) => crm.checkPromoCode(c, code.slice(0, 32), q.service));
+  }
   @Get("admin/mkt/recommendation-rules")
   @Route({ auth: MKT_EX })
   recRules(@Req() r: OpsReq) {

@@ -1170,6 +1170,9 @@ async function payStatus(k: K, txId: string) {
     await postBookingPayment(k.d.ledger, db, p.id, { method: p.kind, amount: p.amount });
     const r = (await byId(db, p.bookingId, true))!;
     const row = await markPaid(k, r, p.id);
+    // F-BKG-06: a client's paid consultation is invoiced in finance (worker job; idempotent per payment id).
+    if (row.clientId && row.status !== "expired")
+      await emit(k, "finance.booking.settled", { clientId: row.clientId, reference: row.reference, paymentId: p.id, amount: p.amount, label: `Consultation ${row.reference}` });
     return {
       status: row.status === "expired" ? "late_refunded" : "success",
       reference: row.reference,

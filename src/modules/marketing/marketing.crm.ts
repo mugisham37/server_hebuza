@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { consentLedger } from "@/db/schema/schema-notifications";
 import { siteEvents } from "@/db/schema/schema-marketing";
 import { recommend, type RecRule } from "@/domain/marketing/recommend";
+import { checkPromo, type Promo } from "@/domain/marketing/promo";
 import { and as dand, eq as deq, gte, sql as dsqlx } from "drizzle-orm";
 import { POLICY_VERSION } from "../notifications/notifications.delivery";
 // P11 CRM services (port of src/mocks/handlers-marketing-crm.ts): lead capture from every channel, the lead pipeline
@@ -1263,4 +1264,20 @@ export async function saveRecRules(c: Caller, items: RecRule[]) {
   for (const [i, r] of items.entries()) await put(c.db, { kind: "rec_rule", id: r.id, data: r, pos: i });
   await record(c, "lead.rec_rules_saved", "rec_rule", { n: items.length });
   return { items };
+}
+
+// ---------------------------------------------------------------- F-CRM-20 promo codes
+export const listPromos = async (c: Caller) => ({ items: await list<Promo>(c.db, "promo") });
+export async function savePromo(c: Caller, b: Omit<Promo, "uses">) {
+  const old = await get<Promo>(c.db, "promo", b.code, true);
+  const p: Promo = { ...b, uses: old?.uses ?? 0 };
+  await put(c.db, { kind: "promo", id: p.code, data: p, status: p.active ? "active" : "inactive" });
+  await record(c, "campaign.promo_saved", p.code, { active: p.active });
+  return p;
+}
+/** Public check (checkout field): only says whether the code applies and how much off, never the use count. */
+export async function checkPromoCode(c: Caller, code: string, service?: string) {
+  const p = await get<Promo>(c.db, "promo", code.toUpperCase());
+  const r = p ? checkPromo(p, new Date().toISOString().slice(0, 10), service) : ({ ok: false, why: "not_found" } as const);
+  return r.ok ? { valid: true, kind: p!.kind, value: p!.value } : { valid: false, reason: r.why };
 }

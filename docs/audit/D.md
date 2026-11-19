@@ -91,7 +91,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-CRM-17 | Social media monitoring | P3 | DONE | `mkt.social-pull` daily from Meta page insights and LinkedIn org statistics into social rows (`marketing.social.ts`); dormant until `META_PAGE_*` / `LINKEDIN_*` set. |
 | F-CRM-18 | Tasks & notes | P2 | DONE | S:marketing.crm.controller.ts:98-113 |
 | F-CRM-19 | Enquiries inbox | P1 | DONE | S:marketing.crm.controller.ts:121-131; WA:(marketing)/marketing/inbox |
-| F-CRM-20 | Promotions | P3 | MISSING | no promo-code model or invoice hook |
+| F-CRM-20 | Promotions | P3 | DONE | Promo codes (`domain/marketing/promo.ts` + test; `admin/mkt/promos`, public `GET /promos/:code`, editor `/marketing/campaigns/promos`); finance `POST /invoices` `promoCode` adds a discount line and counts the use. |
 | F-CRM-21 | Referral tracking | P3 | DONE | S:marketing.insights.controller.ts:99-109, links/r/:code :187; WA:(marketing)/marketing/referrals (partner/agent referrer types not verified) |
 
 ## Settings & configuration (SET)

@@ -17,6 +17,7 @@ import {
   addClientCredit,
   createInvoice,
   invOr404,
+  issueInvoice,
   issueCaseInvoice,
   issuePlanInvoice,
   keyOf,
@@ -278,6 +279,23 @@ export async function planSettled(f: Fin, d: { clientId: string; paymentId: stri
   open.rev++;
   await saveInv(f.db, open);
   f.rec("invoice.payment_applied", "invoice", keyOf(open), null, { status: "paid", paymentId: d.paymentId });
+}
+
+// ---------------------------------------------------------------- F-BKG-06 paid consultation → FIN invoice
+/** A settled booking payment becomes an issued, paid finance invoice (VAT-inclusive fee). Idempotent per payment id. */
+export async function bookingSettled(f: Fin, d: { clientId: string; reference: string; paymentId: string; amount: number; label: string }) {
+  if ((await all<Inv>(f.db, "invoice")).some((i) => (i.gatewayPaymentIds ?? []).includes(d.paymentId))) return;
+  const { net } = splitVat(d.amount, f.S.vat_bps);
+  const { key } = await createInvoice(f, { clientId: d.clientId, lines: [{ kind: "service_fee", label: { en: d.label, fr: d.label, rw: d.label }, qty: 1, unit: net, taxable: true }], dueAt: today() });
+  await issueInvoice(f, key, {});
+  const inv = await invOr404(f.db, key);
+  inv.gatewayPaymentIds = [d.paymentId];
+  inv.amountPaid = d.amount;
+  inv.balanceDue = 0;
+  inv.status = "paid";
+  inv.rev++;
+  await saveInv(f.db, inv);
+  f.rec("invoice.payment_applied", "invoice", keyOf(inv), null, { status: "paid", paymentId: d.paymentId, booking: d.reference });
 }
 
 // ---------------------------------------------------------------- refund hooks (REQ-11 early cancel, F-RFD-08 dispute)

@@ -12,6 +12,7 @@ import {
   index,
   unique,
   date,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import type {
   AvailabilityOverride,
@@ -233,3 +234,11 @@ export const bkgLeads = pgTable("bkg_leads", {
   topic: varchar({ length: 255 }),
   createdAt: now("created_at"),
 });
+
+/** F-BKG-10 adviser calendar link (Google / Microsoft). Refresh token is field-encrypted; one link per adviser+provider. */
+export const bkgCalendarLinks = pgTable("bkg_calendar_links", {
+  adviserId: varchar("adviser_id", { length: 64 }).notNull(),
+  provider: varchar({ length: 16 }).notNull(), // google | microsoft
+  refreshEnc: text("refresh_enc").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [primaryKey({ columns: [t.adviserId, t.provider] })]);

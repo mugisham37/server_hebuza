@@ -366,3 +366,9 @@ export class RecRulesDto extends dto(z.object({ items: z.array(z.object({
   id: z.string().regex(/^[a-z0-9-]{1,40}$/), ifUsed: z.string().regex(/^(\*|[a-z0-9]+(-[a-z0-9]+)*)$/).max(128),
   recommend: z.array(z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(128)).min(1).max(5), active: z.boolean(),
 })).max(100) })) {}
+export class PromoDto extends dto(z.object({
+  code: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,32}$/), kind: z.enum(["percent", "amount"]), value: z.number().int().min(1).max(100_000_000),
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  maxUses: z.number().int().min(1).optional(), active: z.boolean(), services: z.array(z.string().max(128)).max(50).optional(),
+}).refine((p) => p.kind !== "percent" || p.value <= 100, "Percent must be 1–100.")) {}
+export class PromoCheckDto extends dto(z.object({ service: z.string().max(128).optional() })) {}

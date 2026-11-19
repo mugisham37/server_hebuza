@@ -35,11 +35,11 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-BKG-03 | Slot engine | P2 | DONE | `domain/booking/rules.ts:11` (holdMin 10); `pickAdviser` (`booking.service.ts:630`); advisory-lock holds (l.590). External busy time is not included because F-BKG-10 is not built. |
 | F-BKG-04 | Public booking page | P2 | DONE | `(public)/book`, `book/[type]`, `book/confirmed/[ref]`; `lib/booking/api.ts:33-38`. |
 | F-BKG-05 | Free consultation request | P1 | DONE | `POST consultation-requests` (`booking.controller.ts:110`) plus the admin queue (l.248); web `book/callback`. |
-| F-BKG-06 | Paid booking | P2 | PARTIAL | `pending_payment`, pay window and expiry with auto-refund (`booking.service.ts:993-1148`). It uses its own `bkg_payments` table, not a FIN invoice. |
+| F-BKG-06 | Paid booking | P2 | DONE | Settled client booking payment emits `finance.booking.settled` → issued + paid FIN invoice (`bookingSettled`, idempotent per payment id). Guests (no account) stay on `bkg_payments` only. |
 | F-BKG-07 | Video meeting link | P2 | DONE | Rooms are real Jitsi Meet URLs (`meet.jit.si/hbz-<random>`), no account needed. |
 | F-BKG-08 | Reminders | P2 | DONE | Seeded `booking` event rule with chain whatsapp→sms→email; booking notices go through `notifications.notify`, which follows the rule chain. |
 | F-BKG-09 | Reschedule & cancel | P2 | DONE | `rules.ts:12,123-146` (12 h cutoff, max 2 reschedules, refund/forfeit, tested in `rules.test.ts`); manage-by-token and `/me/bookings` routes; web `book/manage/[token]`, `(client)/bookings/[id]`. |
-| F-BKG-10 | Calendar sync | P3 | MISSING | No Google or Microsoft OAuth. |
+| F-BKG-10 | Calendar sync | P3 | DONE | Google/Microsoft OAuth (`booking.calendar.ts`: start/callback, encrypted refresh token in `bkg_calendar_links`), confirmed bookings pushed as events; adviser UI on `/agent/calendar`. Dormant until `GOOGLE_OAUTH_*`/`MS_OAUTH_*`. |
 | F-BKG-11 | Outcome & conversion | P2 | DONE | Completed outcome emits `booking.outcome_recorded`; marketing worker moves the matching open lead to `qualified` with the recommended services (`bookingOutcome`). Quotes: existing `quoteRequest`. |
 | F-BKG-12 | No-show handling | P2 | DONE | `autoNoShowMin 15`, `noShowLimit 2` force prepayment (`rules.ts:14`, `booking.service.ts:530,918`); sweep cron. |
 | F-BKG-13 | Waitlist | P3 | DONE | `bkg_waitlist`, `POST bookings/waitlist`, FIFO offer job (`booking.service.ts:1427`). The 30-min claim window was not verified. |

@@ -177,6 +177,7 @@ export class NewInvoiceDto extends dto(
     lang: Locale.optional(),
     // F-FIN-20: optional display currency; amounts stay RWF, the rate (RWF per unit) is frozen on the invoice.
     fx: z.object({ currency: z.enum(["USD", "EUR", "KES", "UGX", "TZS"]), rate: z.number().positive().max(1_000_000) }).optional(),
+    promoCode: z.string().trim().toUpperCase().regex(/^[A-Z0-9-]{3,32}$/).optional(), // F-CRM-20
   }),
 ) {}
 export class InvoicePatchDto extends dto(

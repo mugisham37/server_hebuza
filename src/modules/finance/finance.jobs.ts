@@ -16,7 +16,7 @@ import { finDeps } from "./finance.runner";
 import { lineAction, momoLines, setMomoRef } from "./finance.revenue";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { planAllocations, openCaseRefund, type CaseRefundRequest, caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
+import { planAllocations, openCaseRefund, type CaseRefundRequest, bookingSettled, caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
 import { expirePending, returnStaleVerifications } from "./finance.payments";
 import { bookingRefund, claimDisbursement, failStaleClaims, settleDisbursement, type BookingRefund, type R } from "./finance.refunds";
 import { applyDueSettings } from "./finance.core";
@@ -54,6 +54,12 @@ export class FinanceJobs {
       if (d.planId && d.clientId) await planSettled(f, { clientId: d.clientId, paymentId: d.paymentId, amount: d.amount });
       else if (d.applicationCode) await caseSettled(f, { applicationCode: d.applicationCode, paymentId: d.paymentId, amount: d.amount });
     });
+  }
+
+  /** F-BKG-06 paid consultation → issued + paid invoice. */
+  @Job("finance.booking.settled")
+  bookingSettled(d: { clientId: string; reference: string; paymentId: string; amount: number; label: string }) {
+    return this.sys((f) => bookingSettled(f, d));
   }
 
   /** createRefundRequest (lifecycle early cancel, dispute resolved "refund") → refund request on the paid case invoice. */

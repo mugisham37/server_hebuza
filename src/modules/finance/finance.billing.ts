@@ -1,5 +1,7 @@
 // Finance billing (U5–U7, U11, U15): quotations, invoices, client credit, EBM, reminders, receivables ageing, credit notes.
 // Port of src/mocks/handlers-finance-b.ts + the receivables half of handlers-finance-d.ts onto finance_records.
+import { checkPromo, promoDiscount, type Promo } from "@/domain/marketing/promo";
+import { get as mktGet, put as mktPut } from "../marketing/marketing.store";
 import type { Tx as Exec } from "../../core/db/db";
 import { applyPayment, depositSplit, docTotals, fx } from "@/domain/finance/money";
 import { canMove, isOverdue } from "@/domain/finance/states";
@@ -811,9 +813,21 @@ export async function createInvoice(
     dueAt: string;
     lang?: Locale;
     fx?: { currency: string; rate: number };
+    promoCode?: string;
   },
 ) {
   need(f.D.client(b.clientId), 422, "validation");
+  // F-CRM-20: a valid promo code adds a discount line on the service fees and counts one use (same tx).
+  if (b.promoCode) {
+    const p = await mktGet<Promo>(f.db, "promo", b.promoCode, true);
+    const chk = p ? checkPromo(p, today()) : ({ ok: false, why: "not_found" } as const);
+    if (!chk.ok) throw fail(422, `promo_${chk.why}`);
+    const base = b.lines.filter((l) => l.kind === "service_fee").reduce((s, l) => s + l.qty * l.unit, 0);
+    const off = promoDiscount(p!, base);
+    if (off > 0) b = { ...b, lines: [...b.lines, { kind: "discount", label: { en: `Promo ${p!.code}`, fr: `Promo ${p!.code}`, rw: `Promo ${p!.code}` }, qty: 1, unit: off, taxable: true }] };
+    p!.uses++;
+    await mktPut(f.db, { kind: "promo", id: p!.code, data: p, status: p!.active ? "active" : "inactive" });
+  }
   if (b.caseRef)
     need(f.D.caseOf(b.caseRef)?.clientId === b.clientId, 422, "validation");
   need(b.dueAt.slice(0, 10) >= today(), 422, "validation");
