@@ -72,7 +72,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-CRM-01 | Customer ID HBC-YYYY-NNNNNN + Luhn | P1 | PARTIAL | S:modules/marketing/marketing.jobs.ts:299 builds `HBC-{year}-{id.slice(-5)}` (PLACEHOLDER). Gap: no per-year sequence, no check digit, not on invoices/receipts, not searchable everywhere |
+| F-CRM-01 | Customer ID HBC-YYYY-NNNNNN + Luhn | P1 | DONE | `HBC-YYYY-NNNNNN-C` per-year `customer_sequences` + Luhn (`domain/marketing/customer-no.ts`), assigned at signup. |
 | F-CRM-02 | Contact & company records, dedupe, merge | P1 | DONE | S:domain/marketing/dedupe.ts (E.164/email), merge S:marketing.crm.controller.ts:50 (audited); TIN dedupe not verified |
 | F-CRM-03 | Lead capture | P1 | DONE | public S:marketing.crm.controller.ts:20, manual :65, import :55; W:components/organisms/site/lead-form.tsx |
 | F-CRM-04 | Pipeline | P1 | DONE | S:domain/marketing/lead-machine.ts:4-14 (stages, lost reason required); W:components/organisms/marketing/leads.tsx |

@@ -208,6 +208,17 @@ export class CmsController {
   publicEntries() {
     return this.svc.publicEntries();
   }
+  // F-CMS-14: signed-in users re-accept when the published terms/privacy version changes.
+  @Get("me/terms")
+  @Route({ auth: "user" })
+  termsStatus(@CurrentUser() u: SessionUser) {
+    return this.svc.termsStatus(u.id);
+  }
+  @Post("me/terms/accept")
+  @Route({ auth: "user", limit: "write", audit: "auth.terms.accepted" })
+  acceptTerms(@CurrentUser() u: SessionUser, @Body() b: D.AcceptTermsDto) {
+    return this.svc.acceptTerms(u.id, b.version);
+  }
   @Get("content/site")
   @Route({ auth: "public", limit: "read" })
   site() {

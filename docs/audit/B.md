@@ -31,12 +31,12 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-BKG-01 | Consultation types | P2 | DONE | `bkg_types` (`schema-booking.ts:43`) with buffer, notice, horizon, maxPerDay and intake; admin routes at `booking.controller.ts:258-268`; web `ops/bookings`. |
-| F-BKG-02 | Adviser availability | P2 | PARTIAL | `agent/availability` GET/PUT (`booking.controller.ts:203-208`) with overrides. No sync with WRK leave was found. |
+| F-BKG-02 | Adviser availability | P2 | DONE | Slots also skip advisers on workforce leave (`agent_profiles.status=leave` until `on_leave_until`, `advisersOf`). |
 | F-BKG-03 | Slot engine | P2 | DONE | `domain/booking/rules.ts:11` (holdMin 10); `pickAdviser` (`booking.service.ts:630`); advisory-lock holds (l.590). External busy time is not included because F-BKG-10 is not built. |
 | F-BKG-04 | Public booking page | P2 | DONE | `(public)/book`, `book/[type]`, `book/confirmed/[ref]`; `lib/booking/api.ts:33-38`. |
 | F-BKG-05 | Free consultation request | P1 | DONE | `POST consultation-requests` (`booking.controller.ts:110`) plus the admin queue (l.248); web `book/callback`. |
 | F-BKG-06 | Paid booking | P2 | PARTIAL | `pending_payment`, pay window and expiry with auto-refund (`booking.service.ts:993-1148`). It uses its own `bkg_payments` table, not a FIN invoice. |
-| F-BKG-07 | Video meeting link | P2 | PARTIAL | `joinUrl` is a random `meet.google.com/hbz-…` string (`booking.service.ts:121,649`), not a real Meet or Jitsi room. Join-window gating exists (`rules.ts`). |
+| F-BKG-07 | Video meeting link | P2 | DONE | Rooms are real Jitsi Meet URLs (`meet.jit.si/hbz-<random>`), no account needed. |
 | F-BKG-08 | Reminders | P2 | PARTIAL | `planReminders` and the `booking.reminders` cron (`booking.jobs.ts:107`); ICS generation exists. Delivery uses the NTF job, which has no WhatsApp→SMS→email fallback chain (see F-NTF-06). |
 | F-BKG-09 | Reschedule & cancel | P2 | DONE | `rules.ts:12,123-146` (12 h cutoff, max 2 reschedules, refund/forfeit, tested in `rules.test.ts`); manage-by-token and `/me/bookings` routes; web `book/manage/[token]`, `(client)/bookings/[id]`. |
 | F-BKG-10 | Calendar sync | P3 | MISSING | No Google or Microsoft OAuth. |
@@ -94,7 +94,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-AIA-01 | Chat widget | P3 | DONE | `organisms/booking/launcher-lazy.tsx`, `assistant.tsx`; `(public)/assistant`; mounted in the public and client layouts; streaming sessions API. |
 | F-AIA-02 | Approved KB | P3 | DONE | KB sources are the CMS/catalogue tables the public site now renders (no seed), so AI and site agree. |
 | F-AIA-03 | Model routing | P3 | DONE | Anthropic SDK (`assistant.engine.ts:8`); model is config-driven; fast model for copilot (l.767). |
-| F-AIA-04 | Tools | P3 | PARTIAL | A deterministic router handles case status, booking, intake, lead and handoff; Claude gets 3 read tools (`assistant.engine.ts:1-5`). No `estimate_fee` against the pricing engine and no `create_booking_hold` tool was found. |
+| F-AIA-04 | Tools | P3 | DONE | `estimate_fee` tool over the published catalogue (fixed tiers, range bands with min/max clamp, quote); unit test. |
 | F-AIA-05 | Guided intake & draft | P3 | DONE | `ai_drafts`, `GET assistant/drafts/:id`; the draft is handed to the wizard, so the assistant never submits. |
 | F-AIA-06 | Human escalation | P3 | PARTIAL | `ai_handoffs` plus a claim queue (`ops/assistant`). It writes a case-thread note only when the client has a case; otherwise it uses a synthetic `ai-<id>` id (`assistant.engine.ts:525-550`) and no MSG support conversation is created. |
 | F-AIA-07 | Guardrails | P3 | DONE | Regex input/output guards (`assistant.engine.ts:133-176`). |
@@ -123,7 +123,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-CMS-11 | Landing pages | P2 | DONE | `campaign/[slug]` reads CMS landing pages. |
 | F-CMS-12 | Team & credentials | P1 | DONE | SM credential verify (`POST admin/cms/entries/:id/credential`), Verified badge on `/about/team` (CMS-fed). |
 | F-CMS-13 | Service page content | P1 | DONE | Service page: CAT facts + CMS FAQs. |
-| F-CMS-14 | Legal documents | P1 | PARTIAL | `legal/[doc]` (seed) and `terms_acceptances` (`auth.service.ts:456`). No re-accept prompt on material change. | Legal docs now CMS `legal_doc` (seeded); re-accept prompt still open (IAM).
+| F-CMS-14 | Legal documents | P1 | DONE | Legal docs are CMS `legal_doc`; `GET/POST /api/me/terms[/accept]` compares acceptance with the published terms+privacy version; `TermsGate` re-accept dialog for signed-in users. |
 | F-CMS-15 | Cookie consent | P1 | PARTIAL | `organisms/site/cookie-consent.tsx` stores the choice in a first-party cookie only. Nothing is written to the NTF consent ledger; Consent Mode wiring is in `tracking.tsx`. |
 | F-CMS-16 | Redirects & slugs | P1 | DONE | `cms_redirects`, `cms_not_found`, `content/not-found` logging, UI. |
 | F-CMS-17 | Preview & caching | P1 | DONE | Draft-mode preview routes (`/preview`), revalidate tags end to end (catalogue writes too), sitemap per-locale. |

@@ -7,7 +7,7 @@ import { generateId, iso } from "../../core/db/ids";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { and, asc, desc, eq, ne, sql as dsql } from "drizzle-orm";
-import { contactInquiries, users } from "@/db/schema";
+import { contactInquiries, termsAcceptances, users } from "@/db/schema";
 import { complianceRules } from "@/db/schema/schema-ops";
 import { captureFrom } from "../marketing/marketing.crm";
 import {
@@ -1218,6 +1218,27 @@ export class CmsService {
       .from(cmsSiteSettings)
       .where(eq(cmsSiteSettings.id, SETTINGS_ID));
     return r?.doc ?? DEFAULT_SETTINGS;
+  }
+  /** F-CMS-14 current policy = published terms + privacy versions ("terms:3|privacy:2") and when the newer one went live. */
+  async terms() {
+    const docs = await this.publicEntries();
+    const v = (key: string) => { const e = docs.find((d) => d.type === "legal_doc" && d.key === key); return e?.variants.en ?? e?.variants.rw; };
+    const [t, p] = [v("terms"), v("privacy")];
+    return { current: `terms:${t?.version ?? 0}|privacy:${p?.version ?? 0}`, since: [t?.publishedAt, p?.publishedAt].filter(Boolean).sort().pop() ?? null };
+  }
+  /** Accepting at signup (any version string) counts if it happened after the current documents were published. */
+  async termsStatus(userId: string) {
+    const { current, since } = await this.terms();
+    const [last] = await this.db.select({ v: termsAcceptances.policyVersion, at: termsAcceptances.acceptedAt }).from(termsAcceptances)
+      .where(eq(termsAcceptances.userId, userId)).orderBy(desc(termsAcceptances.acceptedAt)).limit(1);
+    const ok = !since || (!!last && (last.v === current || Date.parse(last.at) >= Date.parse(since)));
+    return { current, accepted: last?.v ?? null, needsAccept: !ok };
+  }
+  async acceptTerms(userId: string, version: string) {
+    const { current } = await this.terms();
+    if (version !== current) throw fail(409, "conflict", "The terms changed again; reload and review them.");
+    await this.db.insert(termsAcceptances).values({ id: generateId("terms"), userId, policyVersion: current, acceptedAt: iso(Date.now()) });
+    return { current, accepted: current, needsAccept: false };
   }
   /** Public (F-CMS-07): header/mobile/footer nav + site settings for the web layout; tags cms:nav / cms:settings. */
   publicSite() {

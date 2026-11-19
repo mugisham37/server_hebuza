@@ -3,6 +3,7 @@
 // Port of the reference booking.service.ts: the functions keep their shape and take a `K` (tx + caller + deps); the
 // BookingService class at the bottom runs each in one TxService transaction and records the queued audit rows last.
 // Holds are serialised per Kigali day by `pg_advisory_xact_lock` inside the tx, so two holds can never claim one slot.
+import { agentProfiles } from "@/db/schema/schema-ops";
 import { PaymentsService } from "../payments/payments.service";
 import { LedgerService } from "../ledger/ledger.service";
 import { postBookingPayment } from "../ledger/ledger.postings";
@@ -118,7 +119,8 @@ export const BKG_DEFAULTS = {
   noShowPrepayment: 20_000, // PLACEHOLDER(no-show-prepayment) D-21
   officeAddress: "HEBUZA office, Sonatube — Kicukiro, Kigali", // PLACEHOLDER(office-address) D-15
   manageTokenValidityH: 24, // PLACEHOLDER(manage-token-validity) D-18, hours after the session ends
-  videoBase: "https://meet.google.com/", // PLACEHOLDER(video-provider)
+  // F-BKG-07: Jitsi Meet rooms work from the URL alone (no account/API); the random suffix makes them unguessable.
+  videoBase: "https://meet.jit.si/",
   payWindowMin: 2,
 };
 type BkgSettings = typeof BKG_DEFAULTS;
@@ -450,10 +452,20 @@ async function adviserOfUser(db: Tx, s: SessionUser | null) {
     .where(eq(bkgAdvisers.userId, s.id));
   return a ?? null;
 }
-const advisersOf = (db: Tx, t: TypeRow) =>
-  t.adviserIds.length
-    ? db.select().from(bkgAdvisers).where(inArray(bkgAdvisers.id, t.adviserIds))
-    : Promise.resolve([]);
+/** F-BKG-02: an adviser on workforce leave (agent_profiles.status = leave, until on_leave_until) gets no slots. */
+async function advisersOf(db: Tx, t: TypeRow) {
+  if (!t.adviserIds.length) return [];
+  const rows = await db.select().from(bkgAdvisers).where(inArray(bkgAdvisers.id, t.adviserIds));
+  const userIds = rows.map((r) => r.userId).filter((x): x is string => !!x);
+  if (!userIds.length) return rows;
+  const away = await db.select({ id: agentProfiles.userId, until: agentProfiles.onLeaveUntil }).from(agentProfiles)
+    .where(and(inArray(agentProfiles.userId, userIds), eq(agentProfiles.status, "leave")));
+  const today = new Date().toISOString().slice(0, 10);
+  return rows.map((r) => {
+    const w = away.find((x) => x.id === r.userId);
+    return w ? { ...r, leave: [...r.leave, { from: today, to: w.until ?? "9999-12-31" }] } : r;
+  });
+}
 
 // ── slot engine glue ──────────────────────────────────────────────────────────────────────────────
 async function slotInput(

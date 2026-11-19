@@ -129,3 +129,4 @@ export class CredentialDto extends dto(z.object({
   issuer: z.string().trim().min(1).max(160),
   documentId: z.string().max(64).optional(),
 })) {}
+export class AcceptTermsDto extends dto(z.object({ version: z.string().min(1).max(64) })) {}
