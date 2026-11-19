@@ -406,6 +406,23 @@ export class AuthService {
     return authErr.creds(CFG.lockoutMax - n);
   }
 
+  /**
+   * IAM-10: staff get 10 wrong passwords per 24 h, then the account is locked (no auto-expiry) until an
+   * unlock access request is approved (system.users unlock). Counted from login_attempts so it survives Redis.
+   */
+  private async staffLockout(userId: string, identifier: string) {
+    await this.txs.run(async (tx) => {
+      const [r] = await tx.select({ n: sql<number>`count(*)::int` }).from(loginAttempts)
+        .where(and(eq(loginAttempts.identifier, identifier), eq(loginAttempts.success, false), gt(loginAttempts.attemptedAt, iso(new Date(Date.now() - 86_400_000)))));
+      if ((r?.n ?? 0) < 10) return;
+      await tx.update(users).set({ isActive: false, updatedAt: iso() }).where(eq(users.userId, userId));
+      await tx.execute(sql`insert into system_records (kind, id, pos, data) values ('userMeta', ${userId}, 0, ${JSON.stringify({ id: userId, status: "locked", version: 1 })}::jsonb)
+        on conflict (kind, id) do update set data = system_records.data || '{"status":"locked"}'::jsonb, updated_at = now()`);
+      await this.revokeAllSessions(tx, userId);
+      await this.audit.record(tx, { action: "auth.staff.locked", entity: "user", entityId: userId });
+    });
+  }
+
   /** IAM-16: refuse passwords seen in public breaches (HIBP, fail-open), then hash. */
   private async newHash(pw: string) {
     if (await this.pw.isBreached(pw))
@@ -529,12 +546,19 @@ export class AuthService {
       !u
         ? (await this.burn(b.password), true)
         : !(await this.pw.verify(u.passwordHash, b.password))
-    )
-      throw await this.loginFailure(door, id);
+    ) {
+      const e = await this.loginFailure(door, id);
+      if (u && isStaffRole(u.role)) await this.staffLockout(u.userId, id);
+      throw e;
+    }
     if (!u.isActive) throw authErr.disabled();
     const k = this.lockKeys(door);
     await this.redis.del(k.attempts, k.until);
     return this.txs.run(async (tx) => {
+      if (u.deletionScheduledAt) {
+        await tx.update(users).set({ deletionScheduledAt: null, updatedAt: iso() }).where(eq(users.userId, u.userId));
+        await this.audit.record(tx, { action: "auth.account.deletion_cancelled", entity: "user", entityId: u.userId });
+      }
       await tx.insert(loginAttempts).values({
         id: genId("lat"),
         identifier: id,
@@ -828,9 +852,9 @@ export class AuthService {
   /** GET /api/auth/session: valid access → session; otherwise rotate the refresh cookie. */
   async currentSession(h: Http, me: SessionUser | null) {
     if (me) {
-      const u = await this.txs.run((tx) => this.getUser(tx, me.id));
+      const { u, ends } = await this.txs.run(async (tx) => ({ u: await this.getUser(tx, me.id), ends: await this.tokens.sessionEndsAt(tx, me.sid) }));
       if (!u || !u.isActive) throw authErr.unauth();
-      return { session: sessionModel(u, null) };
+      return { session: sessionModel(u, ends) };
     }
     const raw = h.req.cookies?.[REFRESH_COOKIE];
     if (!raw) throw authErr.unauth();
@@ -846,7 +870,7 @@ export class AuthService {
         const u = target && target.isActive ? target : actor;
         const a = await this.access(tx, u, r.sid, u === actor ? undefined : { act: actor.userId, until: new Date(imp!.until) });
         this.cookies.set(h.reply, await a.token, r.refresh);
-        return { session: sessionModel(u, a.expiresAt) };
+        return { session: sessionModel(u, r.endsAt) };
       });
     } catch (e) {
       this.cookies.clear(h.reply);
@@ -985,24 +1009,17 @@ export class AuthService {
           "deletion_blocked",
           "Active requests block deletion.",
         );
-      await tx
-        .update(users)
-        .set({
-          name: "Deleted user",
-          email: u.email ? `deleted+${u.userId}@invalid.local` : null,
-          phoneE164: null,
-          isEmailVerified: false,
-          isActive: false,
-          updatedAt: iso(),
-        })
-        .where(eq(users.userId, u.userId));
+      // IAM-20: 14-day cooling-off; signing in cancels it, auth.deletion_sweep anonymises after.
+      const at = iso(new Date(Date.now() + 14 * 86_400_000));
+      await tx.update(users).set({ deletionScheduledAt: at, updatedAt: iso() }).where(eq(users.userId, u.userId));
       await this.revokeAllSessions(tx, u.userId);
       await this.audit.record(tx, {
-        action: "auth.account.deleted",
+        action: "auth.account.deletion_scheduled",
         entity: "user",
         entityId: u.userId,
+        after: { scheduledAt: at },
       });
-      return { deleted: true };
+      return { deleted: false, scheduledAt: at };
     });
     this.cookies.clear(h.reply);
     return r;

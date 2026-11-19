@@ -180,7 +180,7 @@ export class AuthController {
   @Route({
     auth: "user",
     limit: "auth",
-    out: z.object({ deleted: z.boolean() }),
+    out: z.object({ deleted: z.boolean(), scheduledAt: z.string() }),
   })
   deleteAccount(
     @Body() b: D.PasswordDto,

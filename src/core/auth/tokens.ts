@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI, generateKeyPair, exportJWK, calculateJwkThumbprint, type JWK, type CryptoKey } from "jose";
 import { and, eq, isNull } from "drizzle-orm";
-import { authSessions, refreshTokens } from "@/db/schema";
+import { authSessions, platformSettings, refreshTokens, users } from "@/db/schema";
 import { normalizeRoles } from "@/domain/auth/roles";
 import type { Env } from "../config/env";
 import type { SessionUser } from "../http/context";
@@ -107,11 +107,30 @@ export class TokenService implements OnModuleInit {
     }
     const [session] = await tx.select({ revokedAt: authSessions.revokedAt }).from(authSessions).where(eq(authSessions.id, row.familyId));
     if (!session || session.revokedAt || Date.parse(row.expiresAt) <= Date.now()) throw unauth("Session expired");
+    if ((await this.sessionEndsAt(tx, row.familyId)).getTime() <= Date.now()) {
+      await this.revokeSession(tx, row.familyId);
+      throw unauth("Session expired");
+    }
     const next = await this.insertRefresh(tx, row.userId, row.familyId);
     const now = new Date().toISOString();
     await tx.update(refreshTokens).set({ revokedAt: now, lastUsedAt: now, replacedByTokenId: next.id }).where(eq(refreshTokens.id, row.id));
     await tx.update(authSessions).set({ lastSeenAt: now }).where(eq(authSessions.id, row.familyId));
-    return { refresh: next.raw, userId: row.userId, sid: row.familyId };
+    return { refresh: next.raw, userId: row.userId, sid: row.familyId, endsAt: await this.sessionEndsAt(tx, row.familyId) };
+  }
+
+  /**
+   * IAM-11: a session ends at the earlier of idle (last seen + platform session_timeout_minutes) and absolute
+   * lifetime (created + 24 h clients / 8 h staff).
+   * shortcut: idle is measured at refresh (every ACCESS_TTL_S), and an open tab's session poll refreshes too; upgrade with client activity pings if idle must mean "no input".
+   */
+  async sessionEndsAt(tx: Tx, sid: string): Promise<Date> {
+    const [r] = await tx.select({ created: authSessions.createdAt, seen: authSessions.lastSeenAt, role: users.role })
+      .from(authSessions).innerJoin(users, eq(users.userId, authSessions.userId)).where(eq(authSessions.id, sid));
+    if (!r) return new Date(0);
+    const [p] = await tx.select({ m: platformSettings.sessionTimeoutMinutes }).from(platformSettings).limit(1);
+    const idle = Date.parse(r.seen) + (p?.m ?? 60) * 60_000;
+    const abs = Date.parse(r.created) + (r.role.startsWith("staff:") || r.role === "ext:agent" ? 8 : 24) * 3_600_000;
+    return new Date(Math.min(idle, abs));
   }
 
   async revokeSession(tx: Tx, sid: string) {

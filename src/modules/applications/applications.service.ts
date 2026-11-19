@@ -47,6 +47,7 @@ import {
 import { clientCancelMode, movesFor, type Actor, type CaseFacts } from "@/domain/ops/transitions";
 import { openApproval, type Approval } from "../ops/ops.manage";
 import { recList } from "../ops/lib/store";
+import { createRefundRequest } from "../finance/finance.cases";
 import type { Env } from "../../core/config/env";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import type { Tx } from "../../core/db/db";
@@ -1123,7 +1124,9 @@ export class ApplicationsService {
       if (mode === "cancel") {
         await this.transition(db, s, a, "cancelled", "client", { workStarted: false }, reason);
         await db.update(applications).set({ cancellationReason: reason }).where(eq(applications.applicationId, a.applicationId));
-        // shortcut: a paid case needs a refund request (RFD); finance owns that flow, ops sees the cancelled+paid case meanwhile.
+        const { paid } = money(a, ((await paidRows(db, [a.code])).get(a.code) ?? []).reduce((x, r) => x + r.amount, 0));
+        // Paid then cancelled: money is never silently kept (spec REQ edge case) → RFD request in this tx.
+        if (paid > 0) await createRefundRequest(db, this.outbox, { applicationId: a.applicationId, reason: "cancelled_before_work", note: `Client cancelled ${a.code} before work started: ${reason}`, auto: "cancelled" });
         return { state: "cancelled" as const };
       }
       if (mode === "request") {

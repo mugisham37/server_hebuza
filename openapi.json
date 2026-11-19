@@ -3228,35 +3228,7 @@
                       "nullable": true
                     },
                     "data": {
-                      "type": "object",
-                      "properties": {
-                        "action": {
-                          "type": "string",
-                          "enum": [
-                            "checkout",
-                            "scheduled"
-                          ]
-                        },
-                        "planId": {
-                          "type": "string"
-                        },
-                        "amountRwf": {
-                          "type": "integer",
-                          "minimum": -9007199254740991,
-                          "maximum": 9007199254740991
-                        },
-                        "effectiveAt": {
-                          "nullable": true,
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "action",
-                        "planId",
-                        "amountRwf",
-                        "effectiveAt"
-                      ],
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/SubscriptionChangeResponse"
                     }
                   }
                 }
@@ -3317,28 +3289,7 @@
                       "nullable": true
                     },
                     "data": {
-                      "type": "object",
-                      "properties": {
-                        "subscriptionId": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "string"
-                        },
-                        "pausedUntil": {
-                          "type": "string"
-                        },
-                        "periodEnd": {
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "subscriptionId",
-                        "status",
-                        "pausedUntil",
-                        "periodEnd"
-                      ],
-                      "additionalProperties": false
+                      "$ref": "#/components/schemas/SubscriptionPauseResponse"
                     }
                   }
                 }
@@ -4517,10 +4468,14 @@
                       "properties": {
                         "deleted": {
                           "type": "boolean"
+                        },
+                        "scheduledAt": {
+                          "type": "string"
                         }
                       },
                       "required": [
-                        "deleted"
+                        "deleted",
+                        "scheduledAt"
                       ],
                       "additionalProperties": false
                     }
@@ -62729,6 +62684,61 @@
         "required": [
           "enrolled",
           "status"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionChangeResponse": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "checkout",
+              "scheduled"
+            ]
+          },
+          "planId": {
+            "type": "string"
+          },
+          "amountRwf": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "effectiveAt": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "planId",
+          "amountRwf",
+          "effectiveAt"
+        ],
+        "additionalProperties": false
+      },
+      "SubscriptionPauseResponse": {
+        "type": "object",
+        "properties": {
+          "subscriptionId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "pausedUntil": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "subscriptionId",
+          "status",
+          "pausedUntil",
+          "periodEnd"
         ],
         "additionalProperties": false
       },
