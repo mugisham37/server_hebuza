@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Res } from "@nestjs/common";
+import { Body, Controller, Query, Delete, Get, Param, Patch, Post, Res } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
@@ -35,6 +35,16 @@ export class DocumentsController {
   @Route({ auth: ["client"], permission: "doc.library", out: D.Deleted })
   remove(@Param("id") id: string, @CurrentUser() me: SessionUser) {
     return this.svc.delete(me, id);
+  }
+  @Get("admin/documents/retention")
+  @Route({ auth: ["staff:service_manager", "staff:sysadmin"] })
+  retention(@Query("state") state?: string) {
+    return this.svc.retentionQueue(state === "decided" ? "decided" : "open");
+  }
+  @Post("admin/documents/retention/:id/decision")
+  @Route({ auth: ["staff:service_manager"], limit: "write", stepUp: true })
+  retentionDecision(@Param("id") id: string, @Body() b: D.RetentionDecisionDto, @CurrentUser() me: SessionUser) {
+    return this.svc.retentionDecision(me, id, b);
   }
   @Get("d/:token")
   @Route({ auth: ["client"], limit: "auth" })
@@ -87,7 +97,9 @@ export class DocumentsController {
   @Route({ auth: "user", permission: "dlv.download" })
   @RawResponse()
   async preview(@Param("id") id: string, @CurrentUser() me: SessionUser, @Res() reply: FastifyReply) {
-    return redirect(reply, await this.svc.deliverableUrl(me, id, false));
+    const r = await this.svc.deliverablePreview(me, id);
+    if ("url" in r) return redirect(reply, r.url);
+    return reply.header("content-type", r.type).header("cache-control", "private, no-store").send(r.body);
   }
   @Get("deliverables/:id/download")
   @Route({ auth: "user", permission: "dlv.download" })

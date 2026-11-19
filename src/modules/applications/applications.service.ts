@@ -744,6 +744,9 @@ export async function submitTx(db: Tx, s: SessionUser | null, input: SubmitInput
     if (!orgCan(m.role as OrgRole, "submit")) throw new AppError(403, "forbidden", "Your role in this company can't submit requests.");
     organizationId = input.organization_id;
   }
+  if (input.ai_draft_id)
+    await db.execute(sql`update ai_drafts set status = 'submitted' where id = ${input.ai_draft_id} and status in ('ai_draft','user_reviewing')
+      and service_slug = ${input.service_slug} and (owner_id is null or owner_id = ${s?.id ?? ""})`);
   const row: typeof applications.$inferInsert = {
     applicationId: generateId("app"),
     organizationId,
@@ -1229,6 +1232,29 @@ export class ApplicationsService {
   async submit(s: SessionUser | null, input: SubmitInput, ip: string | null) {
     const settings = await this.platform.getPublicSettings();
     return this.tx.run((db) => this.submitOne(db, s, input, ip, settings));
+  }
+
+  /**
+   * REQ-12 assisted submission: staff file a request for a client who consented (verbal/signed), as a guest case;
+   * the client gets the tracking code by SMS/mail (submitOne) plus a claim link to take it into their account.
+   */
+  async assisted(staff: SessionUser, input: SubmitInput & { consent_method: "verbal" | "signed" | "field_visit"; consent_note?: string | null }) {
+    const settings = { ...(await this.platform.getPublicSettings()), guestApps: true }; // staff-filed: the guest switch does not apply
+    if (!input.personal_info.phone && !input.personal_info.email)
+      throw new AppError(422, "validation", "Add the client's phone or email so they can claim the request.", { phone: "Phone or email is required." });
+    return this.tx.run(async (db) => {
+      const out = await this.submitOne(db, null, { ...input, personal_info: { ...input.personal_info, consent: true } }, null, settings);
+      const note = `Assisted submission by staff (${input.consent_method} consent)${input.consent_note ? `: ${input.consent_note.slice(0, 500)}` : ""}`;
+      await db.insert(applicationStatusHistory).values({ id: generateId("ash"), applicationId: out.application_id, status: "received", changedBy: staff.id, changedByRole: roleOf(staff), note, createdAt: new Date().toISOString() });
+      const phone = typeof input.personal_info.phone === "string" ? input.personal_info.phone : null;
+      if (phone)
+        await this.outbox.add(db, {
+          type: "auth.sms", queue: "critical",
+          payload: this.crypto.seal({ to: phone, text: `HEBUZA filed ${out.code} for you. Track it or add it to your account: ${this.origin}/claim?code=${out.code}` }, ["text"]),
+        });
+      await this.audit.record(db, { action: "application.assisted_submitted", entity: "application", entityId: out.application_id, after: { code: out.code, consent: input.consent_method }, reason: input.consent_note ?? undefined });
+      return out;
+    });
   }
 
   /** REQ-02/03: one basket = one request group (RG-YYYY-NNNNNN) with one child case per service, in one tx. */

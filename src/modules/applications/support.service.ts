@@ -1,5 +1,6 @@
 // Help desk (port of .ref applications.support): the client's support tickets. Staff answer from the ops workspace,
 // which calls SupportService.reply (side="support" messages + client notification).
+import { openTicket } from "../ops/ops.manage";
 import { OutboxService } from "../../core/db/outbox";
 import { createRefundRequest } from "../finance/finance.cases";
 import { Injectable } from "@nestjs/common";
@@ -112,6 +113,10 @@ export async function createTicket(
       body: message,
       createdAt: now,
     });
+  // CLP-11 / FBK: a complaint about a case also lands in the ops ticket register (response clock, owner, resolution).
+  if (extra.type === "complaint" && extra.caseRef)
+    await openTicket(db, { ...s, role: "client" }, { kind: "complaint", category: "quality", caseRef: extra.caseRef, note: `${subject}\n\n${message}\n\n(Client ticket ${ref})`, byClient: true })
+      .catch((e: unknown) => { if ((e as { status?: number }).status !== 404) throw e; }); // unknown case ref: the client ticket alone stands
   return { ref };
 }
 

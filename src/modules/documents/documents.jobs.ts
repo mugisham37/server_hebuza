@@ -8,6 +8,7 @@ import { Cron, Job, QueueService } from "../../core/queue/queues";
 import { StorageService } from "../../core/storage/storage.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { sniffMime } from "./documents.files";
+import { classOf, expired } from "@/domain/documents/retention";
 import {
   activateCaseUpload,
   finalizeTarget,
@@ -82,6 +83,35 @@ export class DocumentsJobs {
           data: { type: "document.expiring", vars: { ref: `${r.id}:${r.days}`, name: r.name, days: String(r.days) } },
         });
       return due.length;
+    });
+  }
+
+  /** DOC-09: flag closed-case documents and deliverables past their class's retention for an SM decision (nothing is deleted here). */
+  @Cron("documents.retention", "45 2 * * *")
+  async retention() {
+    return this.tx.runAsSystem(async (db) => {
+      const rows = (await db.execute(sql`
+        select 'case' as source, d.document_id as id, d.requirement_key as kind, d.storage_path as path, d.original_filename as label, a.code,
+               coalesce(a.completed_at, a.cancelled_at, a.rejected_at, a.updated_at)::text as anchor
+          from application_documents d join applications a on a.application_id = d.application_id
+          where d.removed_at is null and a.status in ('completed_delivered','cancelled','rejected','refunded')
+        union all
+        select 'deliverable', v.id, null, v.storage_path, v.title, a.code, coalesce(v.released_at, v.created_at)::text
+          from deliverables v join applications a on a.application_id = v.application_id
+          where v.storage_path not like 'shredded/%'`)) as unknown as { source: "case" | "deliverable"; id: string; kind: string | null; path: string; label: string; code: string; anchor: string }[]; // cast: execute() rows are untyped
+      let flagged = 0;
+      for (const r of rows) {
+        const cls = classOf(r.source, r.kind);
+        if (!expired(cls, r.anchor)) continue;
+        const res = await db.execute(sql`insert into document_retention_flags (id, source, source_id, retention_class, storage_path, label, case_code, anchor_at, flagged_at)
+          select ${`ret_${r.source}_${r.id}`.slice(0, 64)}, ${r.source}, ${r.id}, ${cls}, ${r.path}, ${r.label.slice(0, 255)}, ${r.code}, ${r.anchor}::timestamptz, now()
+          on conflict (id) do nothing`);
+        flagged += res.count ?? 0;
+      }
+      if (flagged)
+        for (const u of (await db.execute(sql`select user_id as id from users where role = 'staff:service_manager' and is_active`)) as unknown as { id: string }[]) // cast: execute() rows are untyped
+          await this.notifications.notify(db, { userId: u.id, kind: "documents.retention", title: `${flagged} documents reached their retention period`, link: "/ops/retention" });
+      return { flagged };
     });
   }
 

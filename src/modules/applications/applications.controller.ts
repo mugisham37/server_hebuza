@@ -37,6 +37,11 @@ export class ApplicationsController {
   submitBasket(@Body() b: D.BasketDto, @CurrentUser() me: SessionUser) {
     return this.svc.submitBasket(me, b);
   }
+  @Post("admin/applications/assisted")
+  @Route({ auth: ["staff:service_manager", "staff:agent"], permission: "req.case.read", idempotent: true, limit: "write", out: D.SubmitOut })
+  assisted(@Body() b: D.AssistedDto, @CurrentUser() me: SessionUser) {
+    return this.svc.assisted(me, b);
+  }
   @Get("applications/:code")
   @Route({ auth: "user", permission: "req.case.read", out: D.Detail })
   detail(@Param("code") code: string, @CurrentUser() me: SessionUser) {

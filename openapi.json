@@ -580,6 +580,178 @@
         ]
       }
     },
+    "/api/push/vapid-key": {
+      "get": {
+        "operationId": "NotificationsController_vapidKey",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "publicKey": {
+                          "nullable": true,
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "publicKey"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/me/push-subscriptions": {
+      "post": {
+        "operationId": "NotificationsController_subscribePush",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationsController_unsubscribePush",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/consent": {
       "post": {
         "operationId": "NotificationsController_consent",
@@ -6370,6 +6542,46 @@
             }
           }
         },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
+    "/api/me/consents/history": {
+      "get": {
+        "operationId": "AccountController_consentHistory",
+        "parameters": [],
         "responses": {
           "2XX": {
             "description": "",
@@ -13792,6 +14004,114 @@
         ]
       }
     },
+    "/api/admin/documents/retention": {
+      "get": {
+        "operationId": "DocumentsController_retention",
+        "parameters": [
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/admin/documents/retention/{id}/decision": {
+      "post": {
+        "operationId": "DocumentsController_retentionDecision",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RetentionDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
     "/api/d/{token}": {
       "get": {
         "operationId": "DocumentsController_redeem",
@@ -15008,6 +15328,58 @@
                         "items"
                       ],
                       "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/api/admin/applications/assisted": {
+      "post": {
+        "operationId": "ApplicationsController_assisted",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssistedDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/SubmitApplicationResponse"
                     }
                   }
                 }
@@ -54928,6 +55300,19 @@
           "body"
         ]
       },
+      "PushSubDto": {
+        "type": "object",
+        "properties": {
+          "endpoint": {
+            "type": "string",
+            "maxLength": 1024,
+            "format": "uri"
+          }
+        },
+        "required": [
+          "endpoint"
+        ]
+      },
       "ConsentDto": {
         "type": "object",
         "properties": {
@@ -56408,6 +56793,18 @@
           },
           "profileReuse": {
             "type": "boolean"
+          },
+          "marketingEmail": {
+            "type": "boolean"
+          },
+          "marketingSms": {
+            "type": "boolean"
+          },
+          "marketingWhatsapp": {
+            "type": "boolean"
+          },
+          "aiHistory": {
+            "type": "boolean"
           }
         }
       },
@@ -57741,6 +58138,25 @@
           }
         }
       },
+      "RetentionDecisionDto": {
+        "type": "object",
+        "properties": {
+          "decision": {
+            "type": "string",
+            "enum": [
+              "shred",
+              "keep"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
       "AttachDto": {
         "type": "object",
         "properties": {
@@ -57925,6 +58341,11 @@
             "nullable": true,
             "maxLength": 64
           },
+          "ai_draft_id": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
           "is_urgent": {
             "type": "boolean"
           },
@@ -58016,6 +58437,11 @@
                   "type": "string",
                   "maxLength": 64
                 },
+                "ai_draft_id": {
+                  "nullable": true,
+                  "type": "string",
+                  "maxLength": 64
+                },
                 "is_urgent": {
                   "type": "boolean"
                 },
@@ -58047,6 +58473,109 @@
         "required": [
           "personal_info",
           "items"
+        ]
+      },
+      "AssistedDto": {
+        "type": "object",
+        "properties": {
+          "service_slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "tier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "personal_info": {
+            "type": "object",
+            "properties": {
+              "fullName": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "nationalId": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "dob": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "phone": {
+                "type": "string",
+                "maxLength": 32
+              },
+              "email": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "whatsapp": {
+                "nullable": true,
+                "type": "boolean"
+              },
+              "language": {
+                "nullable": true,
+                "type": "string",
+                "maxLength": 8
+              },
+              "consent": {
+                "nullable": true,
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": {}
+          },
+          "service_data": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {}
+          },
+          "idempotency_key": {
+            "type": "string",
+            "nullable": true,
+            "minLength": 8,
+            "maxLength": 128
+          },
+          "organization_id": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "ai_draft_id": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
+          },
+          "is_urgent": {
+            "type": "boolean"
+          },
+          "preferred_date": {
+            "type": "string",
+            "nullable": true,
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "consent_method": {
+            "type": "string",
+            "enum": [
+              "verbal",
+              "signed",
+              "field_visit"
+            ]
+          },
+          "consent_note": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "service_slug",
+          "tier",
+          "personal_info",
+          "consent_method"
         ]
       },
       "CancelDto2": {
@@ -61980,7 +62509,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1592_0"
+              "$ref": "#/components/schemas/__s1623_0"
             }
           }
         },
@@ -64019,7 +64548,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s2028_0"
+            "$ref": "#/components/schemas/__s2059_0"
           },
           "channel": {
             "type": "string",
@@ -64044,7 +64573,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s2032_0"
+            "$ref": "#/components/schemas/__s2063_0"
           }
         },
         "required": [
@@ -64062,7 +64591,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2036_0"
+                "$ref": "#/components/schemas/__s2067_0"
               }
             ]
           }
@@ -64306,7 +64835,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2088_0"
+                "$ref": "#/components/schemas/__s2119_0"
               }
             ]
           },
@@ -68052,6 +68581,9 @@
               "type": "string"
             }
           },
+          "updated_at": {
+            "type": "string"
+          },
           "revenue_agent_bps": {
             "nullable": true,
             "type": "number"
@@ -68111,6 +68643,7 @@
           "seo",
           "related_slugs",
           "locale_slugs",
+          "updated_at",
           "fee_explainer",
           "markets"
         ],
@@ -68584,6 +69117,9 @@
               "type": "string"
             }
           },
+          "updated_at": {
+            "type": "string"
+          },
           "revenue_agent_bps": {
             "nullable": true,
             "type": "number"
@@ -68637,9 +69173,6 @@
           "created_at": {
             "type": "string"
           },
-          "updated_at": {
-            "type": "string"
-          },
           "steps": {
             "type": "array",
             "items": {}
@@ -68678,10 +69211,10 @@
           "seo",
           "related_slugs",
           "locale_slugs",
+          "updated_at",
           "fee_explainer",
           "markets",
           "created_at",
-          "updated_at",
           "steps",
           "requirements"
         ],
@@ -69376,13 +69909,25 @@
           },
           "maintenanceMode": {
             "type": "boolean"
+          },
+          "enabledLocales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "rw",
+                "en",
+                "fr"
+              ]
+            }
           }
         },
         "required": [
           "paymentsEnabled",
           "guestApps",
           "acceptNewApps",
-          "maintenanceMode"
+          "maintenanceMode",
+          "enabledLocales"
         ],
         "additionalProperties": false
       },
@@ -71526,7 +72071,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1592_0": {
+      "__s1623_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -71548,7 +72093,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1592_0"
+              "$ref": "#/components/schemas/__s1623_0"
             }
           }
         },
@@ -71558,7 +72103,7 @@
           "label"
         ]
       },
-      "__s1593_0": {
+      "__s1624_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -71580,7 +72125,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1593_0"
+              "$ref": "#/components/schemas/__s1624_0"
             }
           }
         },
@@ -71590,7 +72135,7 @@
           "label"
         ]
       },
-      "__s1594_0": {
+      "__s1625_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -71612,7 +72157,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1594_0"
+              "$ref": "#/components/schemas/__s1625_0"
             }
           }
         },
@@ -71622,7 +72167,7 @@
           "label"
         ]
       },
-      "__s2028_0": {
+      "__s2059_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71683,7 +72228,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2028_0"
+                  "$ref": "#/components/schemas/__s2059_0"
                 }
               ]
             }
@@ -71694,7 +72239,7 @@
           "rules"
         ]
       },
-      "__s2029_0": {
+      "__s2060_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71755,7 +72300,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2029_0"
+                  "$ref": "#/components/schemas/__s2060_0"
                 }
               ]
             }
@@ -71766,7 +72311,7 @@
           "rules"
         ]
       },
-      "__s2030_0": {
+      "__s2061_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71827,7 +72372,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2030_0"
+                  "$ref": "#/components/schemas/__s2061_0"
                 }
               ]
             }
@@ -71838,7 +72383,7 @@
           "rules"
         ]
       },
-      "__s2031_0": {
+      "__s2062_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71899,7 +72444,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2031_0"
+                  "$ref": "#/components/schemas/__s2062_0"
                 }
               ]
             }
@@ -71910,7 +72455,7 @@
           "rules"
         ]
       },
-      "__s2032_0": {
+      "__s2063_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71971,7 +72516,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2032_0"
+                  "$ref": "#/components/schemas/__s2063_0"
                 }
               ]
             }
@@ -71982,7 +72527,7 @@
           "rules"
         ]
       },
-      "__s2033_0": {
+      "__s2064_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72043,7 +72588,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2033_0"
+                  "$ref": "#/components/schemas/__s2064_0"
                 }
               ]
             }
@@ -72054,7 +72599,7 @@
           "rules"
         ]
       },
-      "__s2034_0": {
+      "__s2065_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72115,7 +72660,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2034_0"
+                  "$ref": "#/components/schemas/__s2065_0"
                 }
               ]
             }
@@ -72126,7 +72671,7 @@
           "rules"
         ]
       },
-      "__s2035_0": {
+      "__s2066_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72187,7 +72732,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2035_0"
+                  "$ref": "#/components/schemas/__s2066_0"
                 }
               ]
             }
@@ -72198,7 +72743,7 @@
           "rules"
         ]
       },
-      "__s2036_0": {
+      "__s2067_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72259,7 +72804,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2036_0"
+                  "$ref": "#/components/schemas/__s2067_0"
                 }
               ]
             }
@@ -72270,7 +72815,7 @@
           "rules"
         ]
       },
-      "__s2037_0": {
+      "__s2068_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72331,7 +72876,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2037_0"
+                  "$ref": "#/components/schemas/__s2068_0"
                 }
               ]
             }
@@ -72342,7 +72887,7 @@
           "rules"
         ]
       },
-      "__s2038_0": {
+      "__s2069_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72403,7 +72948,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2038_0"
+                  "$ref": "#/components/schemas/__s2069_0"
                 }
               ]
             }
@@ -72414,7 +72959,7 @@
           "rules"
         ]
       },
-      "__s2039_0": {
+      "__s2070_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72475,7 +73020,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2039_0"
+                  "$ref": "#/components/schemas/__s2070_0"
                 }
               ]
             }
@@ -72486,7 +73031,7 @@
           "rules"
         ]
       },
-      "__s2088_0": {
+      "__s2119_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72547,7 +73092,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2088_0"
+                  "$ref": "#/components/schemas/__s2119_0"
                 }
               ]
             }
@@ -72558,7 +73103,7 @@
           "rules"
         ]
       },
-      "__s2089_0": {
+      "__s2120_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72619,7 +73164,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2089_0"
+                  "$ref": "#/components/schemas/__s2120_0"
                 }
               ]
             }
@@ -72630,7 +73175,7 @@
           "rules"
         ]
       },
-      "__s2090_0": {
+      "__s2121_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72691,7 +73236,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2090_0"
+                  "$ref": "#/components/schemas/__s2121_0"
                 }
               ]
             }
@@ -72702,7 +73247,7 @@
           "rules"
         ]
       },
-      "__s2091_0": {
+      "__s2122_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72763,7 +73308,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2091_0"
+                  "$ref": "#/components/schemas/__s2122_0"
                 }
               ]
             }
@@ -72774,7 +73319,7 @@
           "rules"
         ]
       },
-      "__s2092_0": {
+      "__s2123_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72835,7 +73380,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2092_0"
+                  "$ref": "#/components/schemas/__s2123_0"
                 }
               ]
             }
@@ -72846,7 +73391,7 @@
           "rules"
         ]
       },
-      "__s2093_0": {
+      "__s2124_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72907,7 +73452,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2093_0"
+                  "$ref": "#/components/schemas/__s2124_0"
                 }
               ]
             }
@@ -72918,7 +73463,7 @@
           "rules"
         ]
       },
-      "__s2094_0": {
+      "__s2125_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -72979,7 +73524,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2094_0"
+                  "$ref": "#/components/schemas/__s2125_0"
                 }
               ]
             }
@@ -72990,7 +73535,7 @@
           "rules"
         ]
       },
-      "__s2095_0": {
+      "__s2126_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73051,7 +73596,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2095_0"
+                  "$ref": "#/components/schemas/__s2126_0"
                 }
               ]
             }
@@ -73062,7 +73607,7 @@
           "rules"
         ]
       },
-      "__s2096_0": {
+      "__s2127_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73123,7 +73668,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2096_0"
+                  "$ref": "#/components/schemas/__s2127_0"
                 }
               ]
             }
@@ -73134,7 +73679,7 @@
           "rules"
         ]
       },
-      "__s2097_0": {
+      "__s2128_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73195,7 +73740,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2097_0"
+                  "$ref": "#/components/schemas/__s2128_0"
                 }
               ]
             }
@@ -73206,7 +73751,7 @@
           "rules"
         ]
       },
-      "__s2098_0": {
+      "__s2129_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73267,7 +73812,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2098_0"
+                  "$ref": "#/components/schemas/__s2129_0"
                 }
               ]
             }

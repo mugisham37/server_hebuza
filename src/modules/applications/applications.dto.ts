@@ -38,6 +38,8 @@ export const SubmitIn = z.object({
   service_slug: z.string().min(1).max(128), tier: z.string().min(1).max(32), personal_info: PersonalInfo,
   service_data: z.record(z.string(), z.unknown()).nullish(), idempotency_key: z.string().min(8).max(128).nullish(),
   organization_id: z.string().max(64).nullish(),
+  /** REQ-14: the assistant draft this submission confirms (marked submitted; the client reviewed it in the wizard). */
+  ai_draft_id: z.string().max(64).nullish(),
   is_urgent: z.boolean().optional(), preferred_date: z.iso.date().nullish(),
 });
 export const SubmitOut = z.object({
@@ -112,3 +114,4 @@ export class TicketMessageDto extends dto(z.looseObject({ body: z.string().optio
 export class TicketRateDto extends dto(z.looseObject({ score: z.number().optional(), comment: z.string().optional() })) {}
 export const CloneOut = z.object({ service_slug: z.string(), tier: z.string(), service_data: z.record(z.string(), z.unknown()), personal_info: z.record(z.string(), z.unknown()),
   library_documents: z.record(z.string(), z.string()), from_code: z.string() });
+export class AssistedDto extends dto(SubmitIn.extend({ consent_method: z.enum(["verbal", "signed", "field_visit"]), consent_note: z.string().trim().max(500).nullish() })) {}

@@ -32,3 +32,21 @@ export const downloadTokens = pgTable("download_tokens", {
   usedAt: timestamp("used_at", { withTimezone: true, mode: "string" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 }, (t) => [index("ix_download_tokens_deliverable").on(t.deliverableId)]);
+
+/** DOC-09: nightly retention flags → SM decision → crypto-shred (object deleted, metadata tombstoned). */
+export const documentRetentionFlags = pgTable("document_retention_flags", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  source: varchar({ length: 16 }).notNull(), // case | deliverable
+  sourceId: varchar("source_id", { length: 64 }).notNull(),
+  retentionClass: varchar("retention_class", { length: 24 }).notNull(),
+  storagePath: varchar("storage_path", { length: 1024 }).notNull(),
+  label: varchar({ length: 255 }).notNull(),
+  caseCode: varchar("case_code", { length: 32 }),
+  anchorAt: timestamp("anchor_at", { withTimezone: true, mode: "string" }).notNull(),
+  flaggedAt: timestamp("flagged_at", { withTimezone: true, mode: "string" }).notNull(),
+  decision: varchar({ length: 16 }), // shred | keep
+  decidedBy: varchar("decided_by", { length: 64 }),
+  decidedAt: timestamp("decided_at", { withTimezone: true, mode: "string" }),
+  reason: varchar({ length: 500 }),
+  shreddedAt: timestamp("shredded_at", { withTimezone: true, mode: "string" }),
+}, (t) => [index("ix_document_retention_flags_open").on(t.decision, t.flaggedAt), index("ix_document_retention_flags_source").on(t.source, t.sourceId)]);

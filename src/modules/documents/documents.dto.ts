@@ -40,3 +40,4 @@ export class CaseUploadDto extends dto(UploadIn.extend({ need_id: z.string().max
 export const CaseUploadOut = z.object({ id: z.string(), code: z.string(), uploaded: z.boolean(), status: z.string(), upload: UploadOut });
 export class NpsDto extends dto(z.object({ score: z.number().int().min(0).max(10), comment: z.string().trim().max(1000).optional() })) {}
 export const NpsDue = z.object({ due: z.boolean() }).meta({ id: "NpsDueResponse" });
+export class RetentionDecisionDto extends dto(z.object({ decision: z.enum(["shred", "keep"]), reason: z.string().trim().max(500).optional() })) {}

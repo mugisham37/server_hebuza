@@ -6,6 +6,8 @@ import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { createTicket } from "../applications/support.service";
 import { createHash } from "node:crypto";
+import sharp from "sharp";
+import { textPdf } from "../chat/chat.service";
 import {
   and,
   asc,
@@ -29,6 +31,7 @@ import {
   clientDocumentVersions,
   supportTickets,
   downloadTokens,
+  documentRetentionFlags,
   deliverables,
   documentRequests,
   messageAttachments,
@@ -892,6 +895,58 @@ export class DocumentsService {
       const { d } = await readableDeliverable(db, s, id, { download });
       if (download) await this.audit.record(db, { action: "deliverable.downloaded", entity: "deliverable", entityId: id });
       return this.storage.presignGet(d.storagePath, download ? d.title : undefined);
+    });
+  }
+
+  /** DOC-09: the SM queue of documents past retention. */
+  retentionQueue(state: "open" | "decided") {
+    return this.tx.run(async (db) => ({
+      items: await db.select().from(documentRetentionFlags)
+        .where(state === "open" ? isNull(documentRetentionFlags.decision) : isNotNull(documentRetentionFlags.decision))
+        .orderBy(asc(documentRetentionFlags.flaggedAt)).limit(500),
+    }));
+  }
+
+  /** DOC-09: SM decision. Shred = delete the stored object, tombstone the metadata (path → shredded/<id>), audited. */
+  async retentionDecision(s: SessionUser, id: string, b: { decision: "shred" | "keep"; reason?: string }) {
+    const flag = await this.tx.run(async (db) => {
+      const [f] = await db.update(documentRetentionFlags).set({ decision: b.decision, decidedBy: s.id, decidedAt: new Date().toISOString(), reason: b.reason ?? null })
+        .where(and(eq(documentRetentionFlags.id, id), isNull(documentRetentionFlags.decision))).returning();
+      if (!f) throw new AppError(409, "conflict", "Already decided.");
+      await this.audit.record(db, { action: `document.retention_${b.decision}`, entity: "document", entityId: f.sourceId, reason: b.reason, after: { class: f.retentionClass, case: f.caseCode } });
+      return f;
+    });
+    if (b.decision === "keep") return flag;
+    await this.storage.delete(flag.storagePath);
+    return this.tx.run(async (db) => {
+      const tomb = `shredded/${flag.id}`, ts = new Date().toISOString();
+      if (flag.source === "case") await db.update(applicationDocuments).set({ storagePath: tomb, removedAt: ts }).where(eq(applicationDocuments.documentId, flag.sourceId));
+      else await db.update(deliverables).set({ storagePath: tomb }).where(eq(deliverables.id, flag.sourceId));
+      const [f] = await db.update(documentRetentionFlags).set({ shreddedAt: ts, storagePath: tomb }).where(eq(documentRetentionFlags.id, id)).returning();
+      return f;
+    });
+  }
+
+  /**
+   * DLV-05: while the client still owes money, the preview is a stamped low-resolution copy, never the file itself.
+   * Images: 800 px + "PREVIEW — HEBUZA — {code}" overlay. PDFs: a one-page stamped notice.
+   * shortcut: no PDF rasteriser in the stack, so PDF previews are a notice page; add pdf rendering (pdfium/mupdf) if clients need page previews.
+   */
+  deliverablePreview(s: SessionUser, id: string): Promise<{ url: string } | { body: Buffer; type: string }> {
+    return this.tx.run(async (db) => {
+      const { d, a } = await readableDeliverable(db, s, id, { download: false });
+      const owes = a.clientId === s.id && money(a, ((await paidRows(db, [a.code])).get(a.code) ?? []).reduce((x, r) => x + r.amount, 0)).balance > 0;
+      if (!owes) return { url: await this.storage.presignGet(d.storagePath) };
+      const stamp = `PREVIEW — HEBUZA — ${a.code}`;
+      if (d.mimeType.startsWith("image/")) {
+        const bytes = Buffer.concat(await (await this.storage.getStream(d.storagePath)).toArray());
+        const img = sharp(bytes).rotate().resize(800, 800, { fit: "inside", withoutEnlargement: true });
+        const { width = 800, height = 800 } = await img.clone().metadata();
+        const w = Math.min(width, 800), h = Math.min(height, 800);
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><g transform="rotate(-30 ${w / 2} ${h / 2})" font-family="sans-serif" font-size="${Math.max(14, Math.round(w / 18))}" fill="rgba(200,0,0,0.35)" text-anchor="middle">${[0.3, 0.5, 0.7].map((y) => `<text x="${w / 2}" y="${Math.round(h * y)}">${stamp.replace(/&/g, "&amp;")}</text>`).join("")}</g></svg>`;
+        return { body: await img.composite([{ input: Buffer.from(svg), gravity: "center" }]).jpeg({ quality: 60 }).toBuffer(), type: "image/jpeg" };
+      }
+      return { body: Buffer.from(textPdf(stamp, [d.title, "", "This is a preview. The full file unlocks once the balance is paid."])), type: "application/pdf" };
     });
   }
 
