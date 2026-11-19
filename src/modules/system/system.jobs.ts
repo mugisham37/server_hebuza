@@ -89,7 +89,20 @@ export class SystemJobs {
     const [acct] = (await db.execute(sql`select count(*)::int as n from users u where ${accountWhere}`)) as unknown as { n: number }[];
     // Communications: in-app notifications > 7 y; delivery payloads (message bodies) minimised after 90 days.
     const [ntf] = (await db.execute(sql`select count(*)::int as n from notifications where created_at < now() - interval '7 years'`)) as unknown as { n: number }[];
+    // F-DOC-09 Identity documents: vault ID documents of clients whose last case closed > 5 y ago and none is open.
+    const idWhere = sql`d.kind = 'identity' and d.is_active and not exists (select 1 from applications a where a.client_id = d.client_id
+      and (a.completed_at is null or a.completed_at > now() - interval '5 years') and a.status not in ('cancelled','rejected'))
+      and exists (select 1 from applications a where a.client_id = d.client_id)`;
+    const [ids] = (await db.execute(sql`select count(*)::int as n from client_documents d where ${idWhere}`)) as unknown as { n: number }[];
     let purged = 0;
+    if (enforce && !legal.has("Identity documents")) {
+      const docs = (await db.execute(sql`update client_documents d set is_active = false, updated_at = now() where ${idWhere} returning d.document_id as id, d.storage_path as path`)) as unknown as { id: string; path: string }[];
+      for (const x of docs) {
+        const versions = (await db.execute(sql`select storage_path as p from client_document_versions where document_id = ${x.id}`)) as unknown as { p: string }[];
+        for (const k of new Set([x.path, ...versions.map((v) => v.p)])) await this.deps.storage.delete(k).catch(() => undefined); // orphan sweep retries tomorrow
+      }
+      purged += docs.length;
+    }
     if (enforce) {
       if (!legal.has("Account"))
         purged += ((await db.execute(sql`update users u set name = 'Deleted user', email = null, phone_e164 = null, updated_at = now() where ${accountWhere} returning 1`)) as unknown as unknown[]).length;
@@ -104,6 +117,7 @@ export class SystemJobs {
         r.lastRunAt = now;
         if (r.category === "Account") r.due = enforce && !r.legal ? 0 : Number(acct?.n ?? 0);
         if (r.category === "Communications") r.due = enforce && !r.legal ? 0 : Number(ntf?.n ?? 0);
+        if (r.category === "Identity documents") r.due = enforce && !r.legal ? 0 : Number(ids?.n ?? 0);
       }
       if (purged) record(w, "data_deletion.record.erased", "retention", "daily", undefined, { purged, at: now });
     });
