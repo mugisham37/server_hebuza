@@ -696,12 +696,12 @@ async function releaseHold(db: Tx, id: string) {
 }
 
 // ── captcha ───────────────────────────────────────────────────────────────────────────────────────
-/** Turnstile when TURNSTILE_SECRET_KEY is set; dev accepts the UI's "mock-ok" token. */
+/** Cloudflare's always-pass test secret: local/test runs exercise the same siteverify path as production. */
+const TURNSTILE_TEST_SECRET = "1x0000000000000000000000000000000AA";
 async function verifyCaptcha(k: K, tokenIn: string | undefined) {
   if (!tokenIn) return false;
-  const secret = k.d.turnstile;
+  const secret = k.d.turnstile ?? (k.d.prod ? undefined : TURNSTILE_TEST_SECRET);
   if (!secret) {
-    if (!k.d.prod) return tokenIn === "mock-ok";
     new Logger("booking").error("captcha_rejected_no_secret: set TURNSTILE_SECRET_KEY"); // fail closed in production
     return false;
   }
