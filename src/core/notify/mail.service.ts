@@ -2,6 +2,7 @@ import { Global, Injectable, Logger, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Resend } from "resend";
 import { SmsService, maskTo } from "./sms.service";
+import { WhatsappService } from "./whatsapp.service";
 
 export type Mail = { to: string | string[]; subject: string; html: string; text?: string; tags?: Record<string, string> };
 
@@ -36,5 +37,5 @@ export class MailService {
 }
 
 @Global()
-@Module({ providers: [MailService, SmsService], exports: [MailService, SmsService] })
+@Module({ providers: [MailService, SmsService, WhatsappService], exports: [MailService, SmsService, WhatsappService] })
 export class NotifyModule {}

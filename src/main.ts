@@ -2,6 +2,7 @@ import "./core/sentry";
 import { makeTrustProxy, originGate } from "./core/http/client-ip";
 import "reflect-metadata";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
 import type { IncomingMessage } from "node:http";
 import { NestFactory } from "@nestjs/core";
 import { FastifyAdapter, NestFastifyApplication } from "@nestjs/platform-fastify";
@@ -53,6 +54,14 @@ async function bootstrap() {
   // shortcut: one limit for all field routes incl. multi-page scans, move to multipart/presigned uploads if scans outgrow it.
   app.getHttpAdapter().getInstance().addHook("onRoute", (r) => {
     if (/^\/api\/(x_)?field\//.test(r.url)) r.bodyLimit = 40 * 1024 * 1024;
+    // Resend (svix) signs the exact bytes: keep the raw body for that one route (req.rawBody), parse as usual after.
+    if (r.url.endsWith("/webhooks/notify/:token/resend"))
+      r.preParsing = [async (req: { rawBody?: Buffer }, _reply: unknown, payload: AsyncIterable<Buffer>) => {
+        const chunks: Buffer[] = [];
+        for await (const c of payload) chunks.push(Buffer.from(c));
+        req.rawBody = Buffer.concat(chunks);
+        return Readable.from([req.rawBody]);
+      }] as never;
   });
 
   // "::" is dual-stack: Railway private networking is IPv6, public traffic IPv4.

@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Headers, Ip, Param, Patch, Post, Put, Query } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Ip, Param, Patch, Post, Put, Query, Req } from "@nestjs/common";
+import { verifySvix } from "@/domain/notify/svix";
 import { ConfigService } from "@nestjs/config";
 import type { Env } from "../../core/config/env";
 import { safeEqual } from "../../core/crypto/crypto.service";
@@ -27,12 +28,16 @@ export class NotificationsController {
     if (!want || !safeEqual(token, want)) throw new AppError(404, "not_found", "Not found.");
   }
 
-  // shortcut: Resend's svix signature needs the raw body (not kept by the Fastify adapter); the URL token authenticates instead. Verify svix when raw bodies are enabled.
+  /** URL token + (when RESEND_WEBHOOK_SECRET is set) the svix signature over the raw body kept by main.ts for this route. */
   @Post("webhooks/notify/:token/resend")
   @Webhook()
   @Route({ auth: "public", out: WebhookOut })
-  async resend(@Param("token") token: string, @Body() b: ResendEventDto) {
+  async resend(@Param("token") token: string, @Body() b: ResendEventDto, @Req() req: { rawBody?: Buffer; headers: Record<string, string | string[] | undefined> }) {
     this.gate(token);
+    const secret = this.cfg.get("RESEND_WEBHOOK_SECRET", { infer: true });
+    const h = (k: string) => { const v = req.headers[k]; return typeof v === "string" ? v : undefined; };
+    if (secret && !verifySvix(secret, { id: h("svix-id"), timestamp: h("svix-timestamp"), signature: h("svix-signature") }, req.rawBody ?? ""))
+      throw new AppError(401, "bad_signature", "Bad signature.");
     const map = { "email.delivered": "delivered", "email.opened": "read", "email.bounced": "bounced", "email.complained": "complained", "email.failed": "failed" } as const;
     const st = map[b.type as keyof typeof map];
     if (st) await this.delivery.providerStatus(b.data.email_id, st, b.type);

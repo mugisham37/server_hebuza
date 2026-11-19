@@ -1,6 +1,6 @@
 // F-CAL-04: client compliance calendar as an iCalendar feed (all-day events). Pure.
 export type CalItem = { id: string; title: string; dueDate: string; status: string };
-const esc = (s: string) => s.replace(/[\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, "\\n");
+const esc = (s: string) => s.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, "\\n");
 const day = (d: string) => d.replaceAll("-", "").slice(0, 8);
 const nextDay = (d: string) => { const t = new Date(`${d.slice(0, 10)}T00:00:00Z`); t.setUTCDate(t.getUTCDate() + 1); return t.toISOString().slice(0, 10); };
 

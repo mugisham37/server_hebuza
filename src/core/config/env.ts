@@ -33,6 +33,7 @@ export const envSchema = z.object({
   AUDIT_S3_ACCESS_KEY: z.string().optional(),
   AUDIT_S3_SECRET_KEY: z.string().optional(),
   // Provider delivery webhooks + inbound SMS (STOP) are accepted only on /api/webhooks/notify/<token>/...; unset → 404.
+  RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the Resend webhook; set → svix signature required
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
   BACKUP_STATUS_ENDPOINT: z.string().url().optional(),

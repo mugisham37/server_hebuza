@@ -39,7 +39,8 @@ import { DB, type Db } from "../../core/db/db";
 import { MailService } from "../../core/notify/mail.service";
 import { SmsService, maskTo } from "../../core/notify/sms.service";
 import { QueueService } from "../../core/queue/queues";
-import { systemDocs } from "../../core/db/system-records";
+import { settingOf, systemDocs } from "../../core/db/system-records";
+import { WhatsappService } from "../../core/notify/whatsapp.service";
 import type { NotifyInput } from "./notifications.service";
 
 type Delivery = typeof notificationDeliveries.$inferSelect;
@@ -65,6 +66,7 @@ export class DeliveryService {
     @Inject(DB) private readonly db: Db,
     private readonly mail: MailService,
     private readonly sms: SmsService,
+    private readonly wa: WhatsappService,
     private readonly queues: QueueService,
     private readonly cfg: ConfigService<Env, true>,
   ) {}
@@ -102,6 +104,11 @@ export class DeliveryService {
       prefs,
       now: new Date(),
     });
+    // F-SET-12: WhatsApp off → dropped from the plan (the chain continues with the next channel).
+    if (!(await settingOf<boolean>(this.db, "flags.whatsapp_channel"))) {
+      plan.parallel = plan.parallel.filter((c) => c !== "whatsapp");
+      plan.chain = plan.chain.filter((c) => c !== "whatsapp");
+    }
     const to: Recipient = {
       userId: n.userId,
       email: u.email,
@@ -410,15 +417,16 @@ export class DeliveryService {
               html: p.html ?? `<p>${esc(p.text)}</p>`,
               tags: { kind: d.kind.replace(/[^\w-]/g, "_"), delivery: id },
             })
-          : // shortcut: WhatsApp goes through SmsService (no WhatsApp Cloud API driver yet), add a driver when one is chosen.
-            await this.sms.send({ to: address, text: p.text });
+          : d.channel === "whatsapp" && this.wa.configured
+            ? await this.wa.send({ to: address, text: p.text })
+            : await this.sms.send({ to: address, text: p.text }); // WhatsApp without Cloud API keys relays through SMS
       const segments =
         d.channel === "email" ? 1 : Math.max(1, Math.ceil(p.text.length / 153));
       await this.db
         .update(notificationDeliveries)
         .set({
           status: "sent",
-          provider: d.channel === "email" ? "resend" : "africastalking",
+          provider: d.channel === "email" ? "resend" : d.channel === "whatsapp" && this.wa.configured ? "whatsapp_cloud" : "africastalking",
           providerId: providerId ?? null,
           attempts: d.attempts + 1,
           sentAt: now(),
