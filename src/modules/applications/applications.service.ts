@@ -1,6 +1,7 @@
 // Port of .ref applications.service (client side: submit, list, detail, track) plus the client aggregates
 // (/me/dashboard, /me/activity). Query functions take the caller's tx (RLS applies); ApplicationsService runs them.
 // Status changes go through `transition()` → the shared machine in @/domain/ops/transitions.
+import { authorize } from "../../core/auth/authorize";
 import { statusEffects } from "./status-effects";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -174,15 +175,10 @@ export function timeline(
 // ── access ────────────────────────────────────────────────────────────────────────────────────
 /** Owner, assignee or an all-cases role; anything else reads as 404 (no existence oracle). */
 export function assertCanRead(s: SessionUser | null, a: App) {
-  const ok =
-    !!s &&
-    can({ id: s.id, roles: s.roles }, "req.case.read", {
-      ownerId: a.clientId,
-      assigneeIds: [a.assignedAgentId, a.assignedPartnerId].filter(
-        (x): x is string => !!x,
-      ),
-    });
-  if (!ok) throw err.notFound("Application not found");
+  authorize(s, "req.case.read", {
+    ownerId: a.clientId,
+    assigneeIds: [a.assignedAgentId, a.assignedPartnerId].filter((x): x is string => !!x),
+  }, "Application");
 }
 
 export async function appByCode(
