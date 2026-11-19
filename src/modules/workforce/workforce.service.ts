@@ -434,7 +434,7 @@ export class WorkforceService {
       ],
       // F-WRK-02 structured CV (from onboarding), F-WRK-11 outcome KPIs.
       cv: r.cv,
-      contracts: (r.x?.contract ?? []).map((d) => ({ id: d.id, kind: d.kind, title: d.title, version: d.version, status: d.status, start: d.start, end: d.end, signedAt: d.signedAt ?? null })),
+      contracts: ((r.x?.contract ?? []) as unknown as ContractDoc[]).map((d) => ({ id: d.id, kind: d.kind, title: d.title, version: d.version, status: d.status, start: d.start, end: d.end, signedAt: d.signedAt ?? null })),
       outcomes: await this.outcomes(tx, id),
       openCases: await this.openCases(tx, id),
       pendingOffers: await this.pendingOffers(tx, id),

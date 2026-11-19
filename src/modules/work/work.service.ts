@@ -2,6 +2,7 @@
 // destination, statements/payouts/invoices, firm team, scoped job access. Plain functions over the request tx (WCtx from
 // WorkRunner); every write takes the worker's row lock first. No case status changes happen here (those go through
 // ApplicationsService.transition in the agent/ops modules).
+import { settings as finSettings } from "../finance/finance.store";
 import { createHash } from "node:crypto";
 import { Logger } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -1864,7 +1865,8 @@ export async function licenceRow(tx: Exec, owner: string, e: ExtState, now: numb
     e.licence.push({
       number: `INV-${y}-L${String(seq).padStart(5, "0")}`, // PLACEHOLDER(licence-invoice-format)
       period,
-      amount: WORK.licenceMonthly,
+      // F-WRK-08: the effective finance setting (approved, effective-dated) — the same figure payouts net off.
+      amount: (await finSettings(tx)).licence_fee_monthly ?? WORK.licenceMonthly,
       due: `${period}-${String(WORK.licenceDueDay).padStart(2, "0")}`,
       status: "due",
     });
