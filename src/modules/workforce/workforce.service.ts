@@ -25,6 +25,17 @@ import { AuthService } from "../auth/auth.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { generateId, iso } from "../../core/db/ids";
 
+type Cv = { education: unknown[]; experience: unknown[]; expertise: string[]; years: string; languages: string[]; bio: string };
+/** F-WRK-02: the CV the worker entered at onboarding (agent_profiles.ws.onboarding), normalised. */
+const cvOf = (ws: unknown): Cv => {
+  const ob = ((ws as { onboarding?: { cv?: Partial<Cv>; profile?: { languages?: string[]; bio?: string } } } | null)?.onboarding) ?? {};
+  return {
+    education: ob.cv?.education ?? [], experience: ob.cv?.experience ?? [], expertise: ob.cv?.expertise ?? [], years: ob.cv?.years ?? "",
+    languages: ob.profile?.languages ?? [], bio: ob.profile?.bio ?? "",
+  };
+};
+const cvText = (c: Cv) => [JSON.stringify(c.education), JSON.stringify(c.experience), ...c.expertise, c.bio].join(" ");
+
 export type WorkerStatus =
   "invited" | "onboarding" | "cleared" | "suspended" | "terminated";
 export const NEXT: Record<WorkerStatus, WorkerStatus[]> = {
@@ -244,7 +255,7 @@ export class WorkforceService {
         lastLoginAt: L.get(u.userId) ?? undefined,
         email: u.email ?? "",
       };
-      return { row, w, x, u, p };
+      return { row, w, x, u, p, cv: cvOf(p.ws) };
     });
   }
 
@@ -252,7 +263,7 @@ export class WorkforceService {
     const q = f.q?.trim().toLowerCase();
     return this.tx.run(async (tx) => ({
       items: (await this.rows(tx))
-        .map((r) => r.row)
+        .map((r) => ({ ...r.row, _cv: cvText(r.cv) }))
         .filter((w) =>
           (!f.service || w.services.includes(f.service)) &&
           (!f.language || w.languages.includes(f.language)) &&
@@ -260,8 +271,9 @@ export class WorkforceService {
           (!f.available || (!w.availableFrom && w.load.open < w.load.cap && w.status === "cleared")) &&
           (f.minRating == null || w.rating >= f.minRating) &&
           (!f.type || w.type === f.type) &&
-          (!q || [w.name, w.email, ...w.expertise, ...w.services].some((x) => x.toLowerCase().includes(q))),
-        ),
+          (!q || [w.name, w.email, w._cv, ...w.expertise, ...w.services].some((x) => x.toLowerCase().includes(q))),
+        )
+        .map(({ _cv, ...w }) => w),
     }));
   }
   private async one(tx: Tx, id: string) {
@@ -322,6 +334,28 @@ export class WorkforceService {
       .map((o) => ({ ref: o.id, title: `${o.ref} — offer` }));
   }
 
+  /** F-WRK-11: 90-day first-pass approval, reassignment rate and allocated revenue share. */
+  private async outcomes(tx: Tx, id: string) {
+    const [r] = await tx.execute<{ done: number; first_pass: number; reassigned: number; total: number }>(sql`
+      select
+        (select count(*)::int from applications where assigned_agent_id = ${id} and status = 'completed_delivered' and completed_at > now() - interval '90 days') done,
+        (select count(*)::int from applications a join application_feedback f on f.application_id = a.application_id
+           where a.assigned_agent_id = ${id} and f.review = 'accepted' and a.completed_at > now() - interval '90 days'
+           and not exists (select 1 from ops_records r where r.kind = 'review' and r.ref = a.code and (r.data->>'version')::int > 1)) first_pass,
+        (select count(distinct application_id)::int from application_assignment_history where previous_agent_id = ${id} and new_agent_id is not null and created_at > now() - interval '90 days') reassigned,
+        (select count(distinct application_id)::int from application_assignment_history where (new_agent_id = ${id} or previous_agent_id = ${id}) and created_at > now() - interval '90 days') total`);
+    const allocs = await tx.execute<{ amount: number }>(sql`
+      select coalesce(sum((s->>'amount')::int), 0)::int amount from finance_records fr, jsonb_array_elements(fr.data->'shares') s
+      where fr.kind = 'allocation' and fr.status <> 'voided' and s->>'workerId' = ${id} and (fr.data->>'frozenAt') > (now() - interval '90 days')::text`);
+    const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : null);
+    return {
+      completed90d: r.done,
+      firstPassPct: pct(r.first_pass, r.done),
+      reassignmentPct: pct(r.reassigned, r.total),
+      revenue90d: allocs[0]?.amount ?? 0,
+    };
+  }
+
   private privateOf(r: Awaited<ReturnType<WorkforceService["one"]>>) {
     let p = { address: "—", phone: r.u.phoneE164 ?? "—", nationalId: "—" };
     if (r.w.privateEnc) {
@@ -371,6 +405,9 @@ export class WorkforceService {
           .filter((c) => c.signedAt)
           .map((c) => ({ id: c.id, name: `${c.title} v${c.version}.pdf` })),
       ],
+      // F-WRK-02 structured CV (from onboarding), F-WRK-11 outcome KPIs.
+      cv: r.cv,
+      outcomes: await this.outcomes(tx, id),
       openCases: await this.openCases(tx, id),
       pendingOffers: await this.pendingOffers(tx, id),
       sessionsRevoked: !!r.w.sessionsRevoked,
