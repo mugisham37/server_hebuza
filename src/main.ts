@@ -58,10 +58,6 @@ async function bootstrap() {
     if (req.url.startsWith("/api/") && !reply.hasHeader("cache-control")) void reply.header("cache-control", "no-store");
   });
   await app.register(cookie);
-  // Africa's Talking delivery reports + inbound SMS post form-encoded bodies (notifications webhooks).
-  app.getHttpAdapter().getInstance().removeContentTypeParser("application/x-www-form-urlencoded"); // Nest registers its own; ours returns a flat object
-  app.getHttpAdapter().getInstance().addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 16_384 }, (_req, body, done) =>
-    done(null, Object.fromEntries(new URLSearchParams(String(body)))));
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 5, fields: 20 } });
   app.enableCors({ origin: cfg.get("WEB_ORIGIN", { infer: true }).split(",").map((o) => o.trim()), credentials: true });
   app.setGlobalPrefix("api", { exclude: ["health", "health/ready"] });
@@ -79,6 +75,12 @@ async function bootstrap() {
         return Readable.from([req.rawBody]);
       }] as never;
   });
+
+  await app.init(); // Nest registers its default urlencoded parser here; replace it (ours returns a flat object)
+  app.getHttpAdapter().getInstance().removeContentTypeParser("application/x-www-form-urlencoded");
+  // Africa's Talking delivery reports + inbound SMS post form-encoded bodies (notifications webhooks).
+  app.getHttpAdapter().getInstance().addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 16_384 }, (_req, body, done) =>
+    done(null, Object.fromEntries(new URLSearchParams(String(body)))));
 
   // "::" is dual-stack: Railway private networking is IPv6, public traffic IPv4.
   await app.listen({ port: cfg.get("PORT", { infer: true }), host: "::" });
