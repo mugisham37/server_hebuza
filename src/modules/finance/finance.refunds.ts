@@ -96,17 +96,15 @@ const OPEN = [
   "execution_failed",
 ];
 
-/** Case status → refund policy key. shortcut: 4 policy stages; add approved_assigned 90% when the policy table grows. */
+/** Case status → refund policy key (spec RFD §12): no work 100%, assigned 90%, in progress 50%, internal review or
+ *  with an external institution up to 25%, delivered 0 (a quality-dispute decision overrides through review/adjust). */
 export const stageOf = (status?: string) => {
   const s = status ?? "completed_delivered";
-  return /^(received|under_review|awaiting_|approved_assigned)/.test(s) &&
-    s !== "awaiting_internal_review"
-    ? "before_work"
-    : s === "in_progress"
-      ? "in_progress"
-      : s === "completed_delivered"
-        ? "completed"
-        : "submitted";
+  if (s === "approved_assigned") return "assigned";
+  if (s === "in_progress") return "in_progress";
+  if (s === "completed_delivered") return "completed";
+  if (s === "awaiting_internal_review" || s === "awaiting_external_institution") return "submitted";
+  return /^(received|under_review|awaiting_)/.test(s) ? "before_work" : "submitted";
 };
 /** Split a VAT-inclusive refund amount back into eligible part (+ pass-through when unspent). */
 export function partsOf(

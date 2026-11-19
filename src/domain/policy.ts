@@ -58,7 +58,7 @@ export const POLICY = {
   /** PLACEHOLDER(rdb-annual-return-date) spec §12 says "per RDB rule"; month/day unknown. */
   rdbAnnualReturn: { month: 4, day: 30 },
   /** PLACEHOLDER(refund-policy) max refundable share of the eligible fee by case stage (bps). */
-  refundPolicyBps: { before_work: 10_000, in_progress: 5000, submitted: 2500, completed: 0 } as Record<string, number>,
+  refundPolicyBps: { before_work: 10_000, assigned: 9000, in_progress: 5000, submitted: 2500, completed: 0 } as Record<string, number>,
   // ---- Stage 6 system admin (plan 06 §14.2).
   /** D-3 PLACEHOLDER(approval-expiry) two-person requests expire after this. */
   changeTtlMs: 48 * 3600_000,

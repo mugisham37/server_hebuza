@@ -242,6 +242,7 @@ export const POLICY = {
   paymentIntentMs: 3_600_000,
   refundPolicyBps: {
     before_work: 10_000,
+    assigned: 9000,
     in_progress: 5000,
     submitted: 2500,
     completed: 0,
