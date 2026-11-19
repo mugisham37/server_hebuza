@@ -989,6 +989,8 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 	usedAt: timestamp("used_at", { withTimezone: true, mode: 'string' }),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 	purpose: varchar({ length: 16 }).notNull(),
+	/** Staff member who issued an invite or forced reset; null = self-service. */
+	issuedBy: varchar("issued_by", { length: 64 }),
 }, (table) => [
 	index("ix_password_reset_tokens_user_id").using("btree", table.userId.asc().nullsLast()),
 	foreignKey({

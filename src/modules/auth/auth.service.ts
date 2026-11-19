@@ -287,6 +287,7 @@ export class AuthService {
             live.map((s) => s.id),
           ),
         );
+    await this.tokens.denySessions(live.map((s) => s.id));
     return live.length;
   }
 
@@ -334,13 +335,14 @@ export class AuthService {
   }
 
   /** Reset link, or with `purpose: "invite"` the first set-password link of a new account (invite wording). */
-  async issueResetToken(tx: Tx, u: User, ttlS = CFG.resetTtlS, purpose: "reset" | "invite" = "reset") {
+  async issueResetToken(tx: Tx, u: User, ttlS = CFG.resetTtlS, purpose: "reset" | "invite" = "reset", issuedBy: string | null = null) {
     const token = opaqueToken("rst");
     await tx.insert(passwordResetTokens).values({
       id: genId("prt"),
       userId: u.userId,
       tokenHash: sha256(token),
       purpose,
+      issuedBy,
       expiresAt: iso(new Date(Date.now() + ttlS * 1000)),
       createdAt: iso(),
     });
@@ -787,7 +789,7 @@ export class AuthService {
           u.role === "staff:admin" || u.role === "staff:sysadmin"
             ? ("admin" as const)
             : ("agent" as const),
-        issuedBy: "Your admin", // shortcut: password_reset_tokens has no issued_by column.
+        issuedBy: (x.r.issuedBy && (await this.getUser(tx, x.r.issuedBy))?.name) || "Your admin",
         issuedAt: new Date(x.r.createdAt).toISOString(),
         expiresAt: new Date(x.r.expiresAt).toISOString(),
       };

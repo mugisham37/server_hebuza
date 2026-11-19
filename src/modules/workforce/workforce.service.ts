@@ -552,7 +552,7 @@ export class WorkforceService {
       await this.saveWf(tx, id, w);
       if (b.type === "external") await onExternalCreated(tx, id, email);
       // Set-password link (staff → /team/set-password) mailed through the auth outbox.
-      await this.auth.issueResetToken(tx, u, INVITE_TTL_S, "invite");
+      await this.auth.issueResetToken(tx, u, INVITE_TTL_S, "invite", s.id);
       await this.audit.record(tx, {
         action: "workforce.worker.created",
         entity: "workforce.worker",

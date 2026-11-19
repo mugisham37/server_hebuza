@@ -128,7 +128,7 @@ export class AuthAdminService {
       if (u.userId === me.id)
         throw new AppError(403, "self_grant", "Not on your own account.");
       await this.auth.revokeAllSessions(tx, u.userId);
-      await this.auth.issueResetToken(tx, u, 24 * 3600);
+      await this.auth.issueResetToken(tx, u, 24 * 3600, "reset", me.id);
       return {};
     });
   }

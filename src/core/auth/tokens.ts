@@ -1,4 +1,6 @@
-import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional, type OnModuleInit } from "@nestjs/common";
+import { REDIS } from "../queue/queue.module";
+type RedisLike = { get(k: string): Promise<string | null>; set(k: string, v: string, mode: "EX", ttl: number): Promise<unknown> };
 import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI, generateKeyPair, exportJWK, calculateJwkThumbprint, type JWK, type CryptoKey } from "jose";
@@ -30,7 +32,32 @@ export class TokenService implements OnModuleInit {
   private jwk!: JWK;
   private prevJwk?: JWK;
 
-  constructor(private readonly config: ConfigService<Env, true>, private readonly txs: TxService) {}
+  constructor(
+    private readonly config: ConfigService<Env, true>,
+    private readonly txs: TxService,
+    @Optional() @Inject(REDIS) private readonly redis?: Promise<RedisLike> | RedisLike,
+  ) {}
+
+  /** Revoked sessions: their still-valid access tokens are refused until they would have expired anyway. */
+  async denySessions(sids: string[]) {
+    if (!sids.length || !this.redis) return;
+    try {
+      const r = await this.redis;
+      await Promise.all(sids.map((sid) => r.set(`auth:deny:${sid}`, "1", "EX", ACCESS_TTL_S)));
+    } catch (e) {
+      this.log.error(`session denylist write failed: ${(e as Error).message}`);
+    }
+  }
+  /** Fail-open only when Redis is unreachable (logged): the token is still signed and short-lived. */
+  private async denied(sid: string) {
+    if (!this.redis) return false;
+    try {
+      return (await (await this.redis).get(`auth:deny:${sid}`)) === "1";
+    } catch (e) {
+      this.log.warn(`session denylist unavailable, allowing: ${(e as Error).message}`);
+      return false;
+    }
+  }
 
   async onModuleInit() {
     const pem = this.config.get("JWT_PRIVATE_KEY", { infer: true });
@@ -75,9 +102,10 @@ export class TokenService implements OnModuleInit {
     return this.sign({ typ: "access", roles: u.roles, scopes: u.scopes, sid: u.sid, stepUpAt: u.stepUpAt, act: u.act, mfa_enrolled: u.mfa, active_role: u.activeRole }, u.id, ttl);
   }
 
-  // shortcut: access tokens are stateless, so a revoked session keeps access ≤ 10 min; add a Redis sid denylist if that window matters.
+  /** Signature + claims, then the revoked-session denylist (checked once per request by the guard). */
   async verifyAccess(token: string): Promise<SessionUser> {
     const p = await this.verify(token, "access");
+    if (typeof p.sid === "string" && (await this.denied(p.sid))) throw unauth("Session revoked");
     const scopes = (p.scopes ?? {}) as SessionUser["scopes"];
     return { id: p.sub, sid: p.sid, roles: normalizeRoles({ roles: p.roles }), scopes, stepUpAt: typeof p.stepUpAt === "number" ? p.stepUpAt : undefined, act: typeof p.act === "string" ? p.act : undefined, mfa: typeof p.mfa_enrolled === "boolean" ? p.mfa_enrolled : undefined, activeRole: typeof p.active_role === "string" ? (p.active_role as SessionUser["roles"][number]) : undefined };
   }
@@ -159,5 +187,6 @@ export class TokenService implements OnModuleInit {
     const now = new Date().toISOString();
     await tx.update(refreshTokens).set({ revokedAt: now }).where(and(eq(refreshTokens.familyId, sid), isNull(refreshTokens.revokedAt)));
     await tx.update(authSessions).set({ revokedAt: now }).where(and(eq(authSessions.id, sid), isNull(authSessions.revokedAt)));
+    await this.denySessions([sid]);
   }
 }
