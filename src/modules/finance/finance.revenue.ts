@@ -91,7 +91,7 @@ export type Dest = PayoutLine["destination"] & {
 };
 
 const month = (iso: string) => iso.slice(0, 7);
-const saveAlloc = (db: Exec, a: Alloc) =>
+export const saveAlloc = (db: Exec, a: Alloc) =>
   put(db, "allocation", a.id, a, a.caseRef);
 const saveRule = (db: Exec, r: RuleRec) => put(db, "rule", r.id, r);
 const saveAdj = (db: Exec, a: Adj) =>

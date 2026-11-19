@@ -37,7 +37,7 @@ import {
   notFound,
 } from "../../core/http/errors";
 import type { SessionUser } from "../../core/http/context";
-import { getPlan, iso } from "../subscriptions/subscriptions.service";
+import { checkoutAmount, getPlan, iso } from "../subscriptions/subscriptions.service";
 import {
   ACCOUNTS,
   cashAccount,
@@ -377,7 +377,7 @@ export class PaymentsService {
         await this.assertNoLivePayment(tx, code);
         return this.insertPending(tx, {
           code,
-          amount: plan.amountRwf,
+          amount: await checkoutAmount(tx, me.id, plan), // F-SUB-08 prorated upgrade
           government: 0,
           platform: 0,
           clientId: me.id,

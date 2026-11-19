@@ -49,6 +49,8 @@ import { offerNow, type OfferData } from "../ops/ops.cases";
 import { openApproval, openReview, type Leave, type Review, type Ticket } from "../ops/ops.manage";
 import type { ApplicationsService } from "../applications/applications.service";
 import { textPdf, type ChatService } from "../chat/chat.service";
+import { all as finAll } from "../finance/finance.store";
+import type { Alloc, Batch } from "../finance/finance.revenue";
 import type { StorageService } from "../../core/storage/storage.service";
 import * as work from "./agent.lib";
 import { agentMoves, CONFLICTS, DECLINE_REASONS, groupOf, shareOf } from "./agent.lib";
@@ -2038,77 +2040,55 @@ export async function addClientNote(
   return { id: n.id, text: n.data.text, at: n.createdAt, by };
 }
 
-// ── earnings (from payment_splits: the frozen worker share per settled payment, P4) ─────────────────────
+// ── earnings (F-REV-11: finance allocations → batches; states match REV: allocated/approved/scheduled/paid/deducted) ──
 const monthOf = (x: string) => x.slice(0, 7);
+const REV_STATE: Record<string, string> = {
+  pending_review: "allocated", reviewed: "allocated", on_hold: "allocated",
+  approved_for_payment: "approved", in_batch: "scheduled", paid: "paid", voided: "deducted",
+};
 async function allocations(db: Exec, s: Session) {
-  const rows = await db
-    .select()
-    .from(paymentSplits)
-    .where(eq(paymentSplits.workerId, s.id))
-    .orderBy(desc(paymentSplits.frozenAt))
-    .limit(2000);
-  const apps = rows.length
-    ? await db
-        .select()
-        .from(applications)
-        .where(
-          inArray(
-            applications.code,
-            rows.map((r) => r.applicationCode).filter((x): x is string => !!x),
-          ),
-        )
-    : [];
-  const byCode = new Map(apps.map((a) => [a.code, a]));
-  const [cls, svcs, qs, reviews] = await Promise.all([
-    clientsOf(db, apps),
-    servicesBySlug(
-      db,
-      apps.map((a) => a.serviceSlug),
-    ),
-    recList<{ reason: string; status: string; at: string; ticketRef: string }>(
-      db,
-      "alloc_question",
-      { ownerId: s.id },
-    ),
-    recList<Review>(db, "review", { refs: apps.map((a) => a.code) }),
+  const [allocs, batches] = await Promise.all([
+    finAll<Alloc>(db, "allocation").then((xs) => xs.filter((x) => x.shares.some((sh) => sh.workerId === s.id))),
+    finAll<Batch>(db, "batch"),
   ]);
-  return rows.map((r) => {
-    const app = r.applicationCode ? byCode.get(r.applicationCode) : undefined;
-    const rv = reviews.find((x) => x.ref === r.applicationCode);
-    const pct = rv?.data.allocation?.reviewed
-      ? (rv.data.allocation.shares.find((x) => x.id === s.id)?.pct ?? 100)
-      : 100;
-    const amount = Math.round((r.workerAmountRwf * pct) / 100);
-    // Payout runs are finance's (P6); until a run pays it, a frozen split is "approved", an unfrozen one "allocated".
-    const state = r.frozenAt ? "approved" : "allocated";
-    const q = qs.find((x) => x.ref === r.id);
-    return {
-      id: r.id,
-      ref: r.applicationCode ?? "",
-      service: app
-        ? (svcs.get(app.serviceSlug)?.name ?? app.serviceName)
-        : (r.applicationCode ?? ""),
-      client: app ? (cls.get(clientKey(app))?.name ?? "—") : "—",
-      eligible: r.baseAmountRwf,
-      deducted: r.workerAmountRwf - amount,
-      amount,
-      state,
-      at: r.frozenAt ?? app?.updatedAt ?? iso(),
-      approvedAt: r.frozenAt,
-      approvedBy: null,
-      mine: app?.assignedAgentId === s.id,
-      payout: null,
-      question: q
-        ? {
-            id: q.id,
-            ref: q.data.ticketRef,
-            reason: q.data.reason,
-            status: q.data.status,
-            at: q.data.at,
-          }
-        : null,
-    };
-  });
+  const codes = allocs.map((x) => x.caseRef).filter((c) => !c.startsWith("PLAN:"));
+  const apps = codes.length ? await db.select().from(applications).where(inArray(applications.code, codes)) : [];
+  const byCode = new Map(apps.map((a) => [a.code, a]));
+  const [cls, svcs, qs] = await Promise.all([
+    clientsOf(db, apps),
+    servicesBySlug(db, apps.map((a) => a.serviceSlug)),
+    recList<{ reason: string; status: string; at: string; ticketRef: string }>(db, "alloc_question", { ownerId: s.id }),
+  ]);
+  return allocs
+    .sort((x, y) => y.frozenAt.localeCompare(x.frozenAt))
+    .map((r) => {
+      const app = byCode.get(r.caseRef);
+      const share = r.shares.find((x) => x.workerId === s.id)!;
+      const state = REV_STATE[r.status] ?? "allocated";
+      const batch = r.batchNo ? batches.find((b) => b.no === r.batchNo) : undefined;
+      const q = qs.find((x) => x.ref === r.id);
+      const ded = r.deductions.reduce((t, d) => t + d.amount, 0);
+      return {
+        id: r.id,
+        ref: r.caseRef,
+        service: app ? (svcs.get(app.serviceSlug)?.name ?? app.serviceName) : r.caseRef,
+        client: app ? (cls.get(clientKey(app))?.name ?? "—") : "—",
+        eligible: r.eligible,
+        deducted: ded,
+        amount: state === "deducted" ? 0 : share.amount,
+        state,
+        at: r.frozenAt,
+        approvedAt: r.approvedBy ? r.frozenAt : null,
+        approvedBy: r.approvedBy?.name ?? null,
+        mine: app?.assignedAgentId === s.id,
+        payout: batch
+          ? { date: batch.meta?.[batch.lines.find((l) => l.workerId === s.id)?.id ?? ""]?.paidAt ?? `${batch.period}-01`, ref: batch.no, status: r.status === "paid" ? ("paid" as const) : ("pending" as const) }
+          : null,
+        question: q
+          ? { id: q.id, ref: q.data.ticketRef, reason: q.data.reason, status: q.data.status, at: q.data.at }
+          : null,
+      };
+    });
 }
 export async function earnings(db: Exec, s: Session, month: string) {
   const a = await me(db, s);
@@ -2151,9 +2131,23 @@ export async function statements(db: Exec, s: Session) {
 }
 export async function payouts(db: Exec, s: Session) {
   const a = await me(db, s);
-  // shortcut: payout runs live in finance (P6); none are listed here until that module exposes them.
+  const items = (await finAll<Batch>(db, "batch"))
+    .filter((b) => b.status !== "draft" && b.status !== "rejected")
+    .flatMap((b) =>
+      b.lines
+        .filter((l) => l.workerId === s.id)
+        .map((l) => ({
+          id: l.id,
+          date: b.meta?.[l.id]?.paidAt ?? `${b.period}-01`,
+          method: l.method === "bank" ? "Bank" : l.method === "airtel_money" ? "Airtel Money" : "MTN MoMo",
+          ref: l.providerRef ?? b.no,
+          amount: l.net,
+          status: l.status === "paid" ? ("paid" as const) : ("pending" as const),
+        })),
+    )
+    .sort((x, y) => y.date.localeCompare(x.date));
   return {
-    items: [] as unknown[],
+    items,
     method: ws(a, "payoutMethod", {
       kind: "momo",
       label: "MTN MoMo",

@@ -12,6 +12,7 @@ import { AuditService } from "../../core/db/audit";
 import { AppError } from "../../core/http/errors";
 import { PublicCache } from "../catalogue/cache";
 import { generateId } from "../../core/db/ids";
+import { prorate } from "@/domain/finance/money";
 
 type Exec = Tx;
 const err = { notFound: (m: string) => new AppError(404, "not_found", m) };
@@ -189,6 +190,8 @@ export async function getMine(db: Exec, clientId: string) {
     applicationsUsedThisPeriod: used,
     usageWarning: !!cap && used >= cap * 0.8,
     cancelAtPeriodEnd: s.cancelAtPeriodEnd,
+    scheduledPlanId: s.scheduledPlanId,
+    pausedUntil: iso(s.pausedUntil),
     graceEndsAt:
       s.status === "past_due"
         ? new Date(Date.parse(s.currentPeriodEnd) + GRACE_DAYS * DAY_MS).toISOString()
@@ -240,18 +243,28 @@ export async function activateFromPayment(
     )
       return id;
     // F-SUB-04: paying a renewal of the same plan extends from the period end (no days lost); anything else starts now.
+    const prev = await getPlan(db, existing.planId);
+    // F-SUB-08: an upgrade paid mid-period (prorated at checkout) keeps the period; the plan changes now.
+    const upgrade =
+      existing.planId !== plan.planId &&
+      existing.status === "active" &&
+      (prev?.amountRwf ?? 0) > 0 &&
+      plan.amountRwf > (prev?.amountRwf ?? 0) &&
+      covers(existing, now.getTime());
     const renewal =
-      existing.planId === plan.planId &&
+      (existing.planId === plan.planId || existing.scheduledPlanId === plan.planId) &&
       (existing.status === "active" || existing.status === "past_due") &&
       covers(existing, now.getTime());
     if (renewal) end = new Date(Date.parse(existing.currentPeriodEnd) + PERIOD_MS).toISOString();
+    else if (upgrade) end = existing.currentPeriodEnd;
     await db
       .update(clientSubscriptions)
       .set({
         planId: plan.planId,
         status: "active",
         // startedAt is the current period's start (usage is counted from it).
-        startedAt: renewal ? existing.currentPeriodEnd : now.toISOString(),
+        startedAt: renewal ? existing.currentPeriodEnd : upgrade ? existing.startedAt : now.toISOString(),
+        scheduledPlanId: null,
         currentPeriodEnd: end,
         lastRecordedPaymentAt: a.paidAt,
         cancelAtPeriodEnd: false,
@@ -325,6 +338,45 @@ export async function assertCanSubmit(
     );
 }
 
+/** F-SUB-08 checkout amount: an upgrade inside a live paid period pays the prorated difference for the days left. */
+export async function checkoutAmount(db: Exec, clientId: string, plan: Plan, now = Date.now()) {
+  const s = await byClient(db, clientId);
+  if (!s || s.status !== "active" || s.planId === plan.planId || !covers(s, now)) return plan.amountRwf;
+  const prev = await getPlan(db, s.planId);
+  if (!prev || prev.amountRwf <= 0 || plan.amountRwf <= prev.amountRwf) return plan.amountRwf;
+  const left = Math.max(0, Math.ceil((Date.parse(s.currentPeriodEnd) - now) / DAY_MS));
+  return Math.max(1, prorate(prev.amountRwf, plan.amountRwf, left, PERIOD_MS / DAY_MS));
+}
+
+/** F-SUB-08: downgrade → scheduled for period end; upgrade → the client pays the prorated amount at checkout. */
+export async function changePlan(db: Exec, clientId: string, planId: string, audit: AuditService) {
+  const s = await expireIfLapsed(db, await byClient(db, clientId));
+  const plan = await getPlan(db, planId);
+  if (!plan || unavailableReason(plan)) throw err.notFound("This plan is no longer available.");
+  if (!s || s.status !== "active" || s.planId === planId)
+    return { action: "checkout" as const, planId, amountRwf: plan.amountRwf, effectiveAt: null };
+  const prev = await getPlan(db, s.planId);
+  if (plan.amountRwf < (prev?.amountRwf ?? 0)) {
+    await db.update(clientSubscriptions).set({ scheduledPlanId: planId, updatedAt: new Date().toISOString() })
+      .where(eq(clientSubscriptions.subscriptionId, s.subscriptionId));
+    await audit.record(db, { action: "subscription.downgrade_scheduled", entity: "client_subscription", entityId: s.subscriptionId, after: { planId, at: s.currentPeriodEnd } });
+    return { action: "scheduled" as const, planId, amountRwf: plan.amountRwf, effectiveAt: iso(s.currentPeriodEnd) };
+  }
+  return { action: "checkout" as const, planId, amountRwf: await checkoutAmount(db, clientId, plan), effectiveAt: null };
+}
+
+/** F-SUB-09 (finance): pause coverage for `days`; the period end moves by the same days so nothing is lost. */
+export async function pause(db: Exec, subscriptionId: string, days: number, actorId: string, audit: AuditService) {
+  const [s] = await db.select().from(clientSubscriptions).where(eq(clientSubscriptions.subscriptionId, subscriptionId)).for("update");
+  if (!s || s.status !== "active") throw new AppError(409, "conflict", "Only an active plan can be paused.");
+  const until = new Date(Date.now() + days * DAY_MS).toISOString();
+  const end = new Date(Date.parse(s.currentPeriodEnd) + days * DAY_MS).toISOString();
+  await db.update(clientSubscriptions).set({ status: "paused", pausedUntil: until, currentPeriodEnd: end, updatedAt: new Date().toISOString() })
+    .where(eq(clientSubscriptions.subscriptionId, subscriptionId));
+  await audit.record(db, { action: "subscription.paused", entity: "client_subscription", entityId: subscriptionId, after: { until, by: actorId } });
+  return { subscriptionId, status: "paused", pausedUntil: until, periodEnd: end };
+}
+
 /** F-SUB-07: cancel at period end (coverage continues) or now (coverage stops, no refund by default); undo before the end. */
 export async function cancelMine(
   db: Exec,
@@ -375,6 +427,11 @@ export async function sweep(db: Exec, notify: Notify, now = Date.now()) {
     .from(clientSubscriptions)
     .where(inArray(clientSubscriptions.status, [...LIVE]));
   let moved = 0, reminded = 0, warned = 0;
+  // F-SUB-09: a pause ends by itself.
+  const resumed = await db.update(clientSubscriptions).set({ status: "active", pausedUntil: null, updatedAt: new Date(now).toISOString() })
+    .where(and(eq(clientSubscriptions.status, "paused"), lte(clientSubscriptions.pausedUntil, new Date(now).toISOString())))
+    .returning({ id: clientSubscriptions.subscriptionId });
+  moved += resumed.length;
   for (const s0 of rows) {
     const s = await expireIfLapsed(db, s0);
     if (!s) continue;
@@ -383,11 +440,20 @@ export async function sweep(db: Exec, notify: Notify, now = Date.now()) {
       if (s.status === "expired" || s.status === "cancelled")
         await notify(db, { userId: s.clientId, kind: `subscription_${s.status}`, title: s.status === "expired" ? "Your plan has expired" : "Your plan has been cancelled", link: "/billing", data: { type: `subscription.${s.status}` } });
     }
-    if (!LIVE.has(s.status) || s.status === "trial") continue;
+    if (!LIVE.has(s.status)) continue;
     const end = Date.parse(s.currentPeriodEnd);
     const off = Math.floor((now - end) / DAY_MS);
     const sent = (s.remindersSent as string[]) ?? [];
     const key = `${s.currentPeriodEnd.slice(0, 10)}:${off}`;
+    if (s.status === "trial") {
+      // Trial ending: T-3 and T-1.
+      if ((off === -3 || off === -1) && !sent.includes(key)) {
+        await notify(db, { userId: s.clientId, kind: "trial_ending", title: `Your free trial ends in ${-off} day${off === -1 ? "" : "s"}`, link: "/pricing", data: { type: "trial.ending", vars: { days: String(-off) } } });
+        await db.update(clientSubscriptions).set({ remindersSent: [...sent, key] }).where(eq(clientSubscriptions.subscriptionId, s.subscriptionId));
+        reminded++;
+      }
+      continue;
+    }
     const wanted = s.cancelAtPeriodEnd ? off === -3 : REMINDER_OFFSETS.includes(off);
     if (wanted && !sent.includes(key)) {
       const title =
@@ -419,7 +485,12 @@ export async function dueForRenewal(db: Exec, leadDays = 7, now = Date.now()) {
         lte(clientSubscriptions.currentPeriodEnd, new Date(now + leadDays * DAY_MS).toISOString()),
       ),
     );
-  return rows.filter((r) => r.p.amountRwf > 0);
+  const out = [];
+  for (const r of rows) {
+    const p = r.s.scheduledPlanId ? ((await getPlan(db, r.s.scheduledPlanId)) ?? r.p) : r.p;
+    if (p.amountRwf > 0) out.push({ s: r.s, p });
+  }
+  return out;
 }
 
 @Injectable()
@@ -450,6 +521,13 @@ export class SubscriptionsService {
   cancel(clientId: string, b: { when: "period_end" | "now"; reason: string }) {
     return this.tx.run((t) => cancelMine(t, clientId, b, this.audit));
   }
+  changePlan(clientId: string, planId: string) {
+    return this.tx.run((t) => changePlan(t, clientId, planId, this.audit));
+  }
+  pause(subscriptionId: string, days: number, actorId: string) {
+    return this.tx.run((t) => pause(t, subscriptionId, days, actorId, this.audit));
+  }
+  checkoutAmount = checkoutAmount;
   undoCancel(clientId: string) {
     return this.tx.run((t) => undoCancel(t, clientId, this.audit));
   }

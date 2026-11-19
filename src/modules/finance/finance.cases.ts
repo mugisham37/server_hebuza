@@ -1,14 +1,16 @@
 // Finance ↔ real cases (G0): priced lines from the catalogue (F-FIN-03), the case invoice created when an application
 // becomes payable and settled from gateway payments, scheduled payment reminders (F-FIN-16) and the allocation trigger
 // (F-REV-03). Everything here runs as the system actor from FinanceJobs; request handlers reuse casePriceLines.
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, or } from "drizzle-orm";
+import type { RefundReason } from "@/domain/finance/types";
+import { requestRefund, saveRefund, type R } from "./finance.refunds";
 import type { Tx as Exec } from "../../core/db/db";
-import { applications, servicePricingTiers, services } from "@/db/schema";
+import { applications, clientSubscriptions, servicePricingTiers, services } from "@/db/schema";
 import { priceLines } from "@/domain/finance/price";
 import { splitVat } from "@/domain/money";
 import type { DocLine } from "@/domain/finance/types";
 import { allocationDue } from "@/domain/finance/states";
-import { addDays, all, DAY, nowIso, today, type Fin } from "./finance.store";
+import { addDays, all, DAY, nowIso, one, today, type Fin } from "./finance.store";
 import { dueForRenewal } from "../subscriptions/subscriptions.service";
 import {
   addClientCredit,
@@ -20,7 +22,9 @@ import {
   saveInv,
   type Inv,
 } from "./finance.billing";
-import { allocateCase } from "./finance.revenue";
+import { allocateCase, saveAlloc, type Alloc, type RuleRec } from "./finance.revenue";
+import { allocate } from "@/domain/finance/money";
+import { resolveRule } from "@/domain/finance/rules";
 
 const appByCode = (db: Exec, code: string) =>
   db
@@ -264,4 +268,72 @@ export async function planSettled(f: Fin, d: { clientId: string; paymentId: stri
   open.rev++;
   await saveInv(f.db, open);
   f.rec("invoice.payment_applied", "invoice", keyOf(open), null, { status: "paid", paymentId: d.paymentId });
+}
+
+// ---------------------------------------------------------------- refund hooks (REQ-11 early cancel, F-RFD-08 dispute)
+export type CaseRefundRequest = {
+  /** Application id or code. */
+  applicationId: string;
+  reason: RefundReason;
+  note: string;
+  auto: "cancelled" | "dispute";
+};
+/**
+ * Other modules call this inside their own tx: the refund request exists iff that tx commits. FinanceJobs then
+ * opens it against the case's paid invoice (normal SM → finance approval chain applies).
+ */
+export const createRefundRequest = (
+  tx: Exec,
+  outbox: { add: (tx: Exec, e: { type: string; payload: unknown }) => Promise<void> },
+  r: CaseRefundRequest,
+) => outbox.add(tx, { type: "finance.refund.case_requested", payload: r });
+
+/** Worker side of createRefundRequest; idempotent (an open refund on the invoice is left alone). */
+export async function openCaseRefund(f: Fin, r: CaseRefundRequest) {
+  const [app] = await f.db
+    .select({ code: applications.code })
+    .from(applications)
+    .where(or(eq(applications.applicationId, r.applicationId), eq(applications.code, r.applicationId)));
+  if (!app) return null;
+  const inv = (await caseInvoices(f, app.code)).find((i) => i.amountPaid > 0);
+  if (!inv) return null;
+  try {
+    const row = await requestRefund(f, { invoiceNo: inv.no!, reason: r.reason, note: r.note });
+    const saved = await one<R>(f.db, "refund", row.no, true);
+    if (saved) await saveRefund(f.db, { ...saved, auto: r.auto });
+    return row.no;
+  } catch (e) {
+    if ((e as { errorType?: string }).errorType === "refund_open") return null;
+    throw e;
+  }
+}
+
+/** REV-03 for plans: each paid plan invoice allocates its eligible fee to the subscription's dedicated agent (once). */
+export async function planAllocations(f: Fin) {
+  const [invs, allocs, rules, subs] = await Promise.all([
+    all<Inv>(f.db, "invoice"),
+    all<Alloc>(f.db, "allocation"),
+    all<RuleRec>(f.db, "rule"),
+    f.db.select({ id: clientSubscriptions.subscriptionId, agent: clientSubscriptions.dedicatedAgentId }).from(clientSubscriptions),
+  ]);
+  const agentOf = new Map(subs.map((s) => [s.id, s.agent]));
+  let made = 0;
+  for (const i of invs.filter((x) => x.series === "plan" && x.status === "paid" && x.no && x.subscriptionId)) {
+    const ref = `PLAN:${i.no}`;
+    const agent = agentOf.get(i.subscriptionId!.split("@")[0]);
+    if (!agent || allocs.some((a) => a.caseRef === ref && a.status !== "voided")) continue;
+    const rule = resolveRule(rules, { agentId: agent, date: i.issuedAt ?? today() });
+    const { netBase, pool, hebuza } = allocate(i.totals.eligible, [], rule.agentPct);
+    const a: Alloc = {
+      id: `al-${Date.now().toString(36)}${made}`,
+      caseRef: ref, invoiceNos: [i.no!], eligible: i.totals.eligible, deductions: [], netBase,
+      ruleId: rule.id, agentPct: rule.agentPct, pool, hebuza,
+      shares: [{ workerId: agent, kind: f.D.workerKind(agent), pct: 10_000, amount: pool }],
+      status: "pending_review", frozenAt: nowIso(), rev: 1,
+    };
+    await saveAlloc(f.db, a);
+    f.rec("allocation.created", "allocation", a.id, null, { pool, rule: rule.id, plan: i.subscriptionId });
+    made++;
+  }
+  return made;
 }

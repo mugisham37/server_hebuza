@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { CancelDto, CheckoutOut, Mine, PlanList } from "./subscriptions.dto";
+import { CancelDto, ChangeOut, ChangePlanDto, CheckoutOut, Mine, PauseDto, PauseOut, PlanList } from "./subscriptions.dto";
 import { SubscriptionsService } from "./subscriptions.service";
 
 @Controller()
@@ -38,5 +38,15 @@ export class SubscriptionsController {
   @Route({ auth: ["client"], limit: "write", out: Mine })
   undoCancel(@CurrentUser() me: SessionUser) {
     return this.svc.undoCancel(me.id);
+  }
+  @Post("me/subscription/change")
+  @Route({ auth: ["client"], limit: "write", out: ChangeOut })
+  change(@Body() b: ChangePlanDto, @CurrentUser() me: SessionUser) {
+    return this.svc.changePlan(me.id, b.planId);
+  }
+  @Post("finance/subscriptions/:id/pause")
+  @Route({ auth: ["staff:finance"], limit: "write", out: PauseOut })
+  pause(@Param("id") id: string, @Body() b: PauseDto, @CurrentUser() me: SessionUser) {
+    return this.svc.pause(id, b.days, me.id);
   }
 }

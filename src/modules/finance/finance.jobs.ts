@@ -13,7 +13,7 @@ import { StorageService } from "../../core/storage/storage.service";
 import type { Tx } from "../../core/db/db";
 import { open, where, type Fin } from "./finance.store";
 import { finDeps } from "./finance.runner";
-import { caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
+import { planAllocations, openCaseRefund, type CaseRefundRequest, caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
 import { expirePending, returnStaleVerifications } from "./finance.payments";
 import { bookingRefund, claimDisbursement, failStaleClaims, settleDisbursement, type BookingRefund, type R } from "./finance.refunds";
 import { applyDueSettings } from "./finance.core";
@@ -53,9 +53,16 @@ export class FinanceJobs {
     });
   }
 
+  /** createRefundRequest (lifecycle early cancel, dispute resolved "refund") → refund request on the paid case invoice. */
+  @Job("finance.refund.case_requested")
+  caseRefund(d: CaseRefundRequest) {
+    return this.sys((f) => openCaseRefund(f, d));
+  }
+
   @Cron("finance.cases.sync", "*/10 * * * *")
   async casesSync() {
     const r = await this.sys((f) => syncCases(f));
+    r.allocated += await this.sys((f) => planAllocations(f));
     if (r.made || r.allocated) this.log.log(`cases sync: ${r.made} invoices, ${r.allocated} allocations`);
   }
 

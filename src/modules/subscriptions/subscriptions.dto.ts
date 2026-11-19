@@ -44,6 +44,8 @@ export const Mine = z
     cancelAtPeriodEnd: z.boolean().optional(),
     graceEndsAt: z.string().nullable().optional(),
     amountRwf: z.number().int().nullable().optional(),
+    scheduledPlanId: z.string().nullable().optional(),
+    pausedUntil: z.string().nullable().optional(),
   })
   .meta({ id: "MySubscriptionResponse" });
 export const CheckoutOut = z.object({
@@ -54,3 +56,12 @@ export const CheckoutOut = z.object({
 export class CancelDto extends dto(
   z.object({ when: z.enum(["period_end", "now"]).default("period_end"), reason: z.string().trim().min(1).max(500) }),
 ) {}
+export class ChangePlanDto extends dto(z.object({ planId: z.string().trim().min(1).max(64) })) {}
+export const ChangeOut = z.object({
+  action: z.enum(["checkout", "scheduled"]),
+  planId: z.string(),
+  amountRwf: z.number().int(),
+  effectiveAt: z.string().nullable(),
+});
+export class PauseDto extends dto(z.object({ days: z.number().int().min(1).max(90) })) {}
+export const PauseOut = z.object({ subscriptionId: z.string(), status: z.string(), pausedUntil: z.string(), periodEnd: z.string() });

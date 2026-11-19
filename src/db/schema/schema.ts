@@ -498,6 +498,9 @@ export const clientSubscriptions = pgTable("client_subscriptions", {
 	// F-SUB-05/12: reminder offsets already sent this period, and the 80 % usage warning (once per period).
 	remindersSent: jsonb("reminders_sent").default([]).notNull(),
 	usageWarnedAt: timestamp("usage_warned_at", { withTimezone: true, mode: 'string' }),
+	// F-SUB-08 downgrade takes effect at period end; F-SUB-09 pause (coverage off, period extended on resume).
+	scheduledPlanId: varchar("scheduled_plan_id", { length: 64 }),
+	pausedUntil: timestamp("paused_until", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("ix_client_subscriptions_dedicated_agent_id").using("btree", table.dedicatedAgentId.asc().nullsLast()),
 	index("ix_client_subscriptions_status").using("btree", table.status.asc().nullsLast()),

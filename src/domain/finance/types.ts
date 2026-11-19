@@ -75,7 +75,7 @@ export type RefundRequest = {
   no: string; caseRef: string; invoiceNo: string; paymentId?: string; reason: RefundReason; stage: string;
   requested: Rwf; recommended?: Rwf; approved?: Rwf; method: RefundMethod; destination?: { masked: string; changed: boolean };
   status: RefundStatus; chain: Step[]; requestedBy: UserRef; executedBy?: UserRef; providerRef?: string; creditNoteNo?: string;
-  impact: { workerId: string; allocated: Rwf; reversal: Rwf; paidOut: boolean }[]; auto?: "duplicate" | "cancelled"; at: string; rev: number;
+  impact: { workerId: string; allocated: Rwf; reversal: Rwf; paidOut: boolean }[]; auto?: "duplicate" | "cancelled" | "dispute"; at: string; rev: number;
 };
 export type CreditNote = {
   no: string; invoiceNo: string; refundNo?: string; lines: DocLine[]; totals: DocTotals; eligible: Rwf; ebmRef?: string;
