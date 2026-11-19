@@ -42,6 +42,10 @@ export const envSchema = z.object({
   WHATSAPP_VERIFY_TOKEN: z.string().optional(), // hub.verify_token for the webhook subscription handshake
   RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the Resend webhook; set → svix signature required
   PRIVACY_PURGE_ENABLED: z.enum(["true", "false"]).default("false").transform((v) => v === "true"), // PRV-retention: false = count only (dry run)
+  // F-NTF-18 Web Push (VAPID, base64url P-256); unset → push off.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
   METRICS_TOKEN: z.string().min(24).optional(), // OBS-metrics: Bearer token for GET /metrics; unset → 404
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(), // OBS-tracing: OTLP/HTTP collector base URL; unset → spans not exported
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),

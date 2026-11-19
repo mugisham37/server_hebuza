@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Ip, Param, Patch, Post, Put, Query, Req, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Ip, Param, Patch, Post, Put, Query, Req, Res } from "@nestjs/common";
 import { verifyHubSignature, verifySvix } from "@/domain/notify/svix";
 import type { FastifyReply } from "fastify";
 import { RawResponse } from "../../core/http/envelope.interceptor";
@@ -11,12 +11,15 @@ import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
 import {
-  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WaEventDto, WebhookOut, ManualDto, ManualOut,
+  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WaEventDto, WebhookOut, ManualDto, ManualOut, PushKeyOut, PushSubDto,
 } from "./notifications.dto";
 import { DeliveryService } from "./notifications.delivery";
 import { TxService } from "../../core/db/tx";
-import { eq } from "drizzle-orm";
-import { users } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
+import { randomUUID } from "node:crypto";
+import { validPushEndpoint } from "@/domain/notify/delivery";
+import { PushService } from "../../core/notify/push.service";
+import { pushSubscriptions, users } from "@/db/schema";
 import { NotificationsService } from "./notifications.service";
 
 @Controller()
@@ -26,6 +29,7 @@ export class NotificationsController {
     private readonly delivery: DeliveryService,
     private readonly cfg: ConfigService<Env, true>,
     private readonly tx: TxService,
+    private readonly push: PushService,
   ) {}
 
   /** Webhook URLs carry NOTIFY_WEBHOOK_TOKEN; unset or wrong → 404 so the endpoints are invisible. */
@@ -112,6 +116,27 @@ export class NotificationsController {
       await this.svc.notify(tx, { userId: id, kind: "manual.message", title: b.title, body: b.body, link: b.link ?? "/notifications", channels: b.channels, data: { type: "manual.message", vars: { ref: `${me.id}:${Date.now()}` } } });
     });
     return { queued: true };
+  }
+
+  /** F-NTF-18: VAPID public key for PushManager.subscribe (null = push not configured). */
+  @Get("push/vapid-key")
+  @Route({ auth: "public", out: PushKeyOut })
+  vapidKey() {
+    return { publicKey: this.push.publicKey ?? null };
+  }
+  @Post("me/push-subscriptions")
+  @Route({ auth: "user", limit: "write", out: WebhookOut })
+  async subscribePush(@Body() b: PushSubDto, @CurrentUser() me: SessionUser) {
+    if (!validPushEndpoint(b.endpoint)) throw new AppError(422, "validation", "Unsupported push service.");
+    await this.tx.run((tx) => tx.insert(pushSubscriptions).values({ id: `psh_${randomUUID()}`, userId: me.id, endpoint: b.endpoint, createdAt: new Date().toISOString() })
+      .onConflictDoUpdate({ target: pushSubscriptions.endpoint, set: { userId: me.id } }));
+    return { ok: true };
+  }
+  @Delete("me/push-subscriptions")
+  @Route({ auth: "user", limit: "write", out: WebhookOut })
+  async unsubscribePush(@Body() b: PushSubDto, @CurrentUser() me: SessionUser) {
+    await this.tx.run((tx) => tx.delete(pushSubscriptions).where(and(eq(pushSubscriptions.endpoint, b.endpoint), eq(pushSubscriptions.userId, me.id))));
+    return { ok: true };
   }
 
   /** Cookie banner + marketing toggles: one ledger row per purpose (F-CMS-15, F-NTF-09). */

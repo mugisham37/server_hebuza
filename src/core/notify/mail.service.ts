@@ -3,6 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Resend } from "resend";
 import { SmsService, maskTo } from "./sms.service";
 import { WhatsappService } from "./whatsapp.service";
+import { PushService } from "./push.service";
 
 export type Mail = { to: string | string[]; subject: string; html: string; text?: string; tags?: Record<string, string>; headers?: Record<string, string> };
 
@@ -37,5 +38,5 @@ export class MailService {
 }
 
 @Global()
-@Module({ providers: [MailService, SmsService, WhatsappService], exports: [MailService, SmsService, WhatsappService] })
+@Module({ providers: [MailService, SmsService, WhatsappService, PushService], exports: [MailService, SmsService, WhatsappService, PushService] })
 export class NotifyModule {}

@@ -88,3 +88,12 @@ export const consentLedger = pgTable("consent_ledger", {
   userAgent: varchar("user_agent", { length: 255 }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 }, (t) => [index("ix_consent_subject_purpose").on(t.subject, t.purpose, t.createdAt)]);
+
+// F-NTF-18: Web Push subscriptions (one per browser). Push messages carry no payload; the service worker fetches the
+// newest notification, so nothing personal transits the push service.
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  endpoint: varchar({ length: 1024 }).notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_push_subscriptions_user").on(t.userId)]);

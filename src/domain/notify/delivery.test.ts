@@ -6,6 +6,7 @@ import {
   planDelivery,
   quietUntil,
   renderTemplate,
+  validPushEndpoint,
 } from "./delivery";
 
 const rule = (o: Partial<EventRuleVM> = {}): EventRuleVM => ({
@@ -101,4 +102,12 @@ it("categoryOf / stop / render", () => {
   expect(renderTemplate("Hi {{name}}, {{x}}!", { name: "Ana" })).toBe(
     "Hi Ana, !",
   );
+});
+
+it("push endpoint allowlist", () => {
+  expect(validPushEndpoint("https://fcm.googleapis.com/fcm/send/abc")).toBe(true);
+  expect(validPushEndpoint("https://web.push.apple.com/QJ")).toBe(true);
+  expect(validPushEndpoint("https://169.254.169.254/latest")).toBe(false);
+  expect(validPushEndpoint("http://fcm.googleapis.com/x")).toBe(false);
+  expect(validPushEndpoint("https://fcm.googleapis.com:8443/x")).toBe(false);
 });

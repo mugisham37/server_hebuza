@@ -144,3 +144,14 @@ export const isStartKeyword = (text: string) =>
       .toLowerCase()
       .replace(/[^\p{L}]/gu, ""),
   );
+
+/** F-NTF-18: browser push endpoints we will call (SSRF guard: the server POSTs to this URL). */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^([a-z0-9-]+\.)?push\.apple\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/];
+export const validPushEndpoint = (u: string) => {
+  try {
+    const x = new URL(u);
+    return x.protocol === "https:" && !x.port && PUSH_HOSTS.some((re) => re.test(x.hostname));
+  } catch {
+    return false;
+  }
+};

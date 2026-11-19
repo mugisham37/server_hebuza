@@ -1,7 +1,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { eq, sql } from "drizzle-orm";
-import { users } from "@/db/schema";
+import { pushSubscriptions, users } from "@/db/schema";
+import { categoryOf, quietUntil } from "@/domain/notify/delivery";
+import { PushService } from "../../core/notify/push.service";
 import type { Env } from "../../core/config/env";
 import { DB, type Db } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
@@ -22,6 +24,7 @@ export class NotificationsJobs {
     @Inject(DB) private readonly db: Db,
     private readonly mail: MailService,
     private readonly delivery: DeliveryService,
+    private readonly push: PushService,
     private readonly rt: RealtimeService,
     private readonly cfg: ConfigService<Env, true>,
   ) {}
@@ -35,6 +38,13 @@ export class NotificationsJobs {
     // Row id derives from the job id (ob_<outbox id>), so retries re-use the in-app row (insert … on conflict do nothing).
     const { row, prefs } = await this.tx.runAsSystem(async (tx) => ({ row: await this.svc.insert(tx, n, job.id ? `ntf_${job.id}` : undefined), prefs: await this.svc.prefsOf(tx, n.userId) }));
     await this.rt.emit(n.userId, "notification", { notification: project(row) }).catch((e: unknown) => this.log.warn({ event: "notification.rt_failed", err: String(e) }));
+    // F-NTF-18: wake the user's browsers (payload-less) unless they're in quiet hours (security always rings).
+    if (this.push.configured && (categoryOf(n.kind) === "security" || !quietUntil(new Date(), prefs.quiet))) {
+      const subs = await this.db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, n.userId));
+      for (const s of subs)
+        if ((await this.push.ping(s.endpoint, categoryOf(n.kind) === "security" ? "high" : "normal")) === "gone")
+          await this.db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, s.id));
+    }
     // A retried job must not plan the external sends twice: one dispatch per in-app row.
     if (await this.delivery.dispatched(row.id)) return;
     await this.delivery.dispatch(n, prefs, row.id);

@@ -54,3 +54,7 @@ const ManualIn = z.object({
 });
 export class ManualDto extends dto(ManualIn) {}
 export const ManualOut = z.object({ queued: z.boolean() });
+
+// F-NTF-18 web push subscription (payload-less pushes; endpoint host allowlisted server-side).
+export class PushSubDto extends dto(z.object({ endpoint: z.string().url().max(1024) })) {}
+export const PushKeyOut = z.object({ publicKey: z.string().nullable() });
