@@ -10,6 +10,7 @@ import sharp from "sharp";
 import { auditHash, sha256, type SigningRecord } from "@/domain/documents/signature";
 import { eSignProvider } from "../../core/esign/provider";
 import { textPdf } from "../chat/chat.service";
+import { stampPdf } from "../../core/pdf/pdf";
 import {
   and,
   asc,
@@ -973,8 +974,7 @@ export class DocumentsService {
 
   /**
    * DLV-05: while the client still owes money, the preview is a stamped low-resolution copy, never the file itself.
-   * Images: 800 px + "PREVIEW — HEBUZA — {code}" overlay. PDFs: a one-page stamped notice.
-   * shortcut: no PDF rasteriser in the stack, so PDF previews are a notice page; add pdf rendering (pdfium/mupdf) if clients need page previews.
+   * Images: 800 px + "PREVIEW — HEBUZA — {code}" overlay. PDFs: the first 3 pages stamped (pdf-lib); other types a notice page.
    */
   deliverablePreview(s: SessionUser, id: string): Promise<{ url: string } | { body: Buffer; type: string }> {
     return this.tx.run(async (db) => {
@@ -989,6 +989,12 @@ export class DocumentsService {
         const w = Math.min(width, 800), h = Math.min(height, 800);
         const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><g transform="rotate(-30 ${w / 2} ${h / 2})" font-family="sans-serif" font-size="${Math.max(14, Math.round(w / 18))}" fill="rgba(200,0,0,0.35)" text-anchor="middle">${[0.3, 0.5, 0.7].map((y) => `<text x="${w / 2}" y="${Math.round(h * y)}">${stamp.replace(/&/g, "&amp;")}</text>`).join("")}</g></svg>`;
         return { body: await img.composite([{ input: Buffer.from(svg), gravity: "center" }]).jpeg({ quality: 60 }).toBuffer(), type: "image/jpeg" };
+      }
+      if (d.mimeType === "application/pdf") {
+        const bytes = Buffer.concat(await (await this.storage.getStream(d.storagePath)).toArray());
+        // First 3 pages, stamped; an encrypted/broken PDF falls back to the notice page.
+        const out = await stampPdf(bytes, stamp, { maxPages: 3, opacity: 0.3 }).catch(() => null);
+        if (out) return { body: Buffer.from(out), type: "application/pdf" };
       }
       return { body: Buffer.from(textPdf(stamp, [d.title, "", "This is a preview. The full file unlocks once the balance is paid."])), type: "application/pdf" };
     });

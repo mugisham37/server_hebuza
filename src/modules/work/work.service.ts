@@ -2,6 +2,8 @@
 // destination, statements/payouts/invoices, firm team, scoped job access. Plain functions over the request tx (WCtx from
 // WorkRunner); every write takes the worker's row lock first. No case status changes happen here (those go through
 // ApplicationsService.transition in the agent/ops modules).
+import sharp from "sharp";
+import { stampPdf } from "../../core/pdf/pdf";
 import { ownOr404 } from "../../core/auth/authorize";
 import { settings as finSettings } from "../finance/finance.store";
 import { createHash } from "node:crypto";
@@ -1648,13 +1650,34 @@ export async function download(ctx: WCtx, ref: string, docId: string) {
     text: `You downloaded ${d.originalFilename} (watermarked)`,
   });
   ctx.audit = { resourceId: x.r.app.code, details: { doc: d.documentId } };
-  // shortcut: the watermark is the client overlay + this audited log; per-file stamping needs a PDF/image
-  // stamper (no pdf-lib dependency yet) — upgrade by stamping into a derived object before presigning.
+  // Per-file watermark: the downloader's name, case and time stamped into a derived copy (PDF pages / image overlay);
+  // other types keep the client-side overlay + this audited log.
+  const mark = `${a.name} · ${x.r.app.code} · ${at.slice(0, 16).replace("T", " ")} UTC`;
+  const key = await stampedCopy(ctx.k.storage, d.storagePath, d.mimeType, mark, `wm/${d.documentId}/${a.uid}`);
   return {
-    url: await ctx.k.storage.presignGet(d.storagePath, d.originalFilename),
+    url: await ctx.k.storage.presignGet(key ?? d.storagePath, d.originalFilename),
     watermark: { name: a.name, ref: x.r.app.code, at },
   };
 }
+/** Stamped copy of a stored PDF or image under `base`; null when the type can't be stamped (or the PDF is encrypted). */
+async function stampedCopy(storage: { getStream(k: string): Promise<NodeJS.ReadableStream & { toArray(): Promise<unknown[]> }>; putObject(k: string, b: Uint8Array, t: string): Promise<void> }, path: string, mime: string, text: string, base: string) {
+  if (mime !== "application/pdf" && !mime.startsWith("image/")) return null;
+  const bytes = Buffer.concat((await (await storage.getStream(path)).toArray()) as Buffer[]);
+  if (mime === "application/pdf") {
+    const out = await stampPdf(bytes, text, { opacity: 0.18 }).catch(() => null);
+    if (!out) return null;
+    await storage.putObject(`${base}.pdf`, out, "application/pdf");
+    return `${base}.pdf`;
+  }
+  const img = sharp(bytes).rotate();
+  const { width = 1200, height = 1200 } = await img.metadata();
+  const fs = Math.max(14, Math.round(Math.min(width, height) / 28));
+  const esc = text.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]!);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><g font-family="sans-serif" font-size="${fs}" fill="rgba(200,0,0,0.25)" text-anchor="middle" transform="rotate(-30 ${width / 2} ${height / 2})">${[0.25, 0.5, 0.75].map((y) => `<text x="${width / 2}" y="${Math.round(height * y)}">${esc}</text>`).join("")}</g></svg>`;
+  await storage.putObject(`${base}.jpg`, await img.composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 85 }).toBuffer(), "image/jpeg");
+  return `${base}.jpg`;
+}
+
 export async function contributions(db: Exec, s: Session, ref: string) {
   const a = await actor(db, s);
   const x = await scoped(db, a.uid, ref);

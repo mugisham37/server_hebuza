@@ -7,14 +7,14 @@ import { Cron, Job } from "../../core/queue/queues";
 import { TxService } from "../../core/db/tx";
 import { StorageService } from "../../core/storage/storage.service";
 import { NotificationsService } from "../notifications/notifications.service";
-import { textPdf } from "../chat/chat.service";
+import { textImagePdf } from "../../core/pdf/pdf";
 import { escalateCash } from "./field.service";
 
 @Injectable()
 export class FieldJobs {
   constructor(private readonly txs: TxService, private readonly storage: StorageService, private readonly notify: NotificationsService) {}
 
-  // shortcut: text-only PDF (no drawn signature image); render the signature when a PDF library with images lands.
+  /** Custody receipt PDF with the client's drawn signature image (when one was captured). */
   @Job("field.receipt.pdf")
   receiptPdf({ receiptId }: { receiptId: string }) {
     return this.txs.runAsSystem(async (db) => {
@@ -23,7 +23,11 @@ export class FieldJobs {
       const [v] = await db.select({ ref: fieldVisits.ref, caseRef: fieldVisits.caseRef }).from(fieldVisits).where(eq(fieldVisits.id, r.visitId));
       const sig = r.signature as { method: string; signedAt: string; locale: string; typedName?: string };
       const items = r.items as ReceiptItem[];
-      const pdf = textPdf(`Custody receipt ${r.ref}`, [
+      // A missing/unreadable signature object still yields the receipt (text-only), never a failed job.
+      const sigPng = r.signatureKey
+        ? await this.storage.getStream(r.signatureKey).then(async (st) => Buffer.concat(await st.toArray())).catch(() => null)
+        : null;
+      const pdf = await textImagePdf(`Custody receipt ${r.ref}`, [
         `${r.direction === "returned" ? "Returned to" : "Collected from"}: ${r.clientName}`,
         `Visit ${v?.ref ?? r.visitId} · Case ${v?.caseRef ?? ""}`,
         `Agent: ${r.agentName}`,
@@ -34,7 +38,7 @@ export class FieldJobs {
         ...(r.conditionNotes ? [`Condition: ${r.conditionNotes}`] : []),
         ...(r.supersedesId ? [`Corrects receipt ${r.supersedesId}`] : []),
         `SHA-256 ${r.sha256}`,
-      ]);
+      ], sigPng ? { bytes: sigPng, label: `Signature of ${r.clientName}` } : null);
       const key = `field/${r.visitId}/receipt-${r.ref}.pdf`;
       await this.storage.putObject(key, pdf, "application/pdf");
       await db.update(fieldReceipts).set({ pdfKey: key }).where(eq(fieldReceipts.id, r.id));
