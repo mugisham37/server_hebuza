@@ -420,6 +420,8 @@ export class DeliveryService {
               text: p.text,
               html: p.html ?? `<p>${esc(p.text)}</p>`,
               tags: { kind: d.kind.replace(/[^\w-]/g, "_"), delivery: id },
+              // F-NTF-03: one-click route to channel preferences (security mail can't be muted, so it carries none).
+              ...(categoryOf(d.kind) === "security" ? {} : { headers: { "List-Unsubscribe": `<${this.appUrl}/${d.lang}/settings/notifications>` } }),
             })
           : d.channel === "whatsapp" && this.wa.configured
             ? await this.wa.send({ to: address, text: p.text, template: p.wa })

@@ -4,7 +4,7 @@ import { Resend } from "resend";
 import { SmsService, maskTo } from "./sms.service";
 import { WhatsappService } from "./whatsapp.service";
 
-export type Mail = { to: string | string[]; subject: string; html: string; text?: string; tags?: Record<string, string> };
+export type Mail = { to: string | string[]; subject: string; html: string; text?: string; tags?: Record<string, string>; headers?: Record<string, string> };
 
 @Injectable()
 export class MailService {
@@ -28,7 +28,7 @@ export class MailService {
       return;
     }
     const { data, error } = await this.resend.emails.send({
-      from: this.from, to: m.to, subject: m.subject, html: m.html, text: m.text,
+      from: this.from, to: m.to, subject: m.subject, html: m.html, text: m.text, headers: m.headers,
       tags: m.tags && Object.entries(m.tags).map(([name, value]) => ({ name, value })),
     });
     if (error) throw new Error(`resend: ${error.message}`); // throw so the queue retries

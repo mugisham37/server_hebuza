@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { users } from "@/db/schema";
 import type { Env } from "../../core/config/env";
 import { DB, type Db } from "../../core/db/db";
@@ -66,5 +66,22 @@ export class NotificationsJobs {
       }
       await this.tx.runAsSystem((tx) => this.svc.markDigested(tx, c.userId, now.toISOString()));
     }
+  }
+
+  /** F-NTF-14: 06:00 Kigali daily digest for staff — unread items from the last 24 h, one email per person. */
+  @Cron("notifications.staff_digest", "0 4 * * *")
+  async staffDigest() {
+    const rows = (await this.db.execute(sql`select n.user_id as id, u.email, count(*)::int as n, (array_agg(n.title order by n.created_at desc))[1:10] as titles
+      from notifications n join users u on u.user_id = n.user_id
+      where n.read_at is null and n.created_at > now() - interval '24 hours' and u.is_active and u.role like 'staff:%' and u.email is not null
+      group by n.user_id, u.email`)) as unknown as { id: string; email: string; n: number; titles: string[] }[]; // cast: execute() rows are untyped
+    for (const r of rows) {
+      const p = await this.tx.runAsSystem((tx) => this.svc.prefsOf(tx, r.id));
+      if (!p.email_enabled || !p.digest_enabled) continue;
+      const text = `${r.n} unread in the last 24 hours:\n\n${r.titles.map((t) => `• ${t}`).join("\n")}\n\n${this.appUrl}/notifications`;
+      await this.mail.send({ to: r.email, subject: `HEBUZA daily summary: ${r.n} unread`, text, html: `<p>${esc(text).replace(/\n/g, "<br>")}</p>` })
+        .catch((e: unknown) => this.log.error({ event: "notification.staff_digest_failed", err: String(e) }));
+    }
+    return rows.length;
   }
 }

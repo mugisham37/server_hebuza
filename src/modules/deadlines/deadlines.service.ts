@@ -343,6 +343,7 @@ export async function sendReminders(db: Tx, notify: Notify, now: Date) {
     title: string;
     due: string;
     href: string;
+    clientId?: string;
   }[] = [];
   const cases = await db
     .select()
@@ -406,6 +407,7 @@ export async function sendReminders(db: Tx, notify: Notify, now: Date) {
           title: localized(o.label) || "Deadline",
           due: o.dueDate,
           href: "/agent/calendar",
+          clientId: o.clientId,
         });
     }
   }
@@ -443,6 +445,20 @@ export async function sendReminders(db: Tx, notify: Notify, now: Date) {
       body: `${it.title} is due on ${it.due}.`,
       link: it.href,
       channels: ["email"],
+    });
+    sent++;
+  }
+  // F-CAL-06: the client is reminded too, on every channel; the event rule + their preference matrix ("deadlines")
+  // and quiet hours decide which actually go out (notifications delivery).
+  for (const it of items.filter((x) => x.clientId)) {
+    if (!(await claim(db, "obligation_client", it.targetId, it.offsets, now))) continue;
+    await notify(db, {
+      userId: it.clientId!,
+      kind: "deadline.reminder",
+      title: `Reminder: ${it.title} is due ${it.due}`,
+      body: `Your ${it.title} deadline is ${it.due}. Reply in your HEBUZA messages if you want us to handle it.`,
+      link: "/dashboard/calendar",
+      channels: ["email", "sms", "whatsapp"],
     });
     sent++;
   }
