@@ -2,7 +2,7 @@
 // summary, report tabs and export, social metrics import, testimonials, feedback/NPS and the referral programme.
 // Visits are first-party (tracked /c and /r link clicks); GA4 traffic stays "not connected" until its API is wired.
 import { gte, sql } from "drizzle-orm";
-import { npsResponses } from "@/db/schema";
+import { npsResponses, outbox } from "@/db/schema";
 import { siteEvents } from "@/db/schema/schema-marketing";
 import type { Exec } from "./marketing.store";
 import {
@@ -781,8 +781,10 @@ export async function testimonialAction(
       await record(c, "testimonial.unpublished", t.id);
       break;
     case "request-consent":
-      // The client answers on their dashboard (GET/POST me/testimonial-requests).
+      // The client answers on their dashboard (GET/POST me/testimonial-requests); tell them in-app.
       t.consentRequested = true;
+      // Applications are RLS-hidden from marketing: the worker finds the owner and sends the in-app notification.
+      await c.db.insert(outbox).values({ type: "marketing.testimonial_consent_requested", payload: { ratingId: t.ratingId } });
       await record(c, "testimonial.consent_requested", t.id);
       break;
     case "excerpt": {

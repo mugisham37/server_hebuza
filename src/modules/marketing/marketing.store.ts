@@ -3,6 +3,7 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { financeRecords, mktRecords, outbox, users } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
+import { usersWithRole } from "../../core/db/system-records";
 import type { AuditEntry } from "../../core/db/audit";
 import { AppError } from "../../core/http/errors";
 import type { SessionUser } from "../../core/http/context";
@@ -249,9 +250,9 @@ export async function pushNote(
     status: "unread",
   });
   // Live badges: one SSE frame per marketing user (outbox realtime fan-out; the web invalidates the shell/notes queries).
-  const staff = await db.select({ id: users.userId }).from(users).where(and(eq(users.role, "staff:marketing"), eq(users.isActive, true)));
+  const staff = await usersWithRole(db, ["staff:marketing"]); // primary role + active role grants
   if (staff.length)
-    await db.insert(outbox).values(staff.map((u) => ({ type: "mkt.note", payload: { kind: n.kind, realtime: { userId: u.id } } })));
+    await db.insert(outbox).values(staff.map((id) => ({ type: "mkt.note", payload: { kind: n.kind, realtime: { userId: id } } })));
 }
 
 /** Domain audit entry. Requests: written in-tx by the runner. Jobs/system callers: outbox `marketing.audit` (worker writes it). */

@@ -263,6 +263,16 @@ export class MarketingJobs {
   @Job("mkt.note")
   mktNote() {}
 
+  /** Testimonial consent asked → in-app notification to the client who left the rating (rating id = application id). */
+  @Job("marketing.testimonial_consent_requested")
+  testimonialConsentRequested(d: { ratingId: string }) {
+    return this.txs.runAsSystem(async (tx) => {
+      const [a] = await tx.select({ client: applications.clientId }).from(applications).where(eq(applications.applicationId, d.ratingId));
+      if (!a?.client) return; // seeded/demo rating without an owner
+      await this.outbox.add(tx, { type: "notifications.deliver", payload: { userId: a.client, kind: "testimonial.consent", title: "May we share your review?", body: "Open your dashboard to answer yes or no.", link: "/dashboard", data: { type: "testimonial.consent_requested" } } });
+    });
+  }
+
   /** CRM convert → signup invitation (prefilled /signup link) on the lead's consented channel. */
   @Job("marketing.account_invite")
   async accountInvite(d: { leadId: string; channel: "email" | "whatsapp" | "sms"; name: string; email: string | null; phone: string | null; language: string }) {
