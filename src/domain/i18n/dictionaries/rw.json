@@ -271,7 +271,8 @@
     "templates": "Inyandikorugero",
     "feedback": "Ibitekerezo",
     "seo": "SEO n'ikurikirana",
-    "assistant": "Umufasha"
+    "assistant": "Umufasha",
+    "targets": "Intego"
   },
   "sessionExpiry": {
     "title": "Uracyahari?",
