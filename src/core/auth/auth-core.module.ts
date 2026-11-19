@@ -1,5 +1,6 @@
 import { Global, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
+import { PlatformGuard } from "./platform.guard";
 import { ThrottlerGuard } from "@nestjs/throttler";
 import { PasswordService } from "./password";
 import { TokenService } from "./tokens";
@@ -17,6 +18,7 @@ import { ThrottleModule } from "./throttle";
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: PlatformGuard },
   ],
   exports: [PasswordService, TokenService, CookieService],
 })

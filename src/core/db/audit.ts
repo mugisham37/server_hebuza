@@ -4,6 +4,7 @@ import { ClsService } from "nestjs-cls";
 import { desc, eq, isNotNull, sql } from "drizzle-orm";
 import { auditLog, users } from "@/db/schema";
 import type { RequestStore } from "../http/context";
+import { categoryOf } from "@/domain/system/audit-catalogue";
 import type { Tx } from "./db";
 
 export const GENESIS = "0".repeat(64);
@@ -51,8 +52,10 @@ export class AuditService {
     const actorName = await this.actorName(tx, actorId);
     const row: AuditRow = {
       id: `aud_${randomUUID()}`, actorId, actorRole: user?.act ? null : (user?.roles[0] ?? null), action: e.action,
-      resourceType: e.entity, resourceId: e.entityId, details: { before: e.before, after: e.after, reason: e.reason, ...(actorName && { actorName }), ...(user?.act && { impersonatorId: user.act, viewAs: user.id }) },
-      ipAddress: this.ctx.isActive() ? (this.ctx.get("ip") ?? null) : null, kind: user ? "admin" : "system",
+      resourceType: e.entity, resourceId: e.entityId, details: { before: e.before, after: e.after, reason: e.reason, ...(actorName && { actorName }), ...(user?.act && { impersonatorId: user.act, viewAs: user.id }),
+        // F-AUD-06: request context (hash-chained with the row; the viewer reads these keys).
+        ...(this.ctx.isActive() && { requestId: this.ctx.get("requestId") || undefined, userAgent: this.ctx.get("ua") || undefined }), ...(user?.sid && { sessionId: user.sid }) },
+      ipAddress: this.ctx.isActive() ? (this.ctx.get("ip") ?? null) : null, kind: categoryOf(e.action), // F-AUD-01: catalogue category, not free text
       createdAt: new Date().toISOString(),
     };
     const prev = last?.hash ?? GENESIS;

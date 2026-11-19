@@ -491,7 +491,7 @@ export class AccountService {
         );
       if (!d) throw notFound("Document");
       await this.audit.record(tx, {
-        action: "document.viewed",
+        action: "document_access.document.viewed",
         entity: "application",
         entityId: code,
         after: { doc: docId },

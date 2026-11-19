@@ -31,7 +31,14 @@ import { OutboxService } from "../db/outbox";
 import { TxService } from "../db/tx";
 import { AppError } from "./errors";
 import { toOpenApi } from "./dto";
-import type { SessionUser } from "./context";
+import type { RequestStore, SessionUser } from "./context";
+import { ClsService, ClsServiceManager } from "nestjs-cls";
+
+/** F-AUD-03: a handler with `audit:` calls this with the record as it was, so the decorator audit carries before/after. */
+export const auditBefore = (v: unknown) => {
+  const c = ClsServiceManager.getClsService<RequestStore>();
+  if (c.isActive()) c.set("auditBefore", v);
+};
 
 export type RouteOpts = {
   /** "public" = no session; "user" = any signed-in user; Role[] = one of these roles. */
@@ -97,6 +104,7 @@ export class RouteInterceptor implements NestInterceptor {
     private readonly tx: TxService,
     private readonly audit: AuditService,
     private readonly outbox: OutboxService,
+    private readonly cls: ClsService<RequestStore>,
   ) {}
 
   intercept(ctx: ExecutionContext, next: CallHandler): Observable<unknown> {
@@ -130,6 +138,7 @@ export class RouteInterceptor implements NestInterceptor {
             action: o.audit,
             entity: o.audit.split(".")[0],
             entityId: String(id),
+            before: this.cls.isActive() ? this.cls.get("auditBefore") : undefined,
             after: out,
           });
       });

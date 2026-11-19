@@ -4,7 +4,7 @@ import type { IncomingMessage } from "node:http";
 import type { Role } from "@/domain/auth/roles";
 
 export type SessionUser = { id: string; roles: Role[]; scopes: { orgId?: string; partnerId?: string; agentId?: string }; stepUpAt?: number; sid: string; /** real actor id while viewing as this user (read-only) */ act?: string; /** staff 2FA enrolled (→ `mfa_enrolled` claim) */ mfa?: boolean };
-export interface RequestStore extends ClsStore { user: SessionUser | null; requestId: string; ip: string; locale: string; http?: boolean }
+export interface RequestStore extends ClsStore { user: SessionUser | null; requestId: string; ip: string; locale: string; http?: boolean; ua?: string; /** F-AUD-03: state before a @Route-audited change (set via auditBefore) */ auditBefore?: unknown }
 export type RequestContext = ClsService<RequestStore>;
 
 const LOCALES = ["en", "fr", "rw"];
@@ -25,6 +25,7 @@ export const ContextModule = ClsModule.forRoot({
     setup: (cls: ClsService, req: IncomingMessage) => {
       cls.set("requestId", String(req.headers["x-request-id"] ?? ""));
       cls.set("ip", clientIp(req));
+      cls.set("ua", String(req.headers["user-agent"] ?? "").slice(0, 255));
       cls.set("locale", pickLocale(req));
       cls.set("user", null);
       cls.set("http", true);
