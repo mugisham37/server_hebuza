@@ -37,10 +37,10 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-BKG-05 | Free consultation request | P1 | DONE | `POST consultation-requests` (`booking.controller.ts:110`) plus the admin queue (l.248); web `book/callback`. |
 | F-BKG-06 | Paid booking | P2 | PARTIAL | `pending_payment`, pay window and expiry with auto-refund (`booking.service.ts:993-1148`). It uses its own `bkg_payments` table, not a FIN invoice. |
 | F-BKG-07 | Video meeting link | P2 | DONE | Rooms are real Jitsi Meet URLs (`meet.jit.si/hbz-<random>`), no account needed. |
-| F-BKG-08 | Reminders | P2 | PARTIAL | `planReminders` and the `booking.reminders` cron (`booking.jobs.ts:107`); ICS generation exists. Delivery uses the NTF job, which has no WhatsApp→SMS→email fallback chain (see F-NTF-06). |
+| F-BKG-08 | Reminders | P2 | DONE | Seeded `booking` event rule with chain whatsapp→sms→email; booking notices go through `notifications.notify`, which follows the rule chain. |
 | F-BKG-09 | Reschedule & cancel | P2 | DONE | `rules.ts:12,123-146` (12 h cutoff, max 2 reschedules, refund/forfeit, tested in `rules.test.ts`); manage-by-token and `/me/bookings` routes; web `book/manage/[token]`, `(client)/bookings/[id]`. |
 | F-BKG-10 | Calendar sync | P3 | MISSING | No Google or Microsoft OAuth. |
-| F-BKG-11 | Outcome & conversion | P2 | PARTIAL | Outcome, notes, recommended services and start links (`booking.service.ts:1616-1633`); web `agent/bookings/[id]`. Creating a quote and updating the CRM stage were not verified. |
+| F-BKG-11 | Outcome & conversion | P2 | DONE | Completed outcome emits `booking.outcome_recorded`; marketing worker moves the matching open lead to `qualified` with the recommended services (`bookingOutcome`). Quotes: existing `quoteRequest`. |
 | F-BKG-12 | No-show handling | P2 | DONE | `autoNoShowMin 15`, `noShowLimit 2` force prepayment (`rules.ts:14`, `booking.service.ts:530,918`); sweep cron. |
 | F-BKG-13 | Waitlist | P3 | DONE | `bkg_waitlist`, `POST bookings/waitlist`, FIFO offer job (`booking.service.ts:1427`). The 30-min claim window was not verified. |
 | F-BKG-14 | Calendar views | P2 | DONE | `agent/calendar`, `ops/bookings` board, admin reassign/auto-reassign (`booking.service.ts:1824-1943`). |
@@ -96,13 +96,13 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-AIA-03 | Model routing | P3 | DONE | Anthropic SDK (`assistant.engine.ts:8`); model is config-driven; fast model for copilot (l.767). |
 | F-AIA-04 | Tools | P3 | DONE | `estimate_fee` tool over the published catalogue (fixed tiers, range bands with min/max clamp, quote); unit test. |
 | F-AIA-05 | Guided intake & draft | P3 | DONE | `ai_drafts`, `GET assistant/drafts/:id`; the draft is handed to the wizard, so the assistant never submits. |
-| F-AIA-06 | Human escalation | P3 | PARTIAL | `ai_handoffs` plus a claim queue (`ops/assistant`). It writes a case-thread note only when the client has a case; otherwise it uses a synthetic `ai-<id>` id (`assistant.engine.ts:525-550`) and no MSG support conversation is created. |
+| F-AIA-06 | Human escalation | P3 | DONE | Portal client with no case gets a real support ticket (`createTicket`, ref used as handoff ticketRef). |
 | F-AIA-07 | Guardrails | P3 | DONE | Regex input/output guards (`assistant.engine.ts:133-176`). |
 | F-AIA-08 | PII protection | P3 | DONE | `maskPii` before storage and before the model (`assistant.engine.ts:135,854`). |
 | F-AIA-09 | Logs & retention | P3 | DONE | `ai_sessions`/`ai_messages`/`ai_usage`, rating route, nightly retention purge (`assistant.jobs.ts:20`). |
 | F-AIA-10 | Cost control | P3 | DONE | `budgetUsd`, token counters in Redis, `ai_usage` monthly cap (`assistant.engine.ts:66,798`). The per-IP 30/day cap was not verified. |
 | F-AIA-11 | Data-use guarantees | P3 | N/A | Contract/DPA work, not code. Only Anthropic and Voyage are called. |
-| F-AIA-12 | Eval set & QA | P3 | PARTIAL | The runner is real and blocks deploy below 95% (`assistant.service.ts:1215-1320`), but `EVAL_SET` has about 12 base cases plus a few fr/rw (l.1644-1718), against the 150 required. |
+| F-AIA-12 | Eval set & QA | P3 | PARTIAL | The runner is real and blocks deploy below 95% (`assistant.service.ts:1215-1320`), but `EVAL_SET` has about 12 base cases plus a few fr/rw (l.1644-1718), against the 150 required. | Progress: rw/fr guardrail patterns + 18 more fr/rw cases (intent test `intent-i18n.test.ts`); still short of 150.
 | F-AIA-13 | Staff copilot | P3 | DONE | `POST assistant/copilot/{kind}`; used in the agent case view. |
 | F-AIA-14 | Kill switch | P3 | DONE | `ai_settings.enabled`, `assistant/status`, admin settings PUT. |
 | F-AIA-15 | Documented limitations | P3 | DONE | `(public)/assistant/about/page.tsx`. |

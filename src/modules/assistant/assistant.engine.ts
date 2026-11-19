@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { desc, eq, sql as dsql } from "drizzle-orm";
 import { z } from "zod";
+import { createTicket } from "../applications/support.service";
 import { bandFee } from "@/domain/catalogue/rules";
 import { applications } from "@/db/schema";
 import {
@@ -150,10 +151,10 @@ const norm = (t: string) =>
   t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const has = (t: string, re: RegExp) => re.test(norm(t));
 export const INTENT = {
-  guarantee: /guarant|garanti|ingwate|promise|promettre|approve my/,
+  guarantee: /guarant|garanti|ingwate|promise|promettre|approve my|izeza|nyizeze|izemerwa|bizemerwa|byanze bikunze/, // F-AIA-12: rw kwizeza/byanze bikunze
   advice:
-    /legal advice|tax advice|conseil juridique|conseil fiscal|inama y'amategeko|should i\b/,
-  offTopic: /\bhotel|football|weather|meteo|recipe|recette|ikirere|umupira/,
+    /legal advice|tax advice|conseil juridique|conseil fiscal|dois-je|inama y'amategeko|inama y'imisoro|inama ku misoro|ubujyanama|should i\b/,
+  offTopic: /\bhotel|football|weather|meteo|recipe|recette|cuisine|ikirere|umupira|indirimbo|chanson/,
   human:
     /\bhuman\b|\bperson\b|humain|personne|umuntu|\bagent\b|someone|real person/,
   minor: /\bminor\b|mineur|umwana|my child/,
@@ -522,9 +523,10 @@ export async function createHandoff(
   c: AiConf,
 ): Promise<HandoffData> {
   const hours = officeHours();
-  const ticketRef = `SUP-${String(1000 + (parseInt(randomBytes(2).toString("hex"), 16) % 9000))}`;
+  let ticketRef = `SUP-${String(1000 + (parseInt(randomBytes(2).toString("hex"), 16) % 9000))}`;
   const conversationId = await d.run(async (tx) => {
     let cid: string | null = null;
+    let caseFound = false;
     if (s.context === "portal" && s.ownerId) {
       const [app] = await tx
         .select({ id: applications.applicationId })
@@ -543,7 +545,14 @@ export async function createHandoff(
           "internal",
         );
         cid = conv.conversationId;
+        caseFound = true;
       }
+    }
+    // F-AIA-06: a signed-in client with no case gets a real support ticket (staff reply there) instead of a dangling id.
+    if (s.context === "portal" && s.ownerId && !caseFound) {
+      const t = await createTicket(tx, { id: s.ownerId, roles: ["client"], scopes: {}, sid: `ai:${s.id}` }, `Assistant handoff: ${s.title}`.slice(0, 200),
+        `The assistant handed this conversation to a person (${reason.replace(/_/g, " ")}). Question: “${s.title}”.`, { type: "assistant" });
+      ticketRef = t.ref;
     }
     await tx.insert(aiHandoffs).values({
       id: rid("ho"),

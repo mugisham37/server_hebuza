@@ -19,7 +19,7 @@ import { CryptoService } from "../../core/crypto/crypto.service";
 import { inQuietHours } from "@/domain/marketing/quiet-hours";
 import { eligibility } from "@/domain/marketing/consent";
 import { get, list, put, type Exec } from "./marketing.store";
-import { captureFrom, purgeStale, sweepWon, unsubToken } from "./marketing.crm";
+import { bookingOutcome, captureFrom, purgeStale, sweepWon, unsubToken } from "./marketing.crm";
 import { runTick, sendTick } from "./marketing.campaigns";
 import { sweepReferrals } from "./marketing.insights";
 import { checkLinks, countClick, type LinkClick } from "./marketing.content";
@@ -248,6 +248,23 @@ export class MarketingJobs {
   }
 
   /** Booking leads mirror into the CRM (dedupes against open leads). phone/email arrive sealed. */
+  /** F-CRM-15 GA4 Measurement Protocol forwarder; dormant without GA4_MEASUREMENT_ID + GA4_API_SECRET. */
+  @Job("marketing.ga4_event")
+  async ga4(d: { name: string; path: string; visitor: string; locale: string | null }) {
+    const id = this.config.get("GA4_MEASUREMENT_ID", { infer: true });
+    const secret = this.config.get("GA4_API_SECRET", { infer: true });
+    if (!id || !secret) return;
+    const r = await fetch(`https://www.google-analytics.com/mp/collect?measurement_id=${id}&api_secret=${encodeURIComponent(secret)}`, {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ client_id: d.visitor, events: [{ name: d.name, params: { page_location: `${this.origin}${d.path}`, language: d.locale ?? undefined } }] }),
+    });
+    if (!r.ok) throw new Error(`ga4 ${r.status}`); // retried with backoff
+  }
+  @Job("booking.outcome_recorded")
+  bookingOutcome(d: { phone?: string; email?: string; status: string; services: string[] }) {
+    const p = this.crypto.unseal(d, ["phone", "email"]);
+    return this.txs.runAsSystem((tx) => bookingOutcome({ db: tx, session: null }, p));
+  }
   @Job("booking.lead_captured")
   leadCaptured(d: { leadId: string; name: string; phone?: string; email?: string; source: string }) {
     const p = this.crypto.unseal(d, ["phone", "email"]);

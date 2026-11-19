@@ -1211,6 +1211,9 @@ export async function recordEvent(c: Caller, b: { name: string; path: string; lo
   // Strip query strings: they can carry tokens or personal data.
   const path = b.path.split("?")[0].slice(0, 512);
   const referrer = b.referrer ? b.referrer.split("?")[0].slice(0, 512) : null;
+  // F-CRM-15: mirror consented events to GA4 via Measurement Protocol when configured (job no-ops otherwise).
+  if (process.env.GA4_API_SECRET && b.visitor)
+    await c.db.insert(outbox).values({ type: "marketing.ga4_event", payload: { name: b.name, path, visitor: b.visitor, locale: b.locale ?? null }, queue: "bulk" });
   await c.db.insert(siteEvents).values({ id: `ev_${randomUUID()}`, name: b.name, path, locale: b.locale ?? null, referrer, visitor: b.visitor ?? null, props: b.props ?? null, createdAt: new Date().toISOString() });
   return { ok: true };
 }
@@ -1224,4 +1227,20 @@ export async function eventSummary(c: Caller, days: number) {
     c.db.select({ n: dsqlx<number>`count(distinct ${siteEvents.visitor})::int` }).from(siteEvents).where(gte(siteEvents.createdAt, since)),
   ]);
   return { days, events: byName, topPages, visitors: uv?.n ?? 0 };
+}
+
+// ---------------------------------------------------------------- F-BKG-11 booking outcome → CRM stage
+/** A completed consultation qualifies the matching open lead (by phone/email) and adds the recommended services. */
+export async function bookingOutcome(c: Caller, b: { phone?: string; email?: string; status: string; services: string[] }) {
+  if (b.status !== "completed" || (!b.phone && !b.email)) return { moved: false };
+  const phone = toE164(b.phone);
+  const email = b.email?.toLowerCase();
+  const l = (await list<Lead>(c.db, "lead")).find((x) => ["new", "contacted"].includes(x.stage) && ((phone && x.phoneE164 === phone) || (email && x.email?.toLowerCase() === email)));
+  if (!l) return { moved: false };
+  await patchLead(c, l.id, null, {
+    stage: "qualified",
+    serviceInterest: [...new Set([...l.serviceInterest, ...b.services])],
+    nextActionAt: l.nextActionAt ?? new Date(Date.now() + 2 * 864e5).toISOString(), // qualified leads need a next action
+  } as LeadPatchIn);
+  return { moved: true, leadId: l.id };
 }

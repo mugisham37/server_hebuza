@@ -44,6 +44,9 @@ export const envSchema = z.object({
   METRICS_TOKEN: z.string().min(24).optional(), // OBS-metrics: Bearer token for GET /metrics; unset → 404
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(), // OBS-tracing: OTLP/HTTP collector base URL; unset → spans not exported
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),
+  // F-CRM-15 GA4 Measurement Protocol (server-side events). Both unset → dormant.
+  GA4_MEASUREMENT_ID: z.string().regex(/^G-[A-Z0-9]+$/).optional(),
+  GA4_API_SECRET: z.string().min(8).optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
   BACKUP_STATUS_ENDPOINT: z.string().url().optional(),
   BACKUP_STATUS_BUCKET: z.string().optional(),

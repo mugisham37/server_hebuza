@@ -1532,6 +1532,16 @@ const W = {
   ],
   EVENT_RULES: [
     {
+      // F-BKG-08: booking confirmations/reminders try WhatsApp, then SMS, then email.
+      event: "booking",
+      critical: false,
+      security: false,
+      priority: "high",
+      channels: { inapp: true, email: true, whatsapp: true, sms: true },
+      chain: ["whatsapp", "sms", "email"],
+      quietHours: "defer",
+    },
+    {
       event: "auth.otp",
       critical: true,
       security: true,

@@ -1644,6 +1644,9 @@ async function outcome(k: K, s: SessionUser, id: string, b: D.OutcomeDto) {
   });
   if (b.status === "completed" && b.send_start_links && rec.length)
     await notify(k, "next_steps", r.id);
+  // F-BKG-11: the CRM moves the matching lead to "qualified" (marketing worker); contact sealed in the outbox row.
+  if (b.status === "completed")
+    await emit(k, "booking.outcome_recorded", k.d.crypto.seal({ phone: dec(k, r.phoneEnc) ?? undefined, email: dec(k, r.emailEnc) ?? undefined, status: b.status, services: rec }, ["phone", "email"]) as Record<string, unknown>);
   return viewOne(k, row, "staff");
 }
 async function quoteRequest(k: K, s: SessionUser, id: string, b: D.QuoteDto) {
