@@ -1382,6 +1382,26 @@ export class PaymentsService {
     });
   }
 
+  /** Client statement for [from, to): invoices issued (+), payments received (−), credit notes (−), with the opening
+   *  balance carried from before `from` and the closing balance (balance of record = finance documents). */
+  async myStatement(clientId: string, from: string, to: string) {
+    const [invs, rec] = await Promise.all([this.txs.run((tx) => clientInvoices(tx, clientId)), this.myReceipts(clientId)]);
+    const cns = await this.txs.run(async (tx) =>
+      invs.length
+        ? ((await tx.execute(sql`select data from finance_records where kind = 'credit_note' and ref = any(${invs.map((i) => i.no!)})`)) as unknown as { data: { no: string; invoiceNo: string; issuedAt: string; totals: { total: number } } }[]).map((r) => r.data) // cast: execute() rows are untyped
+        : [],
+    );
+    type Row = { date: string; type: "invoice" | "payment" | "credit_note"; number: string; detail: string; amount: number };
+    const all: Row[] = [
+      ...invs.map((i) => ({ date: (i.issuedAt ?? i.dueAt ?? "").slice(0, 10), type: "invoice" as const, number: i.no!, detail: labelOf(i.lines[0]?.label), amount: i.totals.total })),
+      ...rec.receipts.map((r) => ({ date: r.paidAt.slice(0, 10), type: "payment" as const, number: r.number, detail: r.invoiceNumber, amount: -r.amount })),
+      ...cns.map((cn) => ({ date: cn.issuedAt.slice(0, 10), type: "credit_note" as const, number: cn.no, detail: cn.invoiceNo, amount: -Math.abs(cn.totals.total) })),
+    ].sort((a, b) => a.date.localeCompare(b.date) || a.number.localeCompare(b.number));
+    const opening = all.filter((r) => r.date < from).reduce((t, r) => t + r.amount, 0);
+    const rows = all.filter((r) => r.date >= from && r.date < to);
+    return { from, to, currency: "RWF", opening, closing: opening + rows.reduce((t, r) => t + r.amount, 0), rows };
+  }
+
   /** Text PDF of one of the client's invoices (F-FIN-04). */
   invoicePdf(clientId: string, no: string) {
     return this.txs.run(async (tx) => {

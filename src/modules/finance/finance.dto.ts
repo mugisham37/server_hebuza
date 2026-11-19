@@ -456,3 +456,4 @@ export class ClientRefundDto extends dto(
 export class DisbursementDto extends dto(
   z.object({ vendorId: Str.min(1).max(64), label: Str.min(1).max(200), amount: z.number().int().positive().max(1_000_000_000), billNo: Str.max(64).optional() }),
 ) {}
+export class JournalMapDto extends dto(z.object({ map: z.record(z.string().max(64), z.string().trim().min(1).max(32)) })) {}

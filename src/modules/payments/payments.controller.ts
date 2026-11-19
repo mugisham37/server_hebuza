@@ -87,6 +87,11 @@ export class PaymentsController {
   invoices(@CurrentUser() me: SessionUser) {
     return this.svc.myInvoices(me.id);
   }
+  @Get("me/statement")
+  @Route({ auth: ["client"], permission: "fin.invoice.read", out: D.StatementOut })
+  statement(@Query() q: D.StatementQueryDto, @CurrentUser() me: SessionUser) {
+    return this.svc.myStatement(me.id, q.from, q.to);
+  }
   @Get("me/invoices/:no/pdf")
   @Route({ auth: ["client"], permission: "fin.invoice.read" })
   @RawResponse()

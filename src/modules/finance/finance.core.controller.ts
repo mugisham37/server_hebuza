@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseInterceptors,
 } from "@nestjs/common";
@@ -16,7 +17,7 @@ import { Route } from "../../core/http/route";
 import { ReportsService } from "../reports/reports.service";
 import type { JournalBody } from "../reports/lib/types";
 import * as core from "./finance.core";
-import { today } from "./finance.store";
+import { one, put, today } from "./finance.store";
 import { AcceptedInterceptor, FinRunner } from "./finance.runner";
 import * as D from "./finance.dto";
 
@@ -139,6 +140,22 @@ export class FinanceCoreController {
   @Route({ auth: D.FINX })
   cashPosition() {
     return this.reports.cashPosition();
+  }
+  /** Saved account mapping for journal exports (shared by the finance team). */
+  @Get("finance/exports/journal/map")
+  @Route({ auth: D.FINX })
+  journalMap() {
+    return this.r.read(async (f) => ({ map: (await one<{ id: string; value: Record<string, string> }>(f.db, "config", "journal_map"))?.value ?? null }));
+  }
+  @Put("finance/exports/journal/map")
+  @Route({ auth: D.FIN, limit: "write" })
+  saveJournalMap(@Body() b: D.JournalMapDto) {
+    return this.r.write(async (f) => {
+      const before = (await one<{ id: string; value: Record<string, string> }>(f.db, "config", "journal_map"))?.value ?? null;
+      await put(f.db, "config", "journal_map", { id: "journal_map", value: b.map });
+      f.rec("setting.journal_map.changed", "config", "journal_map", before, b.map, null, "data");
+      return { map: b.map };
+    });
   }
   @Post("finance/exports/journal/preview")
   @Route({ auth: D.FINX, limit: "write" })

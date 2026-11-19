@@ -91,3 +91,9 @@ export const MethodsOut = z.object({ methods: z.array(Method) });
 export const DeletedOut = z.object({ deleted: z.boolean() });
 export const BankOut = z.object({ status: z.literal("pending_verification") });
 export const Accepted = z.object({ status: z.literal("ok") });
+const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export class StatementQueryDto extends dto(z.object({ from: Day, to: Day })) {}
+export const StatementOut = z.object({
+  from: z.string(), to: z.string(), currency: z.string(), opening: z.number().int(), closing: z.number().int(),
+  rows: z.array(z.object({ date: z.string(), type: z.enum(["invoice", "payment", "credit_note"]), number: z.string(), detail: z.string(), amount: z.number().int() })),
+}).meta({ id: "ClientStatement" });
