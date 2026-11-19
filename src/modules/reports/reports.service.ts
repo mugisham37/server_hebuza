@@ -1,9 +1,12 @@
 // Finance reports (U3, U16, F-FIN-13): catalogue/run/drill, export jobs (CSV → object storage, presigned link via
 // GET /reports/exports/:id + notification), and the overview / cash position / journal read models finance calls.
 // shortcut: reads primary, move to read replica when provisioned.
+type View = { id: string; userId: string; report: ReportKey; name: string; filters: Record<string, string>; createdAt: string; deleted?: boolean };
+type Target = { id: string; report: ReportKey; metric: string; monthly: number; direction: "up" | "down"; updatedAt: string };
 type Sub = { id: string; userId: string; report: ReportKey; format: "csv" | "xlsx"; freq: "weekly" | "monthly"; createdAt: string; lastRunAt: string | null; deleted?: boolean };
 import { definitionOf } from "@/domain/reports/metrics";
 import { xlsx } from "@/domain/reports/xlsx";
+import { textPdf } from "../chat/chat.service";
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import { sql } from "drizzle-orm";
@@ -154,6 +157,16 @@ export class ReportsService {
       const r = run(c, key, q);
       const at = nowIso();
       await put(db, "report_run", key, { id: key, at } as { status?: string });
+      // F-RPT-08/10: monthly targets scaled to the period length, with a traffic light per metric.
+      const days = Math.max(1, (Date.parse(r.to) - Date.parse(r.from)) / 86_400_000 + 1);
+      const targets = (await all<Target>(db, "report_target")).filter((t) => t.report === key).map((t) => {
+        const target = Math.round((t.monthly * days) / 30);
+        const actual = r.total[t.metric] ?? 0;
+        const ratio = target ? actual / target : 1;
+        const good = t.direction === "up" ? ratio >= 1 : ratio <= 1;
+        const near = t.direction === "up" ? ratio >= 0.9 : ratio <= 1.1;
+        return { metric: t.metric, target, actual, light: good ? "green" : near ? "amber" : "red" };
+      });
       const five =
         key === "fin.revenue_reconciliation"
           ? {
@@ -174,6 +187,7 @@ export class ReportsService {
         totals: {},
         five,
         empty: r.def.empty?.(c) ?? null,
+        targets,
         meta: {
           period: { from: r.from, to: r.to },
           tz: "Africa/Kigali" as const,
@@ -291,12 +305,13 @@ export class ReportsService {
       try {
         const c = await this.ctx(db);
         const base = `${j.report}-${j.filters.from ?? ""}_${j.filters.to ?? ""}`;
-        // F-RPT-04: real XLSX; pdf is still delivered as CSV.
-        // shortcut: no PDF report frame yet (needs the approved PDF template), pdf requests get CSV.
+        // F-RPT-04: XLSX, PDF (text report frame: period, filters, rows, totals, definitions) or CSV.
         const { csv, rows, table } = this.reportCsv(c, j.report, j.filters);
         const file = j.format === "xlsx"
           ? await this.publishFile(`${base}.xlsx`, xlsx(table, j.report), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-          : await this.publishFile(`${base}.csv`, csv, "text/csv");
+          : j.format === "pdf"
+            ? await this.publishFile(`${base}.pdf`, textPdf(`HEBUZA report ${j.report}`, table.map((r) => r.map((v) => (typeof v === "number" ? v.toLocaleString("en") : v)).join("  |  "))), "application/pdf")
+            : await this.publishFile(`${base}.csv`, csv, "text/csv");
         Object.assign(j, {
           status: "ready",
           rowCount: rows,
@@ -319,6 +334,41 @@ export class ReportsService {
         channels: ["email"], // scheduled reports arrive by email (F-RPT-05)
         data: { type: ok ? "report.export_ready" : "report.export_failed", vars: { report: j.report } },
       });
+    });
+  }
+
+  // ---------------------------------------------------------------- saved views (F-RPT-06) + targets (F-RPT-10)
+  views(me: SessionUser, key: string) {
+    return this.tx.run(async (db) => ({ items: (await all<View>(db, "report_view")).filter((v) => v.userId === me.id && v.report === key && !v.deleted) }));
+  }
+  saveView(me: SessionUser, key: string, b: { name: string; filters: Record<string, string> }) {
+    if (!isReportKey(key)) throw notFound("Report");
+    return this.tx.run(async (db) => {
+      const v: View = { id: rid("rv"), userId: me.id, report: key, name: b.name, filters: b.filters, createdAt: nowIso() };
+      await put(db, "report_view", v.id, v);
+      return v;
+    });
+  }
+  deleteView(me: SessionUser, id: string) {
+    return this.tx.run(async (db) => {
+      const v = await one<View>(db, "report_view", id, true);
+      if (!v || v.userId !== me.id || v.deleted) throw notFound("View");
+      await put(db, "report_view", id, { ...v, deleted: true });
+      return { id };
+    });
+  }
+  targets() {
+    return this.tx.run(async (db) => ({ items: await all<Target>(db, "report_target") }));
+  }
+  /** Executive sets a monthly target for one report metric (0 removes it). */
+  setTarget(b: { report: string; metric: string; monthly: number; direction: "up" | "down" }) {
+    if (!isReportKey(b.report)) throw notFound("Report");
+    return this.tx.run(async (db) => {
+      const id = `${b.report}:${b.metric}`;
+      const t: Target = { id, report: b.report as ReportKey, metric: b.metric, monthly: b.monthly, direction: b.direction, updatedAt: nowIso() };
+      if (b.monthly > 0) await put(db, "report_target", id, t);
+      else await db.execute(sql`delete from finance_records where kind = 'report_target' and id = ${id}`);
+      return t;
     });
   }
 

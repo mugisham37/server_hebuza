@@ -476,19 +476,35 @@ const DEFS: Record<ReportKey, Def> = {
       ["renewals", "count", true],
       ["amount", "money", true],
       ["due", "money", true],
+      ["mrr", "money", true],
+      ["churned", "count", true],
     ],
-    recs: (c) =>
-      c.data.invs
-        .filter((i) => i.series === "plan" && i.issuedAt)
-        .map((i) => ({
-          date: i.issuedAt!,
-          dims: { client: clientDim(c, i.clientId), ...timeDims(i.issuedAt!) },
-          values: { renewals: 1, amount: i.totals.total, due: i.balanceDue },
-          ref: i.no ?? "",
-          href: invHref(i.no ?? ""),
-          party: i.billTo.name,
-          state: i.status,
-        })),
+    // F-SUB-13: MRR = plan billing per month (monthly plans bill monthly); churn = a client billed in month M with no plan
+    // invoice in M+1 (counted in M+1, once that month has ended).
+    // shortcut: annual plans would overstate MRR in their billing month; normalise by plan period once invoices carry it.
+    recs: (c) => {
+      const plan = c.data.invs.filter((i) => i.series === "plan" && i.issuedAt && i.status !== "void");
+      const billed = plan.map((i) => ({
+        date: i.issuedAt!,
+        dims: { client: clientDim(c, i.clientId), ...timeDims(i.issuedAt!) },
+        values: { renewals: 1, amount: i.totals.total, due: i.balanceDue, mrr: i.totals.total, churned: 0 },
+        ref: i.no ?? "",
+        href: invHref(i.no ?? ""),
+        party: i.billTo.name,
+        state: i.status,
+      }));
+      const months = new Map<string, Set<string>>();
+      for (const i of plan) (months.get(i.clientId) ?? months.set(i.clientId, new Set()).get(i.clientId)!).add(i.issuedAt!.slice(0, 7));
+      const current = new Date().toISOString().slice(0, 7);
+      const churn = [...months].flatMap(([client, ms]) =>
+        [...ms].map((m) => { const d = new Date(`${m}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); })
+          .filter((next) => next < current && !ms.has(next))
+          .map((next) => ({
+            date: `${next}-01`, dims: { client: clientDim(c, client), ...timeDims(`${next}-01`) },
+            values: { renewals: 0, amount: 0, due: 0, mrr: 0, churned: 1 }, ref: client, href: `/finance/invoices?client=${client}`, party: c.D.clientName(client), state: "churned",
+          })));
+      return [...billed, ...churn];
+    },
   },
   // shortcut: supplier payables come from procurement (P7); empty "stage12" until it lands.
   "fin.payables_ageing": {

@@ -21,6 +21,8 @@ export class ExportDto extends dto(
     filters: z.record(z.string(), z.string().max(200)).default({}),
   }),
 ) {}
+export class ViewDto extends dto(z.object({ name: z.string().trim().min(1).max(60), filters: z.record(z.string(), z.string().max(200)).default({}) })) {}
+export class TargetDto extends dto(z.object({ report: z.string().max(64), metric: z.string().max(48), monthly: z.number().int().min(0), direction: z.enum(["up", "down"]) })) {}
 /** F-RPT-05: scheduled email report. */
 export class SubscriptionDto extends dto(
   z.object({ report: z.string().max(64), format: z.enum(["csv", "xlsx"]), freq: z.enum(["weekly", "monthly"]) }),

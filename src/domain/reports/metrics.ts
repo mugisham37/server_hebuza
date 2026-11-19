@@ -24,6 +24,8 @@ export const METRICS: Record<string, MetricDef> = {
   invoices: m("count", ["Invoices", "Number of invoices issued."], ["Factures", "Nombre de factures émises."], ["Inyemezabuguzi", "Umubare w'inyemezabuguzi zatanzwe."]),
   matched: m("count", ["Matched", "Statement lines matched to a payment."], ["Rapprochés", "Lignes de relevé rapprochées."], ["Byahujwe", "Imirongo ya konti yahujwe n'ubwishyu."]),
   missing_ebm: m("count", ["Missing EBM", "Invoices without an RRA EBM receipt number."], ["Sans EBM", "Factures sans numéro EBM RRA."], ["Nta EBM", "Inyemezabuguzi zidafite nimero ya EBM."]),
+  mrr: m("money", ["MRR", "Monthly recurring revenue: plan billing in the month."], ["MRR", "Revenu récurrent mensuel : facturation des forfaits du mois."], ["Inyungu ihoraho ku kwezi", "Amafaranga y'ifatabuguzi yishyurijwe muri uko kwezi."]),
+  churned: m("count", ["Churned", "Clients billed one month and not the next."], ["Résiliés", "Clients facturés un mois et pas le suivant."], ["Bahagaritse", "Abakiriya bishyurijwe ukwezi kumwe ariko si ukurikiyeho."]),
   net: m("money", ["Net", "Gross minus refunds and credit notes."], ["Net", "Brut moins remboursements et avoirs."], ["Nyakuri", "Mbumbe ukuyemo ibyasubijwe."]),
   outflows: m("money", ["Outflows", "Cash paid out (refunds, payouts, suppliers)."], ["Sorties", "Décaissements."], ["Ibyasohotse", "Amafaranga yasohotse."]),
   outstanding: m("money", ["Outstanding", "Unpaid balance at period end, by age bucket."], ["Encours", "Solde impayé en fin de période."], ["Bisigaye", "Asigaye atarishyurwa."]),

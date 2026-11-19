@@ -88,6 +88,8 @@ export type Kind =
   | "report_run"
   | "export_job"
   | "report_sub"
+  | "report_view"
+  | "report_target"
   | "disbursement";
 
 type Doc = { status?: string; state?: string; rev?: number };
