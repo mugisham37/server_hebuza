@@ -1,5 +1,6 @@
 // Finance billing (U5–U7, U11, U15): quotations, invoices, client credit, EBM, reminders, receivables ageing, credit notes.
 // Port of src/mocks/handlers-finance-b.ts + the receivables half of handlers-finance-d.ts onto finance_records.
+import { settingOf } from "../../core/db/system-records";
 import { checkPromo, promoDiscount, type Promo } from "@/domain/marketing/promo";
 import { get as mktGet, put as mktPut } from "../marketing/marketing.store";
 import type { Tx as Exec } from "../../core/db/db";
@@ -1015,8 +1016,8 @@ function quietUntil(now = new Date()) {
 
 /**
  * Payment reminder (U11). Validates consent and length, records the reminder and queues the message for the
- * client's channel (quiet hours respected). shortcut: only email is delivered (queueMail no-ops without RESEND key);
- * WhatsApp/SMS are recorded for the outbox until a provider is wired.
+ * client's channel (quiet hours respected). Email goes through auth.mail; WhatsApp/SMS through the notifications
+ * delivery job on that channel (providers dormant until their keys are set, then the delivery fallback applies).
  */
 export async function remind(
   f: Fin,
@@ -1054,7 +1055,13 @@ export async function remind(
       { to: client.email, subject: `Invoice ${inv.no}`, text },
       rem.scheduledFor ? new Date(rem.scheduledFor) : undefined,
     );
-  }
+  } else if (b.channel !== "email")
+    await f.deps.outbox(
+      f.db,
+      "notifications.deliver",
+      { userId: inv.clientId, kind: "invoice_reminder", title: `Invoice ${inv.no}`, body: text, link: "/billing", channels: [b.channel] },
+      rem.scheduledFor ? new Date(rem.scheduledFor) : undefined,
+    );
   f.rec(
     "invoice.reminder_sent",
     "invoice",
@@ -1239,14 +1246,23 @@ export async function clientInvoices(db: Exec, clientId: string) {
       (select organization_id from organization_members where user_id = ${clientId} and status = 'active'))`));
   return rows.map((r) => r.data as Inv).filter((i) => i.no && i.status !== "draft");
 }
+export type Seller = { name: string; tin: string; vatNo: string; ebm: string; address: string; footer: string };
+/** F-SET-07: seller identity from the console settings (company.*). */
+export async function sellerOf(db: Pick<Exec, "select">): Promise<Seller> {
+  const g = (k: string) => settingOf<string>(db, `company.${k}`).then((v) => String(v ?? ""));
+  const [name, tin, vatNo, ebm, address, footer] = await Promise.all(["legal_name", "tin", "vat_no", "ebm_device", "address", "invoice_footer"].map(g));
+  return { name, tin, vatNo, ebm, address, footer };
+}
 /** Dependency-free text PDF of a priced document (invoice, quote, credit note). */
 export function invoiceDocPdf(
   title: string,
   no: string,
-  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string; tin?: string; customerNo?: string }; groupCode?: string; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number; fx?: { currency: string; rate: number; at: string } },
+  d: { seller?: Seller; lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string; tin?: string; customerNo?: string }; groupCode?: string; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number; fx?: { currency: string; rate: number; at: string } },
 ) {
   const rwf = (n: number) => `${n.toLocaleString("en-US")} RWF`;
+  const se = d.seller;
   return textPdf(`${title} ${no}`, [
+    ...(se ? [se.name, ...(se.address ? [se.address] : []), [se.tin && `TIN: ${se.tin}`, se.vatNo && `VAT: ${se.vatNo}`, se.ebm && `EBM: ${se.ebm}`].filter(Boolean).join(" · "), ""] : []),
     ...(d.billTo ? [`Bill to: ${d.billTo.name}`] : []),
     ...(d.billTo?.tin ? [`TIN: ${d.billTo.tin}`] : []),
     ...(d.billTo?.customerNo ? [`Customer ID: ${d.billTo.customerNo}`] : []),
@@ -1262,11 +1278,20 @@ export function invoiceDocPdf(
     `Pass-through (government / third party): ${rwf(d.totals.passThrough)}`,
     `Total: ${rwf(d.totals.total)}`,
     ...(d.balanceDue != null ? [`Balance due: ${rwf(d.balanceDue)}`] : []),
+    ...(se?.footer ? ["", se.footer] : []),
     ...(d.fx ? [`Indicative: ${fx(d.totals.total, 1 / d.fx.rate).rwf.toLocaleString("en-US")} ${d.fx.currency} at ${d.fx.rate} RWF/${d.fx.currency} (${d.fx.at.slice(0, 10)}); RWF is the amount due.`] : []),
   ]);
 }
 export async function quotePdf(f: Fin, no: string) {
   const { q } = await quoteOr404(f.db, no);
   const c = f.D.client(q.clientId);
-  return invoiceDocPdf(`Quotation v${q.version}`, q.no, { ...q, billTo: c ? { name: c.name, ...(c.customerNo && { customerNo: c.customerNo }) } : undefined });
+  return invoiceDocPdf(`Quotation v${q.version}`, q.no, { ...q, seller: await sellerOf(f.db), billTo: c ? { name: c.name, ...(c.customerNo && { customerNo: c.customerNo }) } : undefined });
+}
+/** Issued, non-void invoices of one case (field visits read the balance of record from here). */
+export async function clientInvoicesForCase(db: Exec, caseRef: string) {
+  const rows = await db
+    .select({ data: financeRecords.data })
+    .from(financeRecords)
+    .where(and(eq(financeRecords.kind, "invoice"), dsql`${financeRecords.data}->>'caseRef' = ${caseRef}`));
+  return rows.map((r) => r.data as Inv).filter((i) => i.no && i.status !== "draft" && i.status !== "void");
 }

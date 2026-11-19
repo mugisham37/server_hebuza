@@ -2,6 +2,7 @@
 // bank transfer, refunds, client billing reads. Provider calls never run inside a DB transaction:
 // reserve (tx) → gateway → settle (tx). Every money write runs in one SERIALIZABLE tx (`money`) that posts the
 // ledger journal, audits and adds the outbox event together; `settle` is the only payment status writer.
+import { settingOf } from "../../core/db/system-records";
 import { ownOr404 } from "../../core/auth/authorize";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -56,7 +57,7 @@ import {
 } from "./payments.provider";
 import type { BankTransferDto, InitiateDto } from "./payments.dto";
 import { put } from "../finance/finance.store";
-import { clientCredit, clientInvoices, invoiceDocPdf, labelOf } from "../finance/finance.billing";
+import { clientCredit, clientInvoices, invoiceDocPdf, sellerOf, labelOf } from "../finance/finance.billing";
 import { textPdf } from "../chat/chat.service";
 
 type Payment = typeof payments.$inferSelect;
@@ -336,8 +337,15 @@ export class PaymentsService {
   }
 
   // ── initiate ───────────────────────────────────────────────────────────────────────────────────
+  /** F-SET-08: a method the console switched off is refused before any gateway call. */
+  private async assertMethodOn(kind: Kind) {
+    if (kind !== "other" && (await settingOf<boolean>(this.db, `payments.method.${kind}`)) === false)
+      throw new AppError(422, "method_disabled", "This payment method is not available right now. Choose another one.");
+  }
+
   async initiate(me: SessionUser | null, body: InitiateDto) {
     const kind = normalizeMethod(body.method, body.operator);
+    await this.assertMethodOn(kind);
     if (kind === "bank-transfer")
       throw new AppError(
         422,
@@ -1101,7 +1109,8 @@ export class PaymentsService {
   }
 
   // ── bank transfer ──────────────────────────────────────────────────────────────────────────────
-  declareBankTransfer(me: SessionUser, body: BankTransferDto) {
+  async declareBankTransfer(me: SessionUser, body: BankTransferDto) {
+    await this.assertMethodOn("bank-transfer");
     return this.money(async (tx) => {
       await this.assertVerified(tx, me);
       await this.ensureEnabled(tx);
@@ -1378,7 +1387,7 @@ export class PaymentsService {
     return this.txs.run(async (tx) => {
       const i = (await clientInvoices(tx, clientId)).find((x) => x.no === no);
       if (!i) throw notFound("Invoice");
-      return invoiceDocPdf("Invoice", i.no!, i);
+      return invoiceDocPdf("Invoice", i.no!, { ...i, seller: await sellerOf(tx) });
     });
   }
   /** Text PDF of one of the client's receipts (F-FIN-06). */

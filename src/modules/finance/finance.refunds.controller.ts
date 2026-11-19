@@ -12,7 +12,7 @@ import {
 import type { FastifyReply } from "fastify";
 import { RawResponse } from "../../core/http/envelope.interceptor";
 import { fail, one } from "./finance.store";
-import { invoiceDocPdf } from "./finance.billing";
+import { invoiceDocPdf, sellerOf } from "./finance.billing";
 import type { CreditNote } from "@/domain/finance/types";
 import { Route } from "../../core/http/route";
 import * as rfd from "./finance.refunds";
@@ -82,7 +82,7 @@ export class FinanceRefundsController {
     const pdf = await this.r.read(async (f) => {
       const cn = await one<CreditNote>(f.db, "credit_note", no);
       if (!cn) throw fail(404, "not_found");
-      return invoiceDocPdf("Credit note", cn.no, { ...cn, caseRef: `Invoice ${cn.invoiceNo}${cn.ebmRef ? ` · EBM ${cn.ebmRef}` : ""}` });
+      return invoiceDocPdf("Credit note", cn.no, { ...cn, seller: await sellerOf(f.db), caseRef: `Invoice ${cn.invoiceNo}${cn.ebmRef ? ` · EBM ${cn.ebmRef}` : ""}` });
     });
     return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="${no}.pdf"`).send(pdf);
   }
