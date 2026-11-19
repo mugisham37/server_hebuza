@@ -1,6 +1,8 @@
 // P10 settings + feature flags + languages (U12), integrations registry (U12b) and notifications — rules, templates
 // with lint + Meta review, deliveries, channel budgets (U14). Port of handlers-system-d and the U14 half of -e.
 // Credentials are write-only: Fernet-encrypted in the system store, only last4 ever leaves the server.
+import type { DeliveryService } from "../notifications/notifications.delivery";
+import type { DeliveryVM } from "@/domain/system/types";
 import { eq } from "drizzle-orm";
 import { Logger } from "@nestjs/common";
 // UI dictionaries are pure data in server/src/domain (shared with the web app).
@@ -783,22 +785,32 @@ export async function templateOp(
 }
 
 // ---------------------------------------------------------------- deliveries + costs
-export function deliveries(
+export async function deliveries(
   c: Caller,
   q: { status?: string; channel?: string },
+  dlv: DeliveryService,
 ) {
   guard(c.session);
-  return read(c, (w) => ({
-    items: w.deliveries.filter(
-      (d) =>
-        (!q.status || d.status === q.status) &&
-        (!q.channel || d.channel === q.channel),
-    ),
-  }));
+  const rows = await dlv.list(q);
+  return {
+    items: rows.map((d) => ({
+      id: d.id, at: d.createdAt, event: d.kind, channel: d.channel as DeliveryVM["channel"], to: d.toMasked,
+      status: d.status as DeliveryVM["status"], costRwf: d.costRwf, templateKey: d.templateKey ?? "", lang: d.lang as DeliveryVM["lang"],
+      attempts: d.attempts, error: d.lastError ?? undefined,
+    })),
+  };
 }
-export function costs(c: Caller) {
+export async function costs(c: Caller, dlv: DeliveryService) {
   guard(c.session);
-  return read(c, (w) => ({ budgets: w.budgets, version: w.meta.costsVersion }));
+  const spend = await dlv.spend();
+  return read(c, (w) => ({
+    // Spend is metered from notification_deliveries this month; `ai` keeps its own meter in the world.
+    budgets: w.budgets.map((b) => {
+      const s = spend.get(b.channel);
+      return s ? { ...b, spent: s.spent, marketingSpent: s.marketing } : b.channel === "ai" ? b : { ...b, spent: 0, marketingSpent: 0 };
+    }),
+    version: w.meta.costsVersion,
+  }));
 }
 export async function putBudget(c: Caller, channel: string, budget: number) {
   await stepUp(c, guard(c.session));

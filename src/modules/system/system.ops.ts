@@ -1,6 +1,7 @@
 // P10 shell + approvals core (summary, alerts, setup, ⌘K search, change requests, overview — handlers-system +
 // handlers-system-a), privacy (U15: data map, processors, retention, DSR export/erase, legal hold) and operations
 // (U16: monitoring, backups, drills, restore, posture, dependencies, status posts, incidents) — handlers-system-f.
+import { latestBackup } from "./lib/backup-status";
 import type { Tx } from "../../core/db/db";
 import { createHash } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
@@ -495,11 +496,8 @@ export function overview(c: Caller) {
               .length > 0,
         };
       }),
-      backup: await cardOf(() => {
-        const last = w.backups.reduce<(typeof w.backups)[number] | null>(
-          (a, b) => (!a || b.at > a.at ? b : a),
-          null,
-        );
+      backup: await cardOf(async () => {
+        const last = await latestBackup(w.caller.deps.config).catch(() => null);
         const drill = w.drills
           .filter((d) => d.ok)
           .sort((a, b) => b.at.localeCompare(a.at))[0];
@@ -928,9 +926,11 @@ export function monitoring(c: Caller) {
     };
   });
 }
-export function backups(c: Caller) {
+export async function backups(c: Caller) {
   guard(c.session);
-  return read(c, (w) => ({ items: w.backups, tiers: BACKUP_TIERS }));
+  // Real status from the backup bucket; seeded world rows are no longer shown. Empty list = not configured / no run yet.
+  const last = await latestBackup(c.deps.config).catch(() => null);
+  return { items: last ? [last] : [], tiers: BACKUP_TIERS };
 }
 export function drills(c: Caller) {
   guard(c.session);

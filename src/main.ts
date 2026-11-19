@@ -42,6 +42,9 @@ async function bootstrap() {
   });
   await app.register(helmet);
   await app.register(cookie);
+  // Africa's Talking delivery reports + inbound SMS post form-encoded bodies (notifications webhooks).
+  app.getHttpAdapter().getInstance().addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 16_384 }, (_req, body, done) =>
+    done(null, Object.fromEntries(new URLSearchParams(String(body)))));
   await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024, files: 5, fields: 20 } });
   app.enableCors({ origin: cfg.get("WEB_ORIGIN", { infer: true }).split(",").map((o) => o.trim()), credentials: true });
   app.setGlobalPrefix("api", { exclude: ["health", "health/ready"] });

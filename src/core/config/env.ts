@@ -32,6 +32,14 @@ export const envSchema = z.object({
   AUDIT_S3_BUCKET: z.string().optional(),
   AUDIT_S3_ACCESS_KEY: z.string().optional(),
   AUDIT_S3_SECRET_KEY: z.string().optional(),
+  // Provider delivery webhooks + inbound SMS (STOP) are accepted only on /api/webhooks/notify/<token>/...; unset → 404.
+  NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),
+  // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
+  BACKUP_STATUS_ENDPOINT: z.string().url().optional(),
+  BACKUP_STATUS_BUCKET: z.string().optional(),
+  BACKUP_STATUS_ACCESS_KEY: z.string().optional(),
+  BACKUP_STATUS_SECRET_KEY: z.string().optional(),
+  BACKUP_STATUS_ENV: z.string().optional(), // RAILWAY_ENVIRONMENT_NAME of the backed-up env; default "production"
   ANTHROPIC_API_KEY: z.string().optional(),
   VOYAGE_API_KEY: z.string().optional(), // assistant embeddings (voyage-3.5); unset → full-text retrieval only
   AI_MODEL: z.string().default("claude-sonnet-5-5"), // public assistant answers

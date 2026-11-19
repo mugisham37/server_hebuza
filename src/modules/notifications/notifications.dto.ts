@@ -20,3 +20,22 @@ export class PrefsDto extends dto(PrefsIn) {}
 export class ListQueryDto extends dto(ListQuery) {}
 export class ReadDto extends dto(ReadIn) {}
 export type Prefs = z.infer<typeof PrefsIn>;
+
+// Provider webhooks (F-NTF-11) + inbound STOP (F-NTF-09). Shapes: Resend event JSON; Africa's Talking form posts.
+const ResendEvent = z.object({ type: z.string().max(64), data: z.object({ email_id: z.string().max(128) }).loose() }).loose();
+const AtStatus = z.object({ id: z.string().max(128), status: z.string().max(32), failureReason: z.string().max(128).optional() }).loose();
+const AtInbound = z.object({ from: z.string().max(32), text: z.string().max(1600) }).loose();
+export const WebhookOut = z.object({ ok: z.boolean() });
+export class ResendEventDto extends dto(ResendEvent) {}
+export class AtStatusDto extends dto(AtStatus) {}
+export class AtInboundDto extends dto(AtInbound) {}
+
+// Cookie banner / settings consent (F-CMS-15, F-NTF-09). Anonymous visitors send their banner id.
+const ConsentIn = z.object({
+  anon_id: z.string().regex(/^[\w-]{8,64}$/).optional(),
+  source: z.enum(["cookie_banner", "settings"]),
+  policy_version: z.string().max(32).optional(),
+  purposes: z.record(z.enum(["cookies_analytics", "cookies_marketing", "marketing_sms", "marketing_email", "marketing_whatsapp"]), z.boolean()),
+});
+export const ConsentOut = z.object({ recorded: z.number().int() });
+export class ConsentDto extends dto(ConsentIn) {}

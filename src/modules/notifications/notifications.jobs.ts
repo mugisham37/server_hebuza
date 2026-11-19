@@ -6,9 +6,9 @@ import type { Env } from "../../core/config/env";
 import { DB, type Db } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { MailService } from "../../core/notify/mail.service";
-import { SmsService } from "../../core/notify/sms.service";
 import { Cron, Job } from "../../core/queue/queues";
 import { RealtimeService } from "../realtime/realtime.service";
+import { DeliveryService } from "./notifications.delivery";
 import { DIGEST_WINDOW_S, NotificationsService, project, type NotifyInput } from "./notifications.service";
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -21,7 +21,7 @@ export class NotificationsJobs {
     private readonly tx: TxService,
     @Inject(DB) private readonly db: Db,
     private readonly mail: MailService,
-    private readonly sms: SmsService,
+    private readonly delivery: DeliveryService,
     private readonly rt: RealtimeService,
     private readonly cfg: ConfigService<Env, true>,
   ) {}
@@ -35,20 +35,15 @@ export class NotificationsJobs {
     // Row id derives from the job id (ob_<outbox id>), so retries re-use the in-app row (insert … on conflict do nothing).
     const { row, prefs } = await this.tx.runAsSystem(async (tx) => ({ row: await this.svc.insert(tx, n, job.id ? `ntf_${job.id}` : undefined), prefs: await this.svc.prefsOf(tx, n.userId) }));
     await this.rt.emit(n.userId, "notification", { notification: project(row) }).catch((e: unknown) => this.log.warn({ event: "notification.rt_failed", err: String(e) }));
-    if (!n.channels?.length) return;
-    const [u] = await this.db.select({ email: users.email, phone: users.phoneE164, active: users.isActive }).from(users).where(eq(users.userId, n.userId));
-    if (!u?.active) return;
-    const text = [n.title, n.body, n.link && `${this.appUrl}${n.link}`].filter(Boolean).join("\n\n");
-    // Each channel is best-effort: a failed email must not re-run the job (would duplicate the in-app row).
-    const sends = n.channels.map((ch) => {
-      if (ch === "email" && u.email && prefs.email_enabled)
-        return this.mail.send({ to: u.email, subject: n.title, text, html: `<p>${esc(text).replace(/\n/g, "<br>")}</p>`, tags: { kind: n.kind } });
-      // shortcut: WhatsApp goes through SmsService (no WhatsApp provider yet), add a driver when one is chosen.
-      if ((ch === "sms" || ch === "whatsapp") && u.phone) return this.sms.send({ to: u.phone, text });
-      return Promise.resolve();
-    });
-    for (const r of await Promise.allSettled(sends))
-      if (r.status === "rejected") this.log.error({ event: "notification.channel_failed", kind: n.kind, err: String(r.reason) });
+    // A retried job must not plan the external sends twice: one dispatch per in-app row.
+    if (await this.delivery.dispatched(row.id)) return;
+    await this.delivery.dispatch(n, prefs, row.id);
+  }
+
+  /** One external send (F-NTF-11); retried with the default exponential backoff, then falls through the chain. */
+  @Job("notifications.send")
+  send(d: { id: string }, job: { attemptsMade: number; opts: { attempts?: number } }) {
+    return this.delivery.send(d.id, job);
   }
 
   /** Hourly; safe to run twice: last_digest_at gates repeats. */

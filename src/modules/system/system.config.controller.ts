@@ -18,6 +18,7 @@ import {
   type RawCaller,
 } from "./system.store";
 import * as cfg from "./system.config";
+import { DeliveryService } from "../notifications/notifications.delivery";
 import type { EventRuleVM, TemplateBody, TemplateVM } from "@/domain/system/types";
 import type { Locale } from "@/domain/i18n/config";
 import {
@@ -41,7 +42,7 @@ const X = "staff/x";
 @Controller()
 @UseInterceptors(AcceptedInterceptor)
 export class SystemConfigController {
-  constructor(private readonly s: SystemStore) {}
+  constructor(private readonly s: SystemStore, private readonly dlv: DeliveryService) {}
 
   @Get("staff/settings")
   @Route(R)
@@ -157,12 +158,13 @@ export class SystemConfigController {
   @Get(`${X}/notifications/deliveries`)
   @Route(R)
   deliveries(@Sys() c: RawCaller, @Query() q: DeliveriesQueryDto) {
-    return cfg.deliveries(this.s.on(c), q);
+    // F-NTF-11: real sends from notification_deliveries (the world's seeded rows are no longer read).
+    return cfg.deliveries(this.s.on(c), q, this.dlv);
   }
   @Get(`${X}/notifications/costs`)
   @Route(R)
   costs(@Sys() c: RawCaller) {
-    return cfg.costs(this.s.on(c));
+    return cfg.costs(this.s.on(c), this.dlv);
   }
   @Put(`${X}/notifications/costs/:channel`)
   @Route(R)

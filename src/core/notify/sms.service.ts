@@ -7,7 +7,8 @@ export const maskTo = (s: string) =>
 
 export type Sms = { to: string; text: string };
 export interface SmsDriver {
-  send(m: Sms): Promise<void>;
+  /** Resolves to the provider message id when it returns one. */
+  send(m: Sms): Promise<string | undefined>;
 }
 
 /** Africa's Talking (Rwanda: MTN + Airtel). SMS_PROVIDER=africastalking + AT_USERNAME + AT_API_KEY [+ AT_SENDER_ID]. */
@@ -38,7 +39,7 @@ const africasTalking = (
       signal: AbortSignal.timeout(15_000),
     });
     const j = (await r.json().catch(() => null)) as {
-      SMSMessageData?: { Recipients?: { status?: string }[] };
+      SMSMessageData?: { Recipients?: { status?: string; messageId?: string }[] };
     } | null;
     const status = j?.SMSMessageData?.Recipients?.[0]?.status;
     // Throwing lets the queue retry (with backoff) and dead-letter on persistent failure.
@@ -46,6 +47,7 @@ const africasTalking = (
       throw new Error(
         `sms: africastalking ${r.status} ${status ?? "no recipient status"}`,
       );
+    return j?.SMSMessageData?.Recipients?.[0]?.messageId;
   },
 });
 
@@ -79,6 +81,7 @@ export class SmsService {
           to: maskTo(m.to),
           chars: m.text.length,
         });
+        return undefined;
       },
     };
   }

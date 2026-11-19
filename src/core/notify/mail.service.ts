@@ -18,18 +18,20 @@ export class MailService {
     this.from = c.getOrThrow<string>("MAIL_FROM");
   }
 
-  async send(m: Mail): Promise<void> {
+  /** Resolves to the provider message id (undefined in dev without a key). */
+  async send(m: Mail): Promise<string | undefined> {
     if (!this.resend) {
       if (this.prod) throw new Error("mail: RESEND_API_KEY not configured");
       // Never log bodies: they carry OTPs and links.
       this.log.log({ event: "mail.dev", to: [m.to].flat().map(maskTo), subject: m.subject });
       return;
     }
-    const { error } = await this.resend.emails.send({
+    const { data, error } = await this.resend.emails.send({
       from: this.from, to: m.to, subject: m.subject, html: m.html, text: m.text,
       tags: m.tags && Object.entries(m.tags).map(([name, value]) => ({ name, value })),
     });
     if (error) throw new Error(`resend: ${error.message}`); // throw so the queue retries
+    return data?.id;
   }
 }
 
