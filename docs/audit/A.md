@@ -44,7 +44,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-CLP-08 | Documents & deliverables | P1 | DONE | Closed 2026-11-19: Results tab reads deliverables written on release (DLV-01). (was PARTIAL) |
 | F-CLP-09 | Messages | P1 | DONE | W (client)/messages/page.tsx; S chat.controller.ts |
 | F-CLP-10 | Consultations | P2 | DONE | W (client)/bookings; S booking.controller.ts:136 |
-| F-CLP-11 | Feedback & complaints | P2 | PARTIAL | Rate (deliverables.tsx:372) and complaint ticket (help.tsx:39) work. But client tickets go to `support_tickets` (S applications/support.service.ts), not the ops ticket register |
+| F-CLP-11 | Feedback & complaints | P2 | DONE | Closed 2026-11-19: complaints filed by clients (help or not-OK receipt) also open an ops-register ticket (owner, response clock, resolution). (was PARTIAL) |
 | F-CLP-12 | Reminders hub | P2 | DONE | Closed 2026-11-19: GET/PUT me/reminders hub (documents, payments, quotes, expiring docs) with snooze/done; /dashboard/reminders. (was MISSING) |
 | F-CLP-13 | History & request again | P2 | DONE | Closed 2026-11-19: POST applications/:code/clone prefills a new draft (answers, personal details, library docs map); history "Request again" uses it. (was PARTIAL) |
 | F-CLP-14 | Consent centre | P1 | PARTIAL | me/consents GET/PUT (account.controller.ts:20-23), W settings-privacy.tsx. Missing: profile_reuse, per-channel marketing, AI history, timestamped log |
@@ -80,9 +80,9 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-REQ-09 | Public tracking | P1 | DONE | `track/:code` + `verify` (applications.controller.ts:40-46), W (public)/track/[code]. Coarse status, contact unlocks detail |
 | F-REQ-10 | Claim guest case | P1 | DONE | Closed 2026-11-19: claim is two-step: SMS OTP to the case phone, verified before linking. (was PARTIAL) |
 | F-REQ-11 | Client cancellation | P1 | DONE | Closed 2026-11-19: POST applications/:code/cancel: cancels before work, else opens an SM approval; paid early cancel → refund request; client button. (was PARTIAL) |
-| F-REQ-12 | Assisted submission | P2 | MISSING | No staff "submit on behalf" with consent and claim invite (only field visit purpose `assisted_application`, field.service.ts:705) |
+| F-REQ-12 | Assisted submission | P2 | DONE | Closed 2026-11-19: POST admin/applications/assisted (SM/agent): guest case with recorded consent method, tracking code + claim link sent to the client; /ops/assisted. (was MISSING) |
 | F-REQ-13 | Request again | P2 | DONE | Closed 2026-11-19: see CLP-13. (was PARTIAL) |
-| F-REQ-14 | AI draft intake | P3 | PARTIAL | `ai_drafts` exist (assistant.engine.ts:1125). Draft → submitted case with client confirm not verified |
+| F-REQ-14 | AI draft intake | P3 | DONE | Closed 2026-11-19: wizard ?draft=<id> loads the assistant draft into answers; client reviews every step and submits; ai_draft_id marks the draft submitted. (was PARTIAL) |
 | F-REQ-15 | Case timeline | P1 | DONE | `admin/applications/:code/timeline` (ops.cases.controller.ts:210), client timeline (W request-detail.tsx:82,185), me/activity |
 | F-REQ-16 | Completion record | P1 | DONE | Closed 2026-11-19: completion_record jsonb frozen on completed_delivered (assignees, fee, payment, SLA, message/deliverable counts). (was MISSING) |
 | F-REQ-17 | Refund states | P2 | DONE | Closed 2026-11-19: case moves to refund_requested on RFD request, refunded on payout/credit, back to its prior status on decline (status_before_refund). (was PARTIAL) |
@@ -99,7 +99,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-06 | Expiry tracking | P2 | DONE | Closed 2026-11-19: 60/30/0-day expiry reminders (documents.expiry cron). (was PARTIAL) |
 | F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive |
 | F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) |
-| F-DOC-09 | Retention engine | P2 | PARTIAL | Retention policy, dry-run and changes (S system.ops.ts:680, privacy/retention routes) and an orphan-version purge (documents.service.ts:607). No per-class nightly flag → SM approve → crypto-shred |
+| F-DOC-09 | Retention engine | P2 | DONE | Closed 2026-11-19: nightly documents.retention flags per class (ID 2y, case 5y, deliverable 10y, chat 7y) → SM queue /ops/retention → shred (object deleted, path tombstoned, audited, step-up) or keep with reason. (was PARTIAL) |
 | F-DOC-10 | Company vault | P2 | DONE | Closed 2026-11-19: company vault: client_documents.organization_id, upload for a company, rep download (ORG-07). (was MISSING) |
 | F-DOC-11 | Guest upload guard | P1 | DONE | Closed 2026-11-19: see REQ-18. (was PARTIAL) |
 | F-DOC-12 | OCR / auto-classify | P3 | MISSING | placeholder only (ops.cases.ts:860) |
@@ -112,7 +112,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DLV-02 | Submit for review | P1 | DONE | `submit-review` → `awaiting_internal_review` + openReview (agent.service.ts:1425-1432), W work/jobs/[ref] |
 | F-DLV-03 | Review decision | P1 | DONE | 4-eyes `own_work` check (S ops.manage.ts:708-709), return/approve, second level, W ops/reviews/[id]. `review_required` is a hard-coded NO_REVIEW set (agent.service.ts:1405), not per-service config |
 | F-DLV-04 | Release gate | P1 | DONE | Closed 2026-11-19: release writes client-visible rows; downloads stay locked while a balance is due (payment gate); override path audited. (was PARTIAL) |
-| F-DLV-05 | Watermarked preview | P2 | MISSING | `deliverables/:id/preview` returns the raw presigned file. No stamping (work.service.ts:1634 shortcut) |
+| F-DLV-05 | Watermarked preview | P2 | DONE | Closed 2026-11-19: preview while a balance is due: images downscaled + "PREVIEW — HEBUZA — {code}" stamp; PDFs a stamped notice page (shortcut: no PDF rasteriser). (was MISSING) |
 | F-DLV-06 | Secure download links | P1 | DONE | Closed 2026-11-19: download_tokens: single-use 72 h links sent on release (email/WhatsApp via notifications), GET d/:token (signed-in owner) → file; web /d/[token]. (was PARTIAL) |
 | F-DLV-07 | Download log | P1 | DONE | `deliverable.downloaded` audit (documents.service.ts:797) |
 | F-DLV-08 | Delivery receipt | P2 | DONE | Closed 2026-11-19: not-OK receipt opens a complaint ticket on the case (one open at a time). (was PARTIAL) |
