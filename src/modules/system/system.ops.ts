@@ -1124,7 +1124,7 @@ export function openIncident(
       timeline: [{ at: iso(), by: w.actor.name, text: "Incident opened." }],
       version: 1,
       // PRV-breach: personal-data incidents start the regulator-notification clock (system_breach_timer cron).
-      ...(b.personalData ? { breach: { personalData: true as const, notifyBy: breachDeadline(b.startedAt || iso()) } } : {}),
+      ...(b.personalData ? { breach: { personalData: true as const, notifyBy: breachDeadline(b.startedAt || iso(), Number(settingValue(w, "privacy.breach_notify_hours")) || undefined) } } : {}),
     };
     w.incidents.unshift(inc);
     record(w, "system.incident.opened", "incident", inc.id, undefined, {
