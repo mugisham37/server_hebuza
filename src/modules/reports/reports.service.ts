@@ -4,6 +4,7 @@
 type View = { id: string; userId: string; report: ReportKey; name: string; filters: Record<string, string>; createdAt: string; deleted?: boolean };
 type Target = { id: string; report: ReportKey; metric: string; monthly: number; direction: "up" | "down"; updatedAt: string };
 type Sub = { id: string; userId: string; report: ReportKey; format: "csv" | "xlsx"; freq: "weekly" | "monthly"; createdAt: string; lastRunAt: string | null; deleted?: boolean };
+import { ownOr404 } from "../../core/auth/authorize";
 import { definitionOf } from "@/domain/reports/metrics";
 import { xlsx } from "@/domain/reports/xlsx";
 import { textPdf } from "../chat/chat.service";
@@ -352,7 +353,7 @@ export class ReportsService {
   deleteView(me: SessionUser, id: string) {
     return this.tx.run(async (db) => {
       const v = await one<View>(db, "report_view", id, true);
-      if (!v || v.userId !== me.id || v.deleted) throw notFound("View");
+      ownOr404(me, v?.deleted ? null : v, (x) => x.userId, "View");
       await put(db, "report_view", id, { ...v, deleted: true });
       return { id };
     });
@@ -387,7 +388,7 @@ export class ReportsService {
   unsubscribe(me: SessionUser, id: string) {
     return this.tx.run(async (db) => {
       const sub = await one<Sub>(db, "report_sub", id, true);
-      if (!sub || sub.userId !== me.id || sub.deleted) throw notFound("Subscription");
+      ownOr404(me, sub?.deleted ? null : sub, (x) => x.userId, "Subscription");
       await put(db, "report_sub", id, { ...sub, deleted: true });
       return { id };
     });

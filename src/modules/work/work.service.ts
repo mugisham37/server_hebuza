@@ -2,6 +2,7 @@
 // destination, statements/payouts/invoices, firm team, scoped job access. Plain functions over the request tx (WCtx from
 // WorkRunner); every write takes the worker's row lock first. No case status changes happen here (those go through
 // ApplicationsService.transition in the agent/ops modules).
+import { ownOr404 } from "../../core/auth/authorize";
 import { settings as finSettings } from "../finance/finance.store";
 import { createHash } from "node:crypto";
 import { Logger } from "@nestjs/common";
@@ -1765,7 +1766,7 @@ export async function counter(
 ) {
   const a = await actor(ctx.db, ctx.session);
   const o = await recGet<CounterOffer>(ctx.db, "offer", id, true);
-  if (!o || o.ownerId !== a.uid) throw err.notFound("Offer not found");
+  ownOr404({ id: a.uid }, o, (x) => x.ownerId, "Offer");
   const d = o.data;
   if (Date.parse(d.expiresAt) <= Date.now() || d.state === "timeout")
     throw new AppError(409, "expired", "This offer expired");
