@@ -2,6 +2,7 @@
 // (/me/dashboard, /me/activity). Query functions take the caller's tx (RLS applies); ApplicationsService runs them.
 // Status changes go through `transition()` → the shared machine in @/domain/ops/transitions.
 import { authorize, ownOr404 } from "../../core/auth/authorize";
+import { caseCoverage } from "../subscriptions/subscriptions.service";
 import { statusEffects } from "./status-effects";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -718,6 +719,9 @@ export async function submitTx(db: Tx, s: SessionUser | null, input: SubmitInput
   // The fee is always worked out here; nothing fee-like from the client is read.
   const fee = tier.platformFee + tier.governmentFee;
   // shortcut: "range" pricing and plan coverage are quoted by hand / paid like everyone else until pricing bands + subscriptions coverage land.
+  // SUB-10/12: a live personal or company plan waives the platform fee; government fees are always charged.
+  const planCovered = !!s && handler !== "partner" && !quoted && (await caseCoverage(db, s.id, input.organization_id ?? null));
+  const fee = (planCovered ? 0 : tier.platformFee) + tier.governmentFee;
   const quoted = handler === "agent" && (svc.pricingMode === "quote" || svc.pricingMode === "range");
   const priced =
     handler === "partner"

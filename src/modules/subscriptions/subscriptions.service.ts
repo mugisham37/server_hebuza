@@ -379,6 +379,33 @@ export async function coverageFor(db: Exec, clientId: string, role: string) {
   return { covered: !!org, dedicatedAgentId: null };
 }
 
+/**
+ * Case pricing (SUB-10/12): is a new case covered by a plan (platform fee waived, government fee still charged)?
+ * A company submission uses the company plan; a personal one the client's own plan, then any company plan they
+ * represent. A plan whose monthly cap is used up no longer covers (the case is paid like any other).
+ */
+export async function caseCoverage(db: Exec, clientId: string, organizationId: string | null) {
+  if (organizationId) {
+    // Only an active member's submission can use the company plan (the submit path then checks their seat).
+    const [m] = await db.select({ u: organizationMembers.userId }).from(organizationMembers)
+      .where(and(eq(organizationMembers.organizationId, organizationId), eq(organizationMembers.userId, clientId), eq(organizationMembers.status, "active")));
+    if (!m) return false;
+    const o = await orgSubscription(db, organizationId);
+    if (!o || o.status !== "active" || o.kind === "trial") return false;
+    const cap = (await getPlan(db, o.planId))?.maxApplicationsPerMonth;
+    if (!cap) return true;
+    const [{ n }] = await db.select({ n: count() }).from(applications)
+      .where(and(eq(applications.organizationId, organizationId), gte(applications.submittedAt, o.startedAt)));
+    return n < cap;
+  }
+  const s = await expireIfLapsed(db, await byClient(db, clientId));
+  if (s && covers(s) && s.status !== "trial") {
+    const cap = (await getPlan(db, s.planId))?.maxApplicationsPerMonth;
+    return !cap || (await usedInPeriod(db, clientId, s)) < cap;
+  }
+  return (await coverageFor(db, clientId, "client")).covered;
+}
+
 /** Only the monthly cap of a LIVE plan blocks a new application (a lapsed plan just means paying per case). */
 export async function assertCanSubmit(
   db: Exec,
