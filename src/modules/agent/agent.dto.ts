@@ -148,9 +148,11 @@ export class MsgDto extends dto(
       .optional(),
     card: z
       .object({
-        type: z.enum(["doc_request", "appointment", "status"]),
+        // doc_request/status = legacy free-text cards; the rest are typed (domain/chat/rules CARD_SCHEMAS, F-MSG-05).
+        type: z.enum(["doc_request", "appointment", "status", "document_request", "payment_request", "quotation", "deliverable_ready", "visit_checkin"]),
         title: z.string().max(200),
         detail: z.string().max(1000),
+        data: z.record(z.string(), z.unknown()).optional(),
       })
       .optional(),
   }),

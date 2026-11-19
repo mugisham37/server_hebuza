@@ -1209,7 +1209,8 @@ export class ChatService {
         isReadByClient: false,
         lane: "client",
         kind: "card",
-        payload: { card: card.kind, ...card.payload },
+        // Same shape as agent-inbox cards: payload.card = { type, title, detail, data }.
+        payload: { card: { type: card.kind, title: String(card.payload.title ?? card.kind), detail: String(card.payload.detail ?? ""), data: card.payload } },
       });
       const out = await this.one(tx, m);
       push({
@@ -1225,12 +1226,12 @@ export class ChatService {
   cardAction(s: SessionUser, mid: string, action: string) {
     return this.run(async (tx, push) => {
       const { m, c, a } = await this.message(tx, s, mid, true);
-      const p = (m.payload ?? {}) as Record<string, unknown>;
-      const kind = String(p.card ?? "") as keyof typeof CARD_ACTIONS;
+      const p = (m.payload ?? {}) as { card?: { type?: string; response?: unknown } & Record<string, unknown> };
+      const kind = String(p.card?.type ?? "") as keyof typeof CARD_ACTIONS;
       if (m.kind !== "card" || a.role !== "client") throw notFound("Card");
       if (!CARD_ACTIONS[kind]?.includes(action)) throw new AppError(422, "validation", "This card has no such action.");
-      if (p.response) throw new AppError(409, "already_decided", "Already answered.");
-      await tx.update(applicationMessages).set({ payload: { ...p, response: { action, by: s.id, at: iso() } } }).where(eq(applicationMessages.messageId, mid));
+      if (p.card?.response) throw new AppError(409, "already_decided", "Already answered.");
+      await tx.update(applicationMessages).set({ payload: { ...p, card: { ...p.card, response: { action, by: s.id, at: iso() } } } }).where(eq(applicationMessages.messageId, mid));
       const sys = await this.postSystem(tx, c, "card_response", `Quotation ${action === "accept" ? "accepted" : "declined"}`, { card_id: mid, action });
       const out = await this.one(tx, sys);
       push({ to: await this.recipients(tx, c, a, "client"), type: "chat.message", payload: { conversation_id: c.conversationId, message: out } });

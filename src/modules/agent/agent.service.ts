@@ -3,6 +3,7 @@
 // Scope rule: an agent sees only cases they lead or help on; a case they were moved off is read-only (409
 // reassigned) and anything else does not exist (404 not_assigned). Plain functions over the request tx (OpsRunner);
 // injected services arrive through `Deps` (status moves → ApplicationsService.transition, chat, storage).
+import { CARD_SCHEMAS, parseCard } from "@/domain/chat/rules";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import {
@@ -1695,6 +1696,9 @@ export async function postThread(
       throw new AppError(403, "forbidden", "Client lane not enabled.");
     if (b.lane === "internal" && b.kind === "card")
       throw new AppError(422, "invalid", "Cards are client-visible only.");
+    const cd = b.kind === "card" ? (b.card as { type: string; title: string; data?: Record<string, unknown> } | undefined) : undefined;
+    if (cd?.data && cd.type in CARD_SCHEMAS && "error" in parseCard(cd.type, { title: cd.title, ...cd.data }))
+      throw new AppError(422, "validation", "Card details are incomplete.");
     const conv = await deps.chat.ensureCaseConversation(ctx.db, r.app.applicationId);
     const body =
       String(b.body ?? "").slice(0, 4000) ||
