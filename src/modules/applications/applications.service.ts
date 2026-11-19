@@ -717,12 +717,11 @@ export async function submitTx(db: Tx, s: SessionUser | null, input: SubmitInput
   serviceData.phone ??= info.phone;
 
   // The fee is always worked out here; nothing fee-like from the client is read.
-  const fee = tier.platformFee + tier.governmentFee;
-  // shortcut: "range" pricing and plan coverage are quoted by hand / paid like everyone else until pricing bands + subscriptions coverage land.
+  // shortcut: "range" pricing is quoted by hand until pricing bands land.
+  const quoted = handler === "agent" && (svc.pricingMode === "quote" || svc.pricingMode === "range");
   // SUB-10/12: a live personal or company plan waives the platform fee; government fees are always charged.
   const planCovered = !!s && handler !== "partner" && !quoted && (await caseCoverage(db, s.id, input.organization_id ?? null));
   const fee = (planCovered ? 0 : tier.platformFee) + tier.governmentFee;
-  const quoted = handler === "agent" && (svc.pricingMode === "quote" || svc.pricingMode === "range");
   const priced =
     handler === "partner"
       ? { ending: "partner", required: false, amount: null, status: "negotiating" }
