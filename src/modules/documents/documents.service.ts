@@ -699,8 +699,13 @@ export class DocumentsService {
     return this.tx.run((db) => listLibrary(db, s));
   }
 
-  upload(s: SessionUser, f: Upload & { label?: string | null; kind?: string | null; sha256?: string | null; allowDuplicate?: boolean }) {
+  upload(s: SessionUser, f: Upload & { label?: string | null; kind?: string | null; sha256?: string | null; allowDuplicate?: boolean; organizationId?: string | null }) {
     return this.tx.run(async (db) => {
+      if (f.organizationId) {
+        const [m] = (await db.execute(sql`select role from organization_members where organization_id = ${f.organizationId} and user_id = ${s.id} and status = 'active'`)) as unknown as { role: string }[]; // cast: execute() rows are untyped
+        if (!m) throw new AppError(404, "not_found", "Not found.");
+        if (m.role === "viewer") throw new AppError(403, "forbidden", "Your role in this company can't add documents.");
+      }
       const [{ n }] = await db
         .select({ n: count() })
         .from(clientDocuments)
@@ -724,7 +729,7 @@ export class DocumentsService {
       const upload = await this.presign(s.id, "vault", f);
       const ts = new Date().toISOString();
       const file = { storagePath: upload.key, originalFilename: name, mimeType: f.mime, fileSizeBytes: f.size, contentSha256: sha };
-      await db.insert(clientDocuments).values({ documentId: id, clientId: s.id, ...file, label, kind, isActive: true, createdAt: ts, updatedAt: ts, currentVersion: 1 });
+      await db.insert(clientDocuments).values({ documentId: id, clientId: s.id, organizationId: f.organizationId ?? null, ...file, label, kind, isActive: true, createdAt: ts, updatedAt: ts, currentVersion: 1 });
       await db.insert(clientDocumentVersions).values({ versionId: generateId("cvd"), documentId: id, version: 1, ...file, contentSha256: sha ?? "", uploadedAt: ts }); // "" = not declared
       await this.finalizeLater(db, { kind: "library", id, version: 1 });
       await this.audit.record(db, { action: "document.vault_upload", entity: "document", entityId: id, after: { name, mime: f.mime, size: f.size } });

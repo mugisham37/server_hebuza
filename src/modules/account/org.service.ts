@@ -6,7 +6,10 @@ import { ConfigService } from "@nestjs/config";
 import { createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import {
+  applicationStatusHistory,
   applications,
+  clientDocuments,
+  financeRecords,
   organizationInvites,
   organizationMembers,
   organizations,
@@ -34,6 +37,7 @@ import { nextCustomerNo } from "../../core/db/customer-no";
 import { NotificationsService } from "../notifications/notifications.service";
 import { normalizePhone } from "../auth/auth.rules";
 import { orgSubscription } from "../subscriptions/subscriptions.service";
+import { StorageService } from "../../core/storage/storage.service";
 
 export type OrgProfile = {
   legalName: string;
@@ -65,6 +69,7 @@ export class OrgService {
     private readonly crypto: CryptoService,
     private readonly notifications: NotificationsService,
     private readonly cfg: ConfigService<Env, true>,
+    private readonly storage: StorageService,
   ) {}
 
   private get origin() {
@@ -300,10 +305,9 @@ export class OrgService {
   }
 
   detail(me: SessionUser, id: string) {
-    return this.txs.run(async (tx) => {
-      const role = await this.assertCan(tx, id, me.id, "view");
-      return this.full(tx, id, role);
-    });
+    // Membership is checked under the caller's RLS; the company's shared rows (other reps' cases/docs, invoices) are
+    // then read as system, scoped to this company only.
+    return this.txs.run((tx) => this.assertCan(tx, id, me.id, "view")).then((role) => this.txs.runAsSystem((tx) => this.full(tx, id, role)));
   }
 
   private async full(tx: Tx, id: string, myRole: OrgRole | null) {
@@ -328,12 +332,44 @@ export class OrgService {
         .orderBy(desc(applications.submittedAt))
         .limit(200),
     ]);
+    // ORG-07 vault + ORG-09 timeline (requests, status changes, invoices, documents) + SUB-10 subscription.
+    const [docs, events, invoices, subscription] = await Promise.all([
+      tx.select({ id: clientDocuments.documentId, name: clientDocuments.originalFilename, label: clientDocuments.label, kind: clientDocuments.kind, size: clientDocuments.fileSizeBytes, at: clientDocuments.createdAt })
+        .from(clientDocuments).where(and(eq(clientDocuments.organizationId, id), eq(clientDocuments.isActive, true))).orderBy(desc(clientDocuments.createdAt)),
+      tx.select({ code: applications.code, status: applicationStatusHistory.status, at: applicationStatusHistory.createdAt })
+        .from(applicationStatusHistory).innerJoin(applications, eq(applications.applicationId, applicationStatusHistory.applicationId))
+        .where(eq(applications.organizationId, id)).orderBy(desc(applicationStatusHistory.createdAt)).limit(200),
+      tx.select({ d: financeRecords.data }).from(financeRecords).where(and(eq(financeRecords.kind, "invoice"), sql`${financeRecords.data}->>'organizationId' = ${id}`)),
+      orgSubscription(tx, id),
+    ]);
+    const inv = invoices.map((r) => r.d as { no: string | null; status: string; issuedAt?: string; totals: { total: number }; balanceDue: number; caseRef?: string }).filter((i) => i.no && i.status !== "draft");
+    const timeline = [
+      ...events.map((e) => ({ kind: "status" as const, at: e.at, title: `${e.code}: ${e.status.replace(/_/g, " ")}`, ref: e.code })),
+      ...inv.map((i) => ({ kind: "invoice" as const, at: i.issuedAt ?? "", title: `Invoice ${i.no} · ${i.totals.total} RWF · ${i.status}`, ref: i.no! })),
+      ...docs.map((d) => ({ kind: "document" as const, at: d.at, title: d.label || d.name, ref: d.id })),
+    ].filter((x) => x.at).sort((a, b) => b.at.localeCompare(a.at));
     return {
       ...this.view(o),
       myRole,
       members: ms.get(id) ?? [],
       requests: cases,
+      documents: docs,
+      invoices: inv.map((i) => ({ no: i.no, status: i.status, total: i.totals.total, balanceDue: i.balanceDue, caseRef: i.caseRef ?? null, issuedAt: i.issuedAt ?? null })),
+      subscription,
+      timeline,
     };
+  }
+
+  /** ORG-07: a company document's download link, for any active representative. */
+  docDownload(me: SessionUser, id: string, docId: string) {
+    return this.txs.run((tx) => this.assertCan(tx, id, me.id, "view")).then(() =>
+      this.txs.runAsSystem(async (tx) => {
+        const [d] = await tx.select().from(clientDocuments)
+          .where(and(eq(clientDocuments.documentId, docId), eq(clientDocuments.organizationId, id), eq(clientDocuments.isActive, true)));
+        if (!d) throw notFound("Document");
+        await this.audit.record(tx, { action: "document.viewed", entity: "document", entityId: docId, after: { organizationId: id } });
+        return { url: await this.storage.presignGet(d.storagePath, d.originalFilename) };
+      }));
   }
 
   update(me: SessionUser, id: string, b: Partial<OrgProfile>) {

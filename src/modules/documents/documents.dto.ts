@@ -27,6 +27,8 @@ export class LibUploadDto extends dto(UploadIn.extend({
   label: z.string().max(120).nullish(), kind: z.string().max(64).nullish(),
   /** Client-computed SHA-256 (hex) for duplicate detection; the server never sees the bytes. */
   sha256: z.string().regex(/^[a-f0-9]{64}$/).nullish(), allowDuplicate: z.boolean().optional(),
+  /** ORG-07: file into this company's vault (owner/admin). */
+  organizationId: z.string().max(64).nullish(),
 })) {}
 export class LibPatchDto extends dto(z.object({ label: z.string().max(120).optional(), kind: z.string().max(64).nullish(), expiresOn: z.iso.date().nullish() })) {}
 export class AttachDto extends dto(z.object({ code: z.string().min(1).max(32), requirementKey: z.string().max(128).optional() })) {}

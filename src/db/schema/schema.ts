@@ -474,6 +474,8 @@ export const clientDocuments = pgTable("client_documents", {
 	currentVersion: integer("current_version").default(1).notNull(),
 	contentSha256: varchar("content_sha256", { length: 64 }),
 	deletedAt: timestamp("deleted_at", { withTimezone: true, mode: 'string' }),
+	/** ORG-07: owned by a company (shared with its representatives); client_id = the uploader. */
+	organizationId: varchar("organization_id", { length: 64 }),
 }, (table) => [
 	index("ix_client_documents_client_active").using("btree", table.clientId.asc().nullsLast(), table.isActive.asc().nullsLast()),
 	index("ix_client_documents_client_id").using("btree", table.clientId.asc().nullsLast()),

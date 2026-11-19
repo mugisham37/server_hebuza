@@ -43,6 +43,9 @@ export class AccountController {
   @Delete("me/avatar") @Route({ auth: "user", limit: "write" })
   clearAvatar(@CurrentUser() me: SessionUser) { return this.svc.clearAvatar(me); }
 
+  @Get("me/prefill") @Route({ auth: CLIENT, limit: "read" })
+  prefill(@Query() q: D.PrefillQueryDto, @CurrentUser() me: SessionUser) { return this.svc.prefill(me, q.party); }
+
   // ── ORG company profiles ──
   @Get("me/orgs") @Route({ auth: CLIENT })
   orgs(@CurrentUser() me: SessionUser) { return this.org.mine(me); }
@@ -58,6 +61,9 @@ export class AccountController {
 
   @Patch("organizations/:id") @Route({ auth: CLIENT, limit: "write" })
   updateOrg(@Param("id") id: string, @Body() b: D.OrgPatchDto, @CurrentUser() me: SessionUser) { return this.org.update(me, id, { ...b, ...(b.email !== undefined && { email: b.email || null }) } as Parameters<OrgService["update"]>[2]); }
+
+  @Get("organizations/:id/documents/:doc/download") @Route({ auth: CLIENT, limit: "read" })
+  orgDoc(@Param("id") id: string, @Param("doc") doc: string, @CurrentUser() me: SessionUser) { return this.org.docDownload(me, id, doc); }
 
   @Post("organizations/:id/verification-request") @Route({ auth: CLIENT, limit: "write", audit: "org.verification_requested" })
   requestOrgVerification(@Param("id") id: string, @CurrentUser() me: SessionUser) { return this.org.requestVerification(me, id); }

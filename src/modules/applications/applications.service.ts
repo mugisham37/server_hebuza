@@ -209,8 +209,13 @@ export async function publicApp(db: Tx, code: string | null, key: string | null 
 export async function readableApp(db: Tx, s: SessionUser | null, code: string) {
   const a = await appByCode(db, code);
   if (!a) throw err.notFound("Application not found");
+  if (s && a.organizationId && a.clientId !== s.id && (await orgMember(db, a.organizationId, s.id))) return a; // ORG: company reps read company cases
   assertCanRead(s, a);
   return a;
+}
+async function orgMember(db: Tx, orgId: string, userId: string) {
+  const [m] = (await db.execute(sql`select 1 as ok from organization_members where organization_id = ${orgId} and user_id = ${userId} and status = 'active'`)) as unknown as { ok: number }[]; // cast: execute() rows are untyped
+  return !!m;
 }
 
 // ── batched loaders (no N+1) ──────────────────────────────────────────────────────────────────
@@ -438,7 +443,8 @@ const clientApps = (db: Tx, clientId: string) =>
   db
     .select()
     .from(applications)
-    .where(eq(applications.clientId, clientId))
+    // ORG: plus cases submitted for a company the client represents (any active role sees them, spec §2).
+    .where(or(eq(applications.clientId, clientId), sql`${applications.organizationId} in (select organization_id from organization_members where user_id = ${clientId} and status = 'active')`))
     .orderBy(desc(applications.submittedAt));
 
 // ── client reads ──────────────────────────────────────────────────────────────────────────────

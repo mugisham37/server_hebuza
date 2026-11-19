@@ -6503,6 +6503,66 @@
         ]
       }
     },
+    "/api/me/prefill": {
+      "get": {
+        "operationId": "AccountController_prefill",
+        "parameters": [
+          {
+            "name": "service",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "name": "party",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "default": "me",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
     "/api/me/orgs": {
       "get": {
         "operationId": "AccountController_orgs",
@@ -6711,6 +6771,63 @@
             }
           }
         },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
+    "/api/organizations/{id}/documents/{doc}/download": {
+      "get": {
+        "operationId": "AccountController_orgDoc",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "doc",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "2XX": {
             "description": "",
@@ -24575,6 +24692,124 @@
         ]
       }
     },
+    "/api/staff/workers/{id}/work-contacts": {
+      "post": {
+        "operationId": "WorkforceController_workContacts",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkContactsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Workforce"
+        ]
+      }
+    },
+    "/api/staff/workers/{id}/contracts": {
+      "post": {
+        "operationId": "WorkforceController_contract",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContractDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Workforce"
+        ]
+      }
+    },
     "/api/staff/workers/{id}/reviews": {
       "get": {
         "operationId": "WorkforceController_reviews",
@@ -24776,6 +25011,241 @@
         },
         "tags": [
           "Workforce"
+        ]
+      }
+    },
+    "/api/me/team-profile": {
+      "get": {
+        "operationId": "TeamController_mine",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MyTeamProfile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Team"
+        ]
+      },
+      "put": {
+        "operationId": "TeamController_set",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MyTeamProfile"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Team"
+        ]
+      }
+    },
+    "/api/marketing/team-profiles": {
+      "get": {
+        "operationId": "TeamController_queue",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TeamProfileQueue"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Team"
+        ]
+      }
+    },
+    "/api/marketing/team-profiles/{id}/decision": {
+      "post": {
+        "operationId": "TeamController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TeamDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Team"
+        ]
+      }
+    },
+    "/api/public/team": {
+      "get": {
+        "operationId": "TeamController_team",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PublicTeamList"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Team"
         ]
       }
     },
@@ -42409,7 +42879,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ContractDto"
+                "$ref": "#/components/schemas/ContractDto2"
               }
             }
           }
@@ -42515,7 +42985,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ContractDto"
+                "$ref": "#/components/schemas/ContractDto2"
               }
             }
           }
@@ -54609,6 +55079,9 @@
           },
           "analytics": {
             "type": "boolean"
+          },
+          "profileReuse": {
+            "type": "boolean"
           }
         }
       },
@@ -55839,6 +56312,11 @@
           },
           "allowDuplicate": {
             "type": "boolean"
+          },
+          "organizationId": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
           }
         },
         "required": [
@@ -58602,6 +59080,72 @@
           "reason"
         ]
       },
+      "WorkContactsDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 255,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9 ]{7,20}$"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 300,
+              "format": "uri"
+            }
+          }
+        }
+      },
+      "ContractDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "service_agreement",
+              "sla",
+              "nda",
+              "licence"
+            ]
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "end": {
+            "type": "string",
+            "nullable": true,
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "noticeDays": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 365
+          },
+          "terms": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "start",
+          "end",
+          "noticeDays"
+        ]
+      },
       "ReviewDto": {
         "type": "object",
         "properties": {
@@ -58628,6 +59172,42 @@
           "period",
           "rating",
           "comments"
+        ]
+      },
+      "TeamProfileDto": {
+        "type": "object",
+        "properties": {
+          "optIn": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "optIn",
+          "title",
+          "bio"
+        ]
+      },
+      "TeamDecisionDto": {
+        "type": "object",
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "approve"
         ]
       },
       "JoinSubmitDto": {
@@ -59973,7 +60553,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1525_0"
+              "$ref": "#/components/schemas/__s1556_0"
             }
           }
         },
@@ -61916,7 +62496,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1945_0"
+            "$ref": "#/components/schemas/__s1976_0"
           },
           "channel": {
             "type": "string",
@@ -61941,7 +62521,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1949_0"
+            "$ref": "#/components/schemas/__s1980_0"
           }
         },
         "required": [
@@ -61959,7 +62539,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1953_0"
+                "$ref": "#/components/schemas/__s1984_0"
               }
             ]
           }
@@ -62203,7 +62783,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2005_0"
+                "$ref": "#/components/schemas/__s2036_0"
               }
             ]
           },
@@ -62988,7 +63568,7 @@
           "decision"
         ]
       },
-      "ContractDto": {
+      "ContractDto2": {
         "type": "object",
         "properties": {
           "vendorId": {
@@ -67661,6 +68241,10 @@
                 "application_id": {
                   "nullable": true,
                   "type": "string"
+                },
+                "rule_code": {
+                  "nullable": true,
+                  "type": "string"
                 }
               },
               "required": [
@@ -67668,7 +68252,8 @@
                 "label",
                 "due_date",
                 "status",
-                "application_id"
+                "application_id",
+                "rule_code"
               ],
               "additionalProperties": false
             }
@@ -68996,6 +69581,116 @@
         ],
         "additionalProperties": {}
       },
+      "MyTeamProfile": {
+        "type": "object",
+        "properties": {
+          "optIn": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "status": {
+            "nullable": true,
+            "type": "string"
+          },
+          "note": {
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "optIn",
+          "title",
+          "bio",
+          "status",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "TeamProfileQueue": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "bio": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "title",
+                "bio",
+                "status",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "PublicTeamList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "bio": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "title",
+                "bio"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "ExecSummaryResponse": {
         "type": "object",
         "properties": {
@@ -69211,7 +69906,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1525_0": {
+      "__s1556_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -69233,7 +69928,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1525_0"
+              "$ref": "#/components/schemas/__s1556_0"
             }
           }
         },
@@ -69243,7 +69938,7 @@
           "label"
         ]
       },
-      "__s1526_0": {
+      "__s1557_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -69265,7 +69960,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1526_0"
+              "$ref": "#/components/schemas/__s1557_0"
             }
           }
         },
@@ -69275,7 +69970,7 @@
           "label"
         ]
       },
-      "__s1527_0": {
+      "__s1558_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -69297,7 +69992,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1527_0"
+              "$ref": "#/components/schemas/__s1558_0"
             }
           }
         },
@@ -69307,7 +70002,7 @@
           "label"
         ]
       },
-      "__s1945_0": {
+      "__s1976_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69368,7 +70063,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1945_0"
+                  "$ref": "#/components/schemas/__s1976_0"
                 }
               ]
             }
@@ -69379,7 +70074,7 @@
           "rules"
         ]
       },
-      "__s1946_0": {
+      "__s1977_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69440,7 +70135,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1946_0"
+                  "$ref": "#/components/schemas/__s1977_0"
                 }
               ]
             }
@@ -69451,7 +70146,7 @@
           "rules"
         ]
       },
-      "__s1947_0": {
+      "__s1978_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69512,7 +70207,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1947_0"
+                  "$ref": "#/components/schemas/__s1978_0"
                 }
               ]
             }
@@ -69523,7 +70218,7 @@
           "rules"
         ]
       },
-      "__s1948_0": {
+      "__s1979_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69584,7 +70279,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1948_0"
+                  "$ref": "#/components/schemas/__s1979_0"
                 }
               ]
             }
@@ -69595,7 +70290,7 @@
           "rules"
         ]
       },
-      "__s1949_0": {
+      "__s1980_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69656,7 +70351,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1949_0"
+                  "$ref": "#/components/schemas/__s1980_0"
                 }
               ]
             }
@@ -69667,7 +70362,7 @@
           "rules"
         ]
       },
-      "__s1950_0": {
+      "__s1981_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69728,7 +70423,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1950_0"
+                  "$ref": "#/components/schemas/__s1981_0"
                 }
               ]
             }
@@ -69739,7 +70434,7 @@
           "rules"
         ]
       },
-      "__s1951_0": {
+      "__s1982_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69800,7 +70495,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1951_0"
+                  "$ref": "#/components/schemas/__s1982_0"
                 }
               ]
             }
@@ -69811,7 +70506,7 @@
           "rules"
         ]
       },
-      "__s1952_0": {
+      "__s1983_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69872,7 +70567,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1952_0"
+                  "$ref": "#/components/schemas/__s1983_0"
                 }
               ]
             }
@@ -69883,7 +70578,7 @@
           "rules"
         ]
       },
-      "__s1953_0": {
+      "__s1984_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -69944,7 +70639,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1953_0"
+                  "$ref": "#/components/schemas/__s1984_0"
                 }
               ]
             }
@@ -69955,7 +70650,7 @@
           "rules"
         ]
       },
-      "__s1954_0": {
+      "__s1985_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70016,7 +70711,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1954_0"
+                  "$ref": "#/components/schemas/__s1985_0"
                 }
               ]
             }
@@ -70027,7 +70722,7 @@
           "rules"
         ]
       },
-      "__s1955_0": {
+      "__s1986_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70088,7 +70783,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1955_0"
+                  "$ref": "#/components/schemas/__s1986_0"
                 }
               ]
             }
@@ -70099,7 +70794,7 @@
           "rules"
         ]
       },
-      "__s1956_0": {
+      "__s1987_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70160,7 +70855,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1956_0"
+                  "$ref": "#/components/schemas/__s1987_0"
                 }
               ]
             }
@@ -70171,7 +70866,7 @@
           "rules"
         ]
       },
-      "__s2005_0": {
+      "__s2036_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70232,7 +70927,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2005_0"
+                  "$ref": "#/components/schemas/__s2036_0"
                 }
               ]
             }
@@ -70243,7 +70938,7 @@
           "rules"
         ]
       },
-      "__s2006_0": {
+      "__s2037_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70304,7 +70999,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2006_0"
+                  "$ref": "#/components/schemas/__s2037_0"
                 }
               ]
             }
@@ -70315,7 +71010,7 @@
           "rules"
         ]
       },
-      "__s2007_0": {
+      "__s2038_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70376,7 +71071,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2007_0"
+                  "$ref": "#/components/schemas/__s2038_0"
                 }
               ]
             }
@@ -70387,7 +71082,7 @@
           "rules"
         ]
       },
-      "__s2008_0": {
+      "__s2039_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70448,7 +71143,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2008_0"
+                  "$ref": "#/components/schemas/__s2039_0"
                 }
               ]
             }
@@ -70459,7 +71154,7 @@
           "rules"
         ]
       },
-      "__s2009_0": {
+      "__s2040_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70520,7 +71215,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2009_0"
+                  "$ref": "#/components/schemas/__s2040_0"
                 }
               ]
             }
@@ -70531,7 +71226,7 @@
           "rules"
         ]
       },
-      "__s2010_0": {
+      "__s2041_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70592,7 +71287,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2010_0"
+                  "$ref": "#/components/schemas/__s2041_0"
                 }
               ]
             }
@@ -70603,7 +71298,7 @@
           "rules"
         ]
       },
-      "__s2011_0": {
+      "__s2042_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70664,7 +71359,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2011_0"
+                  "$ref": "#/components/schemas/__s2042_0"
                 }
               ]
             }
@@ -70675,7 +71370,7 @@
           "rules"
         ]
       },
-      "__s2012_0": {
+      "__s2043_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70736,7 +71431,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2012_0"
+                  "$ref": "#/components/schemas/__s2043_0"
                 }
               ]
             }
@@ -70747,7 +71442,7 @@
           "rules"
         ]
       },
-      "__s2013_0": {
+      "__s2044_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70808,7 +71503,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2013_0"
+                  "$ref": "#/components/schemas/__s2044_0"
                 }
               ]
             }
@@ -70819,7 +71514,7 @@
           "rules"
         ]
       },
-      "__s2014_0": {
+      "__s2045_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70880,7 +71575,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2014_0"
+                  "$ref": "#/components/schemas/__s2045_0"
                 }
               ]
             }
@@ -70891,7 +71586,7 @@
           "rules"
         ]
       },
-      "__s2015_0": {
+      "__s2046_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70952,7 +71647,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2015_0"
+                  "$ref": "#/components/schemas/__s2046_0"
                 }
               ]
             }

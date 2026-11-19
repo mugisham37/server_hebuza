@@ -3,7 +3,7 @@
 // Uploads go straight to object storage via presigned PUT; the API only stores the key.
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import {
   applicationClaimOtps,
   applicationDocuments,
@@ -28,11 +28,12 @@ import { assignCustomerNo } from "../../core/db/customer-no";
 import { StorageService } from "../../core/storage/storage.service";
 import { normalizePhone } from "../auth/auth.rules";
 
-type Consents = { processing: boolean; marketing: boolean; analytics: boolean };
+type Consents = { processing: boolean; marketing: boolean; analytics: boolean; profileReuse: boolean };
 const NO_CONSENT: Consents = {
   processing: true,
   marketing: false,
   analytics: false,
+  profileReuse: false, // ORG-06: prefill forms from saved profile data
 };
 type Export = {
   status: "none" | "pending" | "ready";
@@ -120,6 +121,36 @@ export class AccountService {
       processingLocked: (await this.openCaseRefs(tx, me.id)).length > 0,
     }));
   }
+  /**
+   * ORG-06: values to prefill a request form, only with the profile_reuse consent. `party` = "me" or an org id the
+   * caller represents. Keys are profile paths (person.*, org.*) the structure engine binds fields to.
+   */
+  prefill(me: SessionUser, party: string) {
+    return this.txs.run(async (tx) => {
+      const c = { ...NO_CONSENT, ...(await this.getDoc<Partial<Consents>>(tx, `${me.id}:consents`, {})) };
+      if (!c.profileReuse) return { consent: false, values: {} as Record<string, string> };
+      const [u] = await tx.select({ name: users.name, email: users.email, phone: users.phoneE164 }).from(users).where(eq(users.userId, me.id));
+      // The latest submitted personal details are the person's profile (no separate profile table).
+      const [last] = await tx.select({ p: applications.personalInfo }).from(applications).where(eq(applications.clientId, me.id)).orderBy(desc(applications.submittedAt)).limit(1);
+      const pi = (last?.p ?? {}) as Record<string, unknown>;
+      const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : undefined);
+      const values: Record<string, string | undefined> = {
+        "person.full_name": str(pi.fullName) ?? u?.name, "person.national_id": str(pi.nationalId), "person.dob": str(pi.dob),
+        "person.phone": str(pi.phone) ?? u?.phone ?? undefined, "person.email": str(pi.email) ?? u?.email ?? undefined,
+      };
+      if (party !== "me") {
+        const [o] = (await tx.execute(sql`select o.legal_name, o.trade_name, o.tin, o.rdb_number, o.province, o.district, o.sector, o.cell, o.phone, o.email
+          from organizations o join organization_members m on m.organization_id = o.id and m.user_id = ${me.id} and m.status = 'active' where o.id = ${party}`)) as unknown as Record<string, string | null>[]; // cast: execute() rows are untyped
+        if (!o) throw notFound("Organisation");
+        Object.assign(values, {
+          "org.legal_name": o.legal_name, "org.trade_name": o.trade_name, "org.tin": o.tin, "org.rdb_number": o.rdb_number, "org.province": o.province,
+          "org.district": o.district, "org.sector": o.sector, "org.cell": o.cell, "org.phone": o.phone, "org.email": o.email,
+        });
+      }
+      return { consent: true, values: Object.fromEntries(Object.entries(values).filter(([, v]) => v)) as Record<string, string> };
+    });
+  }
+
   setConsents(me: SessionUser, b: Partial<Consents>) {
     return this.txs.run(async (tx) => {
       const id = `${me.id}:consents`;

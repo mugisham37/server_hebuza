@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { dto } from "../../core/http/dto";
 
-export const ConsentsIn = z.object({ processing: z.boolean().optional(), marketing: z.boolean().optional(), analytics: z.boolean().optional() });
+export const ConsentsIn = z.object({ processing: z.boolean().optional(), marketing: z.boolean().optional(), analytics: z.boolean().optional(), profileReuse: z.boolean().optional() });
+export class PrefillQueryDto extends dto(z.object({ service: z.string().max(128).optional(), party: z.string().max(64).default("me") })) {}
 export const AvatarIn = z.object({ contentType: z.string().max(64), size: z.number().int().positive() });
 export const ActiveOrgIn = z.object({ orgId: z.string().max(64).nullable() });
 export const InviteIn = z.object({ contact: z.string().trim().min(3).max(255), role: z.enum(["admin", "viewer"]).optional() });
