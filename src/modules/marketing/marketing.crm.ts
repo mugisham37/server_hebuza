@@ -699,8 +699,10 @@ export async function convert(
         null,
         "No channel to send the invitation.",
       );
-    // shortcut: the invitation is recorded, not delivered; P13 sends it through the auth invite flow once marketing may create client accounts.
-    await act(c, l.id, "converted", "Account invitation sent");
+    // Sent by the worker on the first consented channel as a prefilled signup link (the client creates the account).
+    const ch = (["email", "whatsapp", "sms"] as const).find((x) => l.consent[x] === "in" && (x === "email" ? l.email : l.phoneE164))!;
+    await c.db.insert(outbox).values({ type: "marketing.account_invite", payload: { leadId: l.id, channel: ch, name: l.name, email: l.email ?? null, phone: l.phoneE164 ?? null, language: l.language } });
+    await act(c, l.id, "converted", `Account invitation sent (${ch})`);
   }
   if (
     l.clientId &&

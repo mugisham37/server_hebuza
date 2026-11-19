@@ -781,7 +781,7 @@ export async function testimonialAction(
       await record(c, "testimonial.unpublished", t.id);
       break;
     case "request-consent":
-      // shortcut: the consent request is recorded; the client-facing consent prompt ships with the client feedback screen (P13).
+      // The client answers on their dashboard (GET/POST me/testimonial-requests).
       t.consentRequested = true;
       await record(c, "testimonial.consent_requested", t.id);
       break;

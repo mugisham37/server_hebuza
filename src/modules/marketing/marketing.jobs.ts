@@ -259,6 +259,21 @@ export class MarketingJobs {
       });
   }
 
+  /** Realtime-only event (the relay already fanned it out to SSE); nothing to do in the worker. */
+  @Job("mkt.note")
+  mktNote() {}
+
+  /** CRM convert → signup invitation (prefilled /signup link) on the lead's consented channel. */
+  @Job("marketing.account_invite")
+  async accountInvite(d: { leadId: string; channel: "email" | "whatsapp" | "sms"; name: string; email: string | null; phone: string | null; language: string }) {
+    const l = ["rw", "en", "fr"].includes(d.language) ? d.language : "en";
+    const q = new URLSearchParams({ name: d.name, ...(d.email ? { email: d.email } : d.phone ? { phone: d.phone } : {}), ref: d.leadId });
+    const link = `${this.origin}/${l}/signup?${q}`;
+    const body = { en: `Hello ${d.name}, create your HEBUZA account to follow your requests: ${link}`, fr: `Bonjour ${d.name}, créez votre compte HEBUZA pour suivre vos demandes : ${link}`, rw: `Muraho ${d.name}, fungura konti ya HEBUZA ukurikirane ubusabe bwawe: ${link}` }[l as "en"];
+    if (!(await this.send(d.channel, { email: d.email ?? undefined, phone: d.phone ?? undefined }, { subject: "HEBUZA", body, language: l })))
+      throw new Error("account_invite not sent"); // retried
+  }
+
   @Cron("mkt.social-pull", "20 5 * * *")
   async socialPull() {
     const g = (k: "META_PAGE_ID" | "META_PAGE_TOKEN" | "LINKEDIN_ORG_ID" | "LINKEDIN_TOKEN") => this.config.get(k, { infer: true });

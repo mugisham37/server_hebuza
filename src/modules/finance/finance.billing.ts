@@ -569,6 +569,9 @@ export async function issuePlanInvoice(
   inv.planMonths = o.planMonths ?? 1;
   return issue(f, inv, false);
 }
+/** Display name of the billed party: guest bookings (`guest:<ref>`, no account) use the invoice's bill-to name. */
+export const partyName = (f: Fin, clientId: string, billTo?: { name: string }) =>
+  clientId.startsWith("guest:") ? `${billTo?.name ?? "Guest"} (guest)` : f.D.clientName(clientId);
 export function newInvoice(
   f: Fin,
   o: {
@@ -662,7 +665,7 @@ export function invRow(f: Fin, i: Inv): InvoiceRow {
   return {
     ...rest,
     key: keyOf(i),
-    clientName: f.D.clientName(i.clientId),
+    clientName: partyName(f, i.clientId, i.billTo),
     overdue: isOverdue(i, today()),
     ebmRequired: ebmRequired(i),
   };
@@ -783,7 +786,7 @@ export async function listInvoices(
   };
   const clients = [...new Set(invs.map((i) => i.clientId))].map((id) => ({
     id,
-    name: f.D.clientName(id),
+    name: partyName(f, id, invs.find((i) => i.clientId === id)?.billTo),
   }));
   const pg = page(rows, q.page ?? 1);
   return { items: pg.items, meta: { ...pg.meta, totals, clients } };

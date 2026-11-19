@@ -248,6 +248,10 @@ export async function pushNote(
     } satisfies MktNote,
     status: "unread",
   });
+  // Live badges: one SSE frame per marketing user (outbox realtime fan-out; the web invalidates the shell/notes queries).
+  const staff = await db.select({ id: users.userId }).from(users).where(and(eq(users.role, "staff:marketing"), eq(users.isActive, true)));
+  if (staff.length)
+    await db.insert(outbox).values(staff.map((u) => ({ type: "mkt.note", payload: { kind: n.kind, realtime: { userId: u.id } } })));
 }
 
 /** Domain audit entry. Requests: written in-tx by the runner. Jobs/system callers: outbox `marketing.audit` (worker writes it). */

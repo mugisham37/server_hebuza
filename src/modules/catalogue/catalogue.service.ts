@@ -1423,7 +1423,7 @@ export async function structureCatalogue(db: Exec, includeArchived = false) {
 
 // ---------------------------------------------------------------- sub-statuses (U17)
 type SubStatus = typeof serviceSubStatuses.$inferSelect;
-const subStatusOut = (x: SubStatus) => ({
+const subStatusOut = (x: SubStatus, usage = 0) => ({
   id: x.id,
   canonical: x.canonical,
   name: x.name,
@@ -1431,8 +1431,7 @@ const subStatusOut = (x: SubStatus) => ({
   clientVisible: x.clientVisible,
   color: x.color,
   order: x.sortOrder,
-  // shortcut: usage is 0 until applications carry a sub-status column (P3/P5 case workflow); then count open cases per id.
-  usage: 0,
+  usage, // open cases whose current sub-status is this one (by id or any-language name)
 });
 export async function listSubStatuses(db: Exec) {
   const rows = await db
@@ -1442,7 +1441,13 @@ export async function listSubStatuses(db: Exec) {
       asc(serviceSubStatuses.canonical),
       asc(serviceSubStatuses.sortOrder),
     );
-  return { items: rows.map(subStatusOut) };
+  // ops_case_meta.data.subStatus holds the chosen sub-status (id, or its label for older rows); count non-closed cases.
+  const used = (await db.execute(dsql`select m.data->>'subStatus' as s, count(*)::int as n from ops_case_meta m
+    join applications a on a.application_id = m.application_id
+    where m.data->>'subStatus' is not null and a.status not in ('completed_delivered', 'cancelled', 'rejected', 'refunded')
+    group by 1`)) as unknown as { s: string; n: number }[]; // cast: execute() rows are untyped
+  const n = (x: SubStatus) => used.filter((u) => u.s === x.id || Object.values(x.name as Record<string, string>).includes(u.s)).reduce((a, u) => a + u.n, 0);
+  return { items: rows.map((x) => subStatusOut(x, n(x))) };
 }
 const nextOrder = async (db: Exec, canonical: string) =>
   (
@@ -1519,7 +1524,7 @@ export async function deleteSubStatus(db: Exec, id: string) {
     .where(eq(serviceSubStatuses.id, id))
     .for("update");
   if (!cur) throw err.notFound("Not found");
-  if (subStatusOut(cur).usage)
+  if ((await listSubStatuses(db)).items.find((x) => x.id === id)?.usage)
     throw new AppError(409, "in_use", "Sub-status in use");
   await db.delete(serviceSubStatuses).where(eq(serviceSubStatuses.id, id));
   return { ok: true };
