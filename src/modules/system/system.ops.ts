@@ -1,6 +1,7 @@
 // P10 shell + approvals core (summary, alerts, setup, ⌘K search, change requests, overview — handlers-system +
 // handlers-system-a), privacy (U15: data map, processors, retention, DSR export/erase, legal hold) and operations
 // (U16: monitoring, backups, drills, restore, posture, dependencies, status posts, incidents) — handlers-system-f.
+import { breachDeadline, type Breach } from "@/domain/system/incidents";
 import { latestBackup } from "./lib/backup-status";
 import type { Tx } from "../../core/db/db";
 import { createHash } from "node:crypto";
@@ -1122,6 +1123,8 @@ export function openIncident(
       impact: b.impact!.trim(),
       timeline: [{ at: iso(), by: w.actor.name, text: "Incident opened." }],
       version: 1,
+      // PRV-breach: personal-data incidents start the regulator-notification clock (system_breach_timer cron).
+      ...(b.personalData ? { breach: { personalData: true as const, notifyBy: breachDeadline(b.startedAt || iso()) } } : {}),
     };
     w.incidents.unshift(inc);
     record(w, "system.incident.opened", "incident", inc.id, undefined, {
@@ -1132,6 +1135,8 @@ export function openIncident(
   });
 }
 export type IncidentPatchIn = {
+  /** PRV-breach: record that the regulator was notified (stops the timer). */
+  breachNotified?: { reference: string };
   status?: IncidentVM["status"];
   postmortem?: Partial<NonNullable<IncidentVM["postmortem"]>>;
 };
@@ -1143,6 +1148,14 @@ export function patchIncident(c: Caller, id: string, b: IncidentPatchIn) {
     stale(c.ifMatch, i.version);
     const now = iso(),
       before = { status: i.status };
+    const br = (i as IncidentVM & { breach?: Breach }).breach;
+    if (b.breachNotified) {
+      if (!br) throw fail(422, "validation", "not a personal-data breach");
+      if (!b.breachNotified.reference.trim()) throw fail(422, "validation", "reference");
+      Object.assign(br, { notifiedAt: now, reference: b.breachNotified.reference.trim() });
+      i.timeline.push({ at: now, by: w.actor.name, text: `Regulator notified (${br.reference})${Date.parse(now) > Date.parse(br.notifyBy) ? " — after the deadline" : ""}` });
+      record(w, "system.incident.updated", "incident", i.id, undefined, { breachNotified: br.reference, late: Date.parse(now) > Date.parse(br.notifyBy) });
+    }
     if (b.status) {
       if (!INCIDENT_NEXT[i.status].includes(b.status))
         throw fail(409, "stale", "invalid transition");

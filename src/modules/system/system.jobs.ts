@@ -16,6 +16,8 @@ import { sweepInvites } from "./system.users";
 import "./system.ops"; // registers the retention / restore appliers
 import { record, systemWrite, SYSTEM_ACTOR } from "./system.world";
 import { iso } from "../../core/db/ids";
+import type { IncidentVM } from "@/domain/system/types";
+import type { Breach } from "@/domain/system/incidents";
 
 
 @Injectable()
@@ -72,22 +74,58 @@ export class SystemJobs {
     return systemWrite(this.deps, (w) => openCampaign(w));
   }
 
-  /** 03:00 Kigali: rows past their retention window per category (counts only; the purge itself is per-module). */
+  /** 03:00 Kigali, PRV-retention: count rows past retention per category and, when PRIVACY_PURGE_ENABLED=true, purge
+   *  them. Categories under a legal hold (`legal: true`, e.g. tax/financial 10 y) are only counted, never touched.
+   *  Communications are archived by chat.retention; identity documents follow case closure in the documents module. */
   @Cron("system_retention_due", "0 3 * * *")
   async retentionDue() {
-    // shortcut: counts the categories with a direct table (accounts deactivated > 2 y, audit-free notifications > 7 y);
-    // the rest keep the last reported count until their owning modules expose a due-count query.
-    const [acct] = await this.deps.db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(users)
-      .where(
-        sql`${users.isActive} = false and ${users.updatedAt} < now() - interval '2 years'`,
-      );
+    const db = this.deps.db;
+    const enforce = this.deps.config.get("PRIVACY_PURGE_ENABLED", { infer: true }) === true;
+    const rules = (await db.execute(sql`select data from system_records where kind = 'retention'`)) as unknown as { data: { category: string; legal: boolean } }[]; // cast: execute() rows are untyped
+    const legal = new Set(rules.filter((r) => r.data.legal).map((r) => r.data.category));
+    // Account: deactivated > 2 y with no open case → anonymised (row kept for audit/financial references).
+    const accountWhere = sql`u.is_active = false and u.updated_at < now() - interval '2 years' and u.name <> 'Deleted user'
+      and not exists (select 1 from applications a where a.client_id = u.user_id and a.completed_at is null and a.status not in ('cancelled','rejected','completed_delivered'))`;
+    const [acct] = (await db.execute(sql`select count(*)::int as n from users u where ${accountWhere}`)) as unknown as { n: number }[];
+    // Communications: in-app notifications > 7 y; delivery payloads (message bodies) minimised after 90 days.
+    const [ntf] = (await db.execute(sql`select count(*)::int as n from notifications where created_at < now() - interval '7 years'`)) as unknown as { n: number }[];
+    let purged = 0;
+    if (enforce) {
+      if (!legal.has("Account"))
+        purged += ((await db.execute(sql`update users u set name = 'Deleted user', email = null, phone_e164 = null, updated_at = now() where ${accountWhere} returning 1`)) as unknown as unknown[]).length;
+      if (!legal.has("Communications")) {
+        purged += ((await db.execute(sql`delete from notifications where created_at < now() - interval '7 years' returning 1`)) as unknown as unknown[]).length;
+        await db.execute(sql`update notification_deliveries set payload = null where payload is not null and created_at < now() - interval '90 days' and status not in ('queued','deferred')`);
+      }
+    }
     await systemWrite(this.deps, (w) => {
       const now = iso();
       for (const r of w.retention) {
         r.lastRunAt = now;
-        if (r.category === "Account") r.due = Number(acct?.n ?? 0);
+        if (r.category === "Account") r.due = enforce && !r.legal ? 0 : Number(acct?.n ?? 0);
+        if (r.category === "Communications") r.due = enforce && !r.legal ? 0 : Number(ntf?.n ?? 0);
+      }
+      if (purged) record(w, "data_deletion.record.erased", "retention", "daily", undefined, { purged, at: now });
+    });
+    this.log.log({ event: "privacy.retention", enforce, accountDue: acct?.n ?? 0, notificationsDue: ntf?.n ?? 0, purged });
+  }
+
+  /** Hourly, PRV-breach: incidents flagged as personal-data breaches must be notified to the regulator within the
+   *  window; warn at 24 h left, raise a danger alert when overdue. */
+  @Cron("system_breach_timer", "10 * * * *")
+  breachTimer(now = Date.now()) {
+    return systemWrite(this.deps, (w) => {
+      for (const inc of w.incidents) {
+        const b = (inc as IncidentVM & { breach?: Breach }).breach;
+        if (!b || b.notifiedAt) continue;
+        const left = Date.parse(b.notifyBy) - now;
+        const code = left <= 0 ? "breach_overdue" : left <= 24 * 3600_000 ? "breach_due_24h" : null;
+        if (!code || w.alerts.some((a) => a.code === `${code}:${inc.id}`)) continue;
+        w.alerts.unshift({
+          id: `al_${inc.id}_${code}`, kind: "security", code: `${code}:${inc.id}`,
+          title: left <= 0 ? `Breach ${inc.id}: regulator notification overdue` : `Breach ${inc.id}: notify the regulator within 24 h`,
+          detail: `Deadline ${b.notifyBy}`, at: iso(), href: `/system/ops/incidents/${inc.id}`, read: false, tone: left <= 0 ? "danger" : "warning",
+        });
       }
     });
   }
