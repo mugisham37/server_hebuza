@@ -110,6 +110,10 @@ export const agentProfiles = pgTable("agent_profiles", {
   duty: varchar({ length: 8 }).notNull().default("on"),
   /** F-WRK-09: new assignments per day (null = no daily limit); `cap` is the max concurrent open cases. */
   dailyCap: integer("daily_cap"),
+  // F-WRK-01 unified worker profile: work contacts (shown to staff/clients) are separate from private ones (encrypted in wf_worker).
+  workEmail: varchar("work_email", { length: 255 }),
+  workPhone: varchar("work_phone", { length: 32 }),
+  socialLinks: jsonb("social_links").notNull().default({}),
   awayUntil: ts("away_until"),
   /** new | in_progress | submitted | changes_requested | cleared */
   clearance: varchar({ length: 24 }).notNull().default("new"),

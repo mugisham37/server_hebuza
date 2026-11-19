@@ -39,3 +39,7 @@ export class ContractDto extends dto(z.object({
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   noticeDays: z.number().int().min(0).max(365), terms: z.array(z.string().trim().min(1).max(500)).max(30).optional(),
 })) {}
+export class WorkContactsDto extends dto(z.object({
+  email: z.string().trim().email().max(255).optional(), phone: z.string().trim().regex(/^\+?[0-9 ]{7,20}$/).optional(),
+  links: z.record(z.enum(["linkedin", "website", "x", "facebook"]), z.string().trim().url().max(300)).optional(),
+})) {}

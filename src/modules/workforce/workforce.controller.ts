@@ -2,7 +2,7 @@ import { Body, Controller, Get, Headers, Param, Post, Query } from "@nestjs/comm
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { ContractDto, CreateDto, DetailQueryDto, ListQueryDto, MANAGE, READ, ReviewDto, StatusDto } from "./workforce.dto";
+import { WorkContactsDto, ContractDto, CreateDto, DetailQueryDto, ListQueryDto, MANAGE, READ, ReviewDto, StatusDto } from "./workforce.dto";
 import { WorkforceService } from "./workforce.service";
 
 @Controller("staff/workers")
@@ -23,6 +23,9 @@ export class WorkforceController {
 
   @Post(":id/status") @Route({ auth: MANAGE, permission: "wrk.profiles.manage", limit: "write", idempotent: true })
   status(@Param("id") id: string, @Body() b: StatusDto, @CurrentUser() me: SessionUser) { return this.svc.setStatus(me, id, b); }
+
+  @Post(":id/work-contacts") @Route({ auth: MANAGE, permission: "wrk.profiles.manage", limit: "write" })
+  workContacts(@Param("id") id: string, @Body() b: WorkContactsDto, @CurrentUser() me: SessionUser) { return this.svc.setWorkContacts(me, id, b); }
 
   @Post(":id/contracts") @Route({ auth: MANAGE, permission: "wrk.profiles.manage", limit: "write", idempotent: true, status: 201 })
   contract(@Param("id") id: string, @Body() b: ContractDto, @CurrentUser() me: SessionUser) { return this.svc.issueContract(me, id, b); }

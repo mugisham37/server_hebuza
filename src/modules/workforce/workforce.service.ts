@@ -335,6 +335,16 @@ export class WorkforceService {
       .map((o) => ({ ref: o.id, title: `${o.ref} — offer` }));
   }
 
+  /** F-WRK-01: work contacts and professional links (private contacts stay in the encrypted shield). */
+  setWorkContacts(me: SessionUser, id: string, b: { email?: string; phone?: string; links?: Record<string, string> }) {
+    return this.tx.run(async (tx) => {
+      const r = await this.one(tx, id);
+      await tx.update(agentProfiles).set({ workEmail: b.email ?? null, workPhone: b.phone ?? null, socialLinks: b.links ?? {}, updatedAt: iso() }).where(eq(agentProfiles.userId, id));
+      await this.audit.record(tx, { action: "workforce.work_contacts_changed", entity: "worker", entityId: id, before: { email: r.p.workEmail, phone: r.p.workPhone }, after: { ...b, by: me.id } });
+      return this.detail(tx, id);
+    });
+  }
+
   /** F-WRK-04: issue a new engagement contract version to an external worker; they sign it in /work/contract. */
   issueContract(me: SessionUser, id: string, b: { kind: ContractDoc["kind"]; start: string; end: string | null; noticeDays: number; terms?: string[] }) {
     return this.tx.run(async (tx) => {
@@ -434,6 +444,7 @@ export class WorkforceService {
       ],
       // F-WRK-02 structured CV (from onboarding), F-WRK-11 outcome KPIs.
       cv: r.cv,
+      workContacts: { email: r.p.workEmail ?? r.u.email ?? "", phone: r.p.workPhone ?? "", links: (r.p.socialLinks ?? {}) as Record<string, string> },
       contracts: ((r.x?.contract ?? []) as unknown as ContractDoc[]).map((d) => ({ id: d.id, kind: d.kind, title: d.title, version: d.version, status: d.status, start: d.start, end: d.end, signedAt: d.signedAt ?? null })),
       outcomes: await this.outcomes(tx, id),
       openCases: await this.openCases(tx, id),
