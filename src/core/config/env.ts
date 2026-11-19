@@ -12,6 +12,10 @@ export const envSchema = z.object({
   JWT_PRIVATE_KEY: z.string().min(1),
   JWT_PUBLIC_KEY: z.string().min(1),
   FIELD_KEY: z.string().min(1),
+  // SEC-rotation: the previous key stays readable while a rotation is in flight (verify/decrypt only; never used to sign/encrypt).
+  JWT_PUBLIC_KEY_PREVIOUS: z.string().optional(),
+  FIELD_KEY_PREVIOUS: z.string().optional(),
+  NOTIFY_WEBHOOK_TOKEN_PREVIOUS: z.string().min(24).optional(),
   BLIND_INDEX_KEY: z.string().min(1),
   S3_ENDPOINT: z.string().url(),
   S3_BUCKET: z.string().min(1),

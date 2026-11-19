@@ -26,8 +26,8 @@ export class NotificationsController {
 
   /** Webhook URLs carry NOTIFY_WEBHOOK_TOKEN; unset or wrong → 404 so the endpoints are invisible. */
   private gate(token: string) {
-    const want = this.cfg.get("NOTIFY_WEBHOOK_TOKEN", { infer: true });
-    if (!want || !safeEqual(token, want)) throw new AppError(404, "not_found", "Not found.");
+    const want = [this.cfg.get("NOTIFY_WEBHOOK_TOKEN", { infer: true }), this.cfg.get("NOTIFY_WEBHOOK_TOKEN_PREVIOUS", { infer: true })].filter((x): x is string => !!x);
+    if (!want.some((w) => safeEqual(token, w))) throw new AppError(404, "not_found", "Not found."); // previous token accepted during rotation
   }
 
   /** URL token + (when RESEND_WEBHOOK_SECRET is set) the svix signature over the raw body kept by main.ts for this route. */

@@ -24,7 +24,10 @@ export class TokenService implements OnModuleInit {
   private readonly log = new Logger(TokenService.name);
   private priv!: CryptoKey;
   private pub!: CryptoKey;
+  /** SEC-rotation: tokens signed by the outgoing key verify until they expire (JWT_PUBLIC_KEY_PREVIOUS). */
+  private prevPub?: CryptoKey;
   private jwk!: JWK;
+  private prevJwk?: JWK;
 
   constructor(private readonly config: ConfigService<Env, true>, private readonly txs: TxService) {}
 
@@ -39,10 +42,16 @@ export class TokenService implements OnModuleInit {
     } else throw new Error("JWT_PRIVATE_KEY must be an Ed25519 PKCS8 PEM in production");
     const jwk = await exportJWK(this.pub);
     this.jwk = { ...jwk, kid: await calculateJwkThumbprint(jwk), alg: ALG, use: "sig" };
+    const prev = this.config.get("JWT_PUBLIC_KEY_PREVIOUS", { infer: true });
+    if (prev?.includes("BEGIN")) {
+      this.prevPub = await importSPKI(prev.replace(/\\n/g, "\n"), ALG, { extractable: true });
+      const pj = await exportJWK(this.prevPub);
+      this.prevJwk = { ...pj, kid: await calculateJwkThumbprint(pj), alg: ALG, use: "sig" };
+    }
   }
 
   jwks() {
-    return { keys: [this.jwk] };
+    return { keys: this.prevJwk ? [this.jwk, this.prevJwk] : [this.jwk] };
   }
 
   private sign(claims: Record<string, unknown>, sub: string, ttl: number) {
@@ -51,9 +60,12 @@ export class TokenService implements OnModuleInit {
   }
 
   private async verify(token: string, typ: string) {
-    const { payload } = await jwtVerify(token, this.pub, { issuer: ISS, audience: AUD, algorithms: [ALG] }).catch(() => {
-      throw unauth();
-    });
+    const opts = { issuer: ISS, audience: AUD, algorithms: [ALG] };
+    const { payload } = await jwtVerify(token, this.pub, opts)
+      .catch((e: unknown) => (this.prevPub ? jwtVerify(token, this.prevPub, opts) : Promise.reject(e)))
+      .catch(() => {
+        throw unauth();
+      });
     if (payload.typ !== typ || typeof payload.sub !== "string" || typeof payload.sid !== "string") throw unauth();
     return payload as typeof payload & { sub: string; sid: string };
   }
