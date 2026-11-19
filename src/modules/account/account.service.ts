@@ -27,6 +27,8 @@ import { checkOtp, newOtp } from "../../core/auth/otp";
 import { assignCustomerNo } from "../../core/db/customer-no";
 import { StorageService } from "../../core/storage/storage.service";
 import { normalizePhone } from "../auth/auth.rules";
+import { consentLedger } from "@/db/schema";
+import { POLICY_VERSION as CONSENT_POLICY_VERSION } from "../notifications/notifications.delivery";
 
 type Consents = { processing: boolean; marketing: boolean; analytics: boolean; profileReuse: boolean };
 const NO_CONSENT: Consents = {
@@ -164,6 +166,13 @@ export class AccountService {
         );
       const next = { ...cur, ...b };
       await this.putDoc(tx, id, next);
+      // F-IAM-21 / F-NTF-09: every changed consent also lands in the append-only, versioned consent ledger.
+      const PURPOSE: Record<keyof Consents, string[]> = { processing: ["processing"], marketing: ["marketing_email", "marketing_sms", "marketing_whatsapp"], analytics: ["cookies_analytics"], profileReuse: ["profile_reuse"] };
+      const at = new Date().toISOString();
+      for (const k of Object.keys(PURPOSE) as (keyof Consents)[])
+        if (k in b && b[k] !== cur[k])
+          for (const purpose of PURPOSE[k])
+            await tx.insert(consentLedger).values({ id: `cns_${randomUUID()}`, userId: me.id, subject: me.id, purpose, granted: !!b[k], source: "settings", policyVersion: CONSENT_POLICY_VERSION, createdAt: at });
       await this.audit.record(tx, {
         action: "privacy.consents.updated",
         entity: "user",
