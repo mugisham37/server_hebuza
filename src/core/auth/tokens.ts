@@ -4,6 +4,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { SignJWT, jwtVerify, importPKCS8, importSPKI, generateKeyPair, exportJWK, calculateJwkThumbprint, type JWK, type CryptoKey } from "jose";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { authSessions, platformSettings, refreshTokens, users } from "@/db/schema";
+import { settingOf } from "../db/system-records";
 import { normalizeRoles } from "@/domain/auth/roles";
 import type { Env } from "../config/env";
 import type { SessionUser } from "../http/context";
@@ -139,9 +140,13 @@ export class TokenService implements OnModuleInit {
     const [r] = await tx.select({ created: authSessions.createdAt, seen: sql<string>`coalesce(${authSessions.lastActivityAt}, ${authSessions.createdAt})`, role: users.role })
       .from(authSessions).innerJoin(users, eq(users.userId, authSessions.userId)).where(eq(authSessions.id, sid));
     if (!r) return new Date(0);
+    // Per-role policy from the console (security.idle_minutes.*, registry defaults 30/30/60); the legacy platform value
+    // is the fallback when the console has none. Sysadmin absolute lifetime is 4 h (security.absolute_hours.sysadmin).
+    const kind = r.role === "staff:sysadmin" ? "sysadmin" : r.role.startsWith("staff:") || r.role === "ext:agent" ? "staff" : "client";
     const [p] = await tx.select({ m: platformSettings.sessionTimeoutMinutes }).from(platformSettings).limit(1);
-    const idle = Date.parse(r.seen) + (p?.m ?? 60) * 60_000;
-    const abs = Date.parse(r.created) + (r.role.startsWith("staff:") || r.role === "ext:agent" ? 8 : 24) * 3_600_000;
+    const idleMin = (await settingOf<number>(tx, `security.idle_minutes.${kind}`)) ?? p?.m ?? 60;
+    const idle = Date.parse(r.seen) + idleMin * 60_000;
+    const abs = Date.parse(r.created) + ({ sysadmin: 4, staff: 8, client: 24 } as const)[kind] * 3_600_000;
     return new Date(Math.min(idle, abs));
   }
 
