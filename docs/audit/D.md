@@ -9,16 +9,16 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-ASN-01 | Manual assign | P1 | DONE | S:modules/ops/ops.assign.controller.ts:27, ops.cases.ts:366 `assign()`; brief/instructions :67/:72; WA:(ops)/ops/assign/[ref]/page.tsx |
-| F-ASN-02 | Match suggestions | P1 | DONE | S:domain/ops/ranking.ts:44 (score + reasons + ineligible); ops.assign.controller.ts:38; W:lib/ops/api.ts used by assign/handoff screens |
+| F-ASN-02 | Match suggestions | P1 | DONE | S:domain/ops/ranking.ts:44 (score + reasons + ineligible); ops.assign.controller.ts:38; W:lib/ops/api.ts used by assign/handoff screens; W:components/organisms/ops/assign.tsx |
 | F-ASN-03 | Offer / accept / reject / TTL | P1 | DONE | auto re-offer: autoAssign skips agents whose offer on the case timed out/was declined; the 5-min cron offers the next ranked candidate. Offers S:ops.assign.controller.ts:87/92, accept/decline S:modules/agent/agent.controller.ts:230/240, expiry cron S:modules/ops/ops.jobs.ts:16 (TTL S:domain/policy.ts:30 = 4h). Gap: timeout returns case to queue + notifies manager; no automatic re-offer to next ranked candidate |
 | F-ASN-04 | Reassign / hand back | P1 | DONE | handback S:modules/work/work.controller.ts:206; reassign ops.assign.controller.ts:104; history via logEvent (ops.cases.ts:346). Chat-participant `left_reason` update not verified |
 | F-ASN-05 | Availability & leave | P1 | DONE | manual assign + ranking exclude leave/off-duty; leave approval flags open cases due during the leave to the approver. S:agent.controller.ts:66 (duty), :477/:482 availability, :487-497 leave; approval sets on_leave_until S:modules/ops/ops.manage.ts:288; ranking excludes onLeave (ranking.ts:56); UI W:components/organisms/agent/calendar.tsx. Gap: manual `assign()` (ops.cases.ts:366) only checks capacity, ignores leave; on-duty toggle not used by ranking; no "open cases flagged before leave" |
 | F-ASN-06 | Workload view | P1 | DONE | S:ops.oversight.controller.ts:36/41; W:components/organisms/ops/workload.tsx (table + heatmap), WA:(ops)/ops/workload/page.tsx |
-| F-ASN-07 | Auto-assign rules | P2 | DONE | per-service assignMode manual|suggest|auto + score threshold (rankAgents); UI in handoff rules. S:ops.cases.ts:1536-1600 + cron ops.jobs.ts:61; per-service PUT ops.assign.controller.ts:123; UI handoff.tsx. Gap: modes are roundRobin/leastLoaded/skill, not spec `manual |suggest|auto`; no score threshold |
-| F-ASN-08 | Overdue escalation 80/100/150% | P1 | DONE | verified: `ops.sla_sweep` notifies assignee at 80%, manager/SMs at 100%, executives at 150% (claimed once per step). Only breach stamping (S:ops.jobs.ts:44, S:modules/deadlines/deadlines.service.ts:279). Gap: no 80% assignee reminder, no 100% SM escalation notice, no 150% exec digest |
-| F-ASN-09 | Assignment restrictions | P2 | DONE | verified from 0a6541c: assignment_blocks feed conflictWith; contract expiry enforced in ineligibleReason. ranking.ts:59 has `conflictWith`, but it is never populated (S:modules/ops/lib/store.ts:495-515); no "never assign X to Y" store; contract expiry only shown in assignContext (ops.cases.ts:1160), not enforced; manual assign bypasses all |
+| F-ASN-07 | Auto-assign rules | P2 | DONE | per-service assignMode manual/suggest/auto + score threshold (rankAgents); UI in handoff rules. S:ops.cases.ts:1536-1600 + cron ops.jobs.ts:61; per-service PUT ops.assign.controller.ts:123; UI handoff.tsx. Gap: modes are roundRobin/leastLoaded/skill, not spec `manual/suggest/auto`; no score threshold; W:components/organisms/ops/handoff.tsx |
+| F-ASN-08 | Overdue escalation 80/100/150% | P1 | DONE | verified: `ops.sla_sweep` notifies assignee at 80%, manager/SMs at 100%, executives at 150% (claimed once per step). Only breach stamping (S:ops.jobs.ts:44, S:modules/deadlines/deadlines.service.ts:279). Gap: no 80% assignee reminder, no 100% SM escalation notice, no 150% exec digest; backend-only: SLA sweep cron notifications |
+| F-ASN-09 | Assignment restrictions | P2 | DONE | verified from 0a6541c: assignment_blocks feed conflictWith; contract expiry enforced in ineligibleReason. ranking.ts:59 has `conflictWith`, but it is never populated (S:modules/ops/lib/store.ts:495-515); no "never assign X to Y" store; contract expiry only shown in assignContext (ops.cases.ts:1160), not enforced; manual assign bypasses all; W:components/organisms/ops/worker-profile.tsx |
 | F-ASN-10 | Field visit tasks | P2 | DONE | S:modules/field/field.controller.ts:81 (create visit from case), :20 day plan; WA:(agent)/agent/field |
-| F-ASN-11 | Multi-assignee | P2 | DONE | lead + helpers + per-case reviewer (reviewer_id), helpers/reviewer notified; reviewer picker in assign. `helpers[]` on assign (ops.cases.ts:376). Gap: no per-case roles (reviewer/helper/lead), helpers get no access/notification path verified |
+| F-ASN-11 | Multi-assignee | P2 | DONE | lead + helpers + per-case reviewer (reviewer_id), helpers/reviewer notified; reviewer picker in assign. `helpers[]` on assign (ops.cases.ts:376). Gap: no per-case roles (reviewer/helper/lead), helpers get no access/notification path verified; W:components/organisms/ops/assign.tsx |
 | F-ASN-12 | Instructions packet | P1 | DONE | S:work.controller.ts:187 (assignee) / :466 (staff write); permission-filtered docs :178 (audited); W:components/organisms/agent/work-scoped.tsx |
 
 ## Workforce (WRK)
@@ -29,17 +29,17 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-WRK-02 | Structured CV | P2 | DONE | wave 5: structured CV on staff profile, CV text searchable in the directory. cv {education, experience, expertise} in onboarding blob S:modules/agent/agent.service.ts:2526; W:components/organisms/agent/onboarding.tsx:544. Gap: not shown/searchable on staff worker profile; languages/summary not structured |
 | F-WRK-03 | Qualification verification | P2 | DONE | wave 5: worker document (NDA/SLA/licence/agreement) expiry reminders 60/30/7/0. S:work.controller.ts:152-162 (credentials), staff decision :422; expiry sweep S:modules/work/work.jobs.ts:42; W:components/organisms/agent/work-credentials.tsx |
 | F-WRK-04 | Engagement contracts | P2 | DONE | wave 5: `POST staff/workers/:id/contracts` versions + profile panel; worker signs in /work/contract. Worker side: S:work.controller.ts:294/348/353/358 (view/sign/renew/notice); W:work-contract.tsx. Gap: no staff endpoint/screen to create/version contracts (records only seeded, kind "contract") |
-| F-WRK-05 | Expiry & renewal reminders | P2 | DONE | wave 4: `ops.contract_expiry` 60/30/7/0 to worker + SMs; expired contract already blocks assignment (ineligibleReason). Credential expiry → not_cleared (work.jobs.ts:42). Gap: no 60/30/7/0 reminders for contract/NDA/licence to worker+SM; contract expiry does not block assignment |
+| F-WRK-05 | Expiry & renewal reminders | P2 | DONE | wave 4: `ops.contract_expiry` 60/30/7/0 to worker + SMs; expired contract already blocks assignment (ineligibleReason). Credential expiry → not_cleared (work.jobs.ts:42). Gap: no 60/30/7/0 reminders for contract/NDA/licence to worker+SM; contract expiry does not block assignment; backend-only: expiry reminder cron |
 | F-WRK-06 | Authorised services | P1 | DONE | verified: manual assign runs ineligibleReason (ops.cases.ts assign). services[] + skill requests (agent.controller.ts:462/467); ranking `notAuthorised` (ranking.ts:51). Gap: manual assign ignores authorisation; proficiency 0–1 float, not 1–5 |
 | F-WRK-07 | Rate card & share terms | P2 | DONE | wave 4: assignContext reads the finance revenue rule for the service (no hardcoded 70/30). worker request S:work.controller.ts:363, manager/finance action :487; W:lib/work/f.ts. Gap: effective-dating not verified; assignContext still uses hardcoded 70/30 (ops.cases.ts:1157) |
-| F-WRK-08 | Recurring licence fees | P3 | DONE | as specified: licence fee worker→HEBUZA from the effective finance setting (reverse direction not in spec). wave 5: licence amount from the effective finance setting (no PLACEHOLDER); HEBUZA→worker direction still undefined in spec. monthly licence invoices S:work.jobs.ts:1, POLICY.licenceFeeMonthly (policy.ts:8), S:work.controller.ts:329/368. Gap: only worker→HEBUZA direction; amount is PLACEHOLDER |
+| F-WRK-08 | Recurring licence fees | P3 | DONE | as specified: licence fee worker→HEBUZA from the effective finance setting (reverse direction not in spec). wave 5: licence amount from the effective finance setting (no PLACEHOLDER); HEBUZA→worker direction still undefined in spec. monthly licence invoices S:work.jobs.ts:1, POLICY.licenceFeeMonthly (policy.ts:8), S:work.controller.ts:329/368. Gap: only worker→HEBUZA direction; amount is PLACEHOLDER; backend-only: monthly licence invoice job |
 | F-WRK-09 | Availability & leave | P1 | DONE | wave 5: daily intake limit (`daily_cap`) separate from concurrent cap; off-duty blocks assignment; drawer field. see F-ASN-05; daily cap S:ops.oversight.controller.ts:46. Gap: no separate max-concurrent vs daily cap; on-duty not enforced |
 | F-WRK-10 | Workload view | P1 | DONE | S:ops.oversight.controller.ts:41; W:ops/workload.tsx drawer |
 | F-WRK-11 | Performance KPIs | P2 | DONE | wave 5: first-pass approval, reassignment rate, 90-day earned share on staff worker profile. S:agent.controller.ts:393; W:components/organisms/agent/performance.tsx. Gap: first-pass approval, reassignment rate, revenue not all computed; no staff per-worker KPI view verified |
 | F-WRK-12 | Onboarding checklist / cleared gate | P1 | DONE | verified: deliverable upload runs `gate()` (agent.service.ts uploadDeliverable); manual assign checks clearance. clearance flow S:work.controller.ts:123-147, :422; ranking `notCleared`. Gap: manual assign (ops.cases.ts:366) and deliverable upload do not check clearance (B16 not fully fixed) |
 | F-WRK-13 | Suspend / terminate / reactivate | P1 | DONE | S:workforce.service.ts:480-592 (revokeAllSessions, isActive=false, reassignment wizard, audit); WA:(ops)/ops/workforce/[id]/offboard |
 | F-WRK-14 | Talent directory | P2 | DONE | wave 5: web directory filters through the API. wave 4: `GET staff/workers` filters service/language/district/available/minRating/type/q. list S:workforce.controller.ts:12 (no query filters); W:lib/workforce.ts. Gap: server-side filter by service/language/district/availability/rating |
-| F-WRK-15 | Private-data shield | P1 | DONE | reveal-with-reason + audit S:workforce.service.ts:373-396 (SM only) |
+| F-WRK-15 | Private-data shield | P1 | DONE | reveal-with-reason + audit S:workforce.service.ts:373-396 (SM only); W:components/organisms/ops/worker-profile.tsx |
 | F-WRK-16 | Public team profile (opt-in) | P2 | DONE | wave 5: worker opt-in (`me/team-profile`), marketing approval (/marketing/team), approved workers on /about/team. WA:(public)/about/team/page.tsx uses static `TEAM`; no opt-in field or marketing approval |
 | F-WRK-17 | Field visit scheduling | P2 | DONE | S:field.controller.ts:81, :20; W:components/organisms/field/* |
 | F-WRK-18 | GPS/photo check-in/out | P2 | DONE | S:field.controller.ts:26/28; flags incl. low_accuracy (S:domain/field/types.ts:8) |
@@ -48,47 +48,47 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-WRK-21 | Cash-collection rules | P2 | DONE | S:field.controller.ts:54/55/80; 48h escalation FIELD_POLICY (policy.ts). Per-service enable via flag `field_cash` not enforced server-side |
 | F-WRK-22 | Worker earnings view | P2 | DONE | S:work.controller.ts:222-232, agent.controller.ts:342-358; W:work-earnings.tsx, work-statement.tsx |
 | F-WRK-23 | Worker history | P2 | DONE | S:workforce.controller.ts:33 → workforce.service.ts:671 |
-| F-WRK-24 | Rename partner → ext:agent | P1 | DONE | wave 5: ext:agent kept distinct from PRT partners; legacy partner_profiles migration SQL in migration-notes.md; /dashboard/work redirect verified. role `ext:agent` + /work workspace exist. Gap: `partner_profiles`/`partner_documents` tables and names remain (schema.ts:111/325); no redirect from `/dashboard/work` verified |
+| F-WRK-24 | Rename partner → ext:agent | P1 | DONE | wave 5: ext:agent kept distinct from PRT partners; legacy partner_profiles migration SQL in migration-notes.md; /dashboard/work redirect verified. role `ext:agent` + /work workspace exist. Gap: `partner_profiles`/`partner_documents` tables and names remain (schema.ts:111/325); no redirect from `/dashboard/work` verified; backend-only: role rename, migration and redirect |
 
 ## Institutional partners (PRT)
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-PRT-01 | Partner registry | P3 | DONE | Closed 2026-11-19: partners registry (type, tier, status, sector, website, logo, owner); /staff/partners + /partners workspace. (was MISSING) |
-| F-PRT-02 | Contact persons | P3 | DONE | Closed 2026-11-19: partner_contacts (primary flag, deactivate keeps history). (was MISSING) |
-| F-PRT-03 | Agreements | P3 | DONE | Closed 2026-11-19: partner_agreements (kind, dates ≥ check, value, commission rate, confidential) + file versions + obligations. (was MISSING) |
-| F-PRT-04 | Objectives & action plans | P3 | DONE | Closed 2026-11-19: partner_objectives → partner_actions (owner, due, status, progress). (was MISSING) |
-| F-PRT-05 | Meetings | P3 | DONE | Closed 2026-11-19: partner_meetings with minutes, decisions → actions, .ics invite. (was MISSING) |
-| F-PRT-06 | Correspondence & documents | P3 | DONE | Closed 2026-11-19: partner_correspondence log (direction, kind, date, subject, summary). (was MISSING) |
-| F-PRT-07 | Joint projects | P3 | DONE | Closed 2026-11-19: partner_opportunities pipeline idea → proposal → active → won/lost. (was MISSING) |
-| F-PRT-08 | Referrals | P3 | DONE | Closed 2026-11-19: partner_referrals linked to client/case; conversion on paid case. (was MISSING) |
-| F-PRT-09 | Partner revenue sharing | P3 | DONE | Closed 2026-11-19: commissions computed from paid referred cases at the agreement rate; finance approve → payable; refunds reverse proportionally. (was MISSING) |
-| F-PRT-10 | Reminders | P3 | DONE | Closed 2026-11-19: daily: renewal 90/30/7, overdue actions (owner, PM after 7 d), obligations due, 24 h meetings; 10-min 1 h meeting reminder; dormancy. (was MISSING) |
-| F-PRT-11 | Scorecard | P3 | DONE | Closed 2026-11-19: scorecard: health (red/amber/green rules), on-time %, referrals, revenue, expiring. (was MISSING) |
-| F-PRT-12 | Full history / PDF | P3 | DONE | Closed 2026-11-19: unified history JSON + PDF export. (was MISSING) |
+| F-PRT-02 | Contact persons | P3 | DONE | Closed 2026-11-19: partner_contacts (primary flag, deactivate keeps history). (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-03 | Agreements | P3 | DONE | Closed 2026-11-19: partner_agreements (kind, dates ≥ check, value, commission rate, confidential) + file versions + obligations. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-04 | Objectives & action plans | P3 | DONE | Closed 2026-11-19: partner_objectives → partner_actions (owner, due, status, progress). (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-05 | Meetings | P3 | DONE | Closed 2026-11-19: partner_meetings with minutes, decisions → actions, .ics invite. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-06 | Correspondence & documents | P3 | DONE | Closed 2026-11-19: partner_correspondence log (direction, kind, date, subject, summary). (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-07 | Joint projects | P3 | DONE | Closed 2026-11-19: partner_opportunities pipeline idea → proposal → active → won/lost. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-08 | Referrals | P3 | DONE | Closed 2026-11-19: partner_referrals linked to client/case; conversion on paid case. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-09 | Partner revenue sharing | P3 | DONE | Closed 2026-11-19: commissions computed from paid referred cases at the agreement rate; finance approve → payable; refunds reverse proportionally. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-10 | Reminders | P3 | DONE | Closed 2026-11-19: daily: renewal 90/30/7, overdue actions (owner, PM after 7 d), obligations due, 24 h meetings; 10-min 1 h meeting reminder; dormancy. (was MISSING); backend-only: reminder crons |
+| F-PRT-11 | Scorecard | P3 | DONE | Closed 2026-11-19: scorecard: health (red/amber/green rules), on-time %, referrals, revenue, expiring. (was MISSING); W:components/organisms/partners/partners.tsx |
+| F-PRT-12 | Full history / PDF | P3 | DONE | Closed 2026-11-19: unified history JSON + PDF export. (was MISSING); W:components/organisms/partners/partners.tsx |
 | F-PRT-13 | Public partner logos | P3 | DONE | Closed 2026-11-19: shown_on_website flag → GET public/partners → home strip (revalidated on edit). (was PARTIAL) |
 
 ## CRM, leads & campaigns (CRM)
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-CRM-01 | Customer ID HBC-YYYY-NNNNNN + Luhn | P1 | DONE | `HBC-YYYY-NNNNNN-C` per-year `customer_sequences` + Luhn (`domain/marketing/customer-no.ts`), assigned at signup. |
+| F-CRM-01 | Customer ID HBC-YYYY-NNNNNN + Luhn | P1 | DONE | `HBC-YYYY-NNNNNN-C` per-year `customer_sequences` + Luhn (`domain/marketing/customer-no.ts`), assigned at signup.; W:components/organisms/system/user-detail.tsx W:components/organisms/client/settings-profile.tsx |
 | F-CRM-02 | Contact & company records, dedupe, merge | P1 | DONE | S:domain/marketing/dedupe.ts (E.164/email), merge S:marketing.crm.controller.ts:50 (audited); TIN dedupe not verified |
 | F-CRM-03 | Lead capture | P1 | DONE | public S:marketing.crm.controller.ts:20, manual :65, import :55; W:components/organisms/site/lead-form.tsx |
 | F-CRM-04 | Pipeline | P1 | DONE | S:domain/marketing/lead-machine.ts:4-14 (stages, lost reason required); W:components/organisms/marketing/leads.tsx |
-| F-CRM-05 | Conversion linkage | P2 | DONE | convert S:marketing.crm.ts:661; auto via cron marketing.jobs.ts:215 + matchLead |
+| F-CRM-05 | Conversion linkage | P2 | DONE | convert S:marketing.crm.ts:661; auto via cron marketing.jobs.ts:215 + matchLead; W:components/organisms/marketing/convert.tsx |
 | F-CRM-06 | Customer 360 timeline | P1 | DONE | S:marketing.crm.controller.ts:143; W:organisms/marketing/customers.tsx, WA:(marketing)/marketing/customers/[id] |
 | F-CRM-07 | Attribution | P1 | DONE | W:lib/marketing/attribution.ts (utm/gclid/fbclid, consent-gated via tracking.tsx:13); stored on lead (marketing.dto.ts) |
 | F-CRM-08 | Follow-up automation | P2 | DONE | sequences S:marketing.campaigns.controller.ts:134-164, cron marketing.jobs.ts:182; W:organisms/marketing/sequences.tsx |
 | F-CRM-09 | Segments | P2 | DONE | S:marketing.campaigns.controller.ts:28-53 (preview); W:organisms/marketing/segments.tsx |
 | F-CRM-10 | Campaigns | P2 | DONE | S:marketing.campaigns.controller.ts:60-98, send cron marketing.jobs.ts:120; W:marketing/campaigns.tsx, wizard.tsx |
 | F-CRM-11 | Service recommendations | P2 | DONE | `rec_rule` records + `recommend()` (unit test), `GET/PUT admin/mkt/recommendation-rules`, editor `/marketing/customers/rules`; customer 360 uses it. |
-| F-CRM-12 | Tax/compliance reminders | P2 | DONE | `mkt.tax-reminders` daily: 7 days before each active compliance-rule date, consented non-client leads get one email/SMS (rw/en/fr) with an unsubscribe link (lead opt-out supported); idempotent per rule/date/lead/channel. |
-| F-CRM-13 | Renewal reminders | P2 | DONE | Licence/document expiry reminders: `documents.expiry` cron (60/30/0 days, `documents.jobs.ts`) over `client_document_expiry`. |
-| F-CRM-14 | Re-engagement | P2 | DONE | `mkt.winback` daily: inactive consented customers join `sq-inactive`; customers active again exit their run as `reactivated` (`winbackSweep`). |
-| F-CRM-15 | GA4 + Consent Mode + MP | P2 | DONE | `marketing.ga4_event` Measurement Protocol forwarder from consented `site_events` (dormant until `GA4_MEASUREMENT_ID`/`GA4_API_SECRET`). |
+| F-CRM-12 | Tax/compliance reminders | P2 | DONE | `mkt.tax-reminders` daily: 7 days before each active compliance-rule date, consented non-client leads get one email/SMS (rw/en/fr) with an unsubscribe link (lead opt-out supported); idempotent per rule/date/lead/channel.; backend-only: daily reminder cron |
+| F-CRM-13 | Renewal reminders | P2 | DONE | Licence/document expiry reminders: `documents.expiry` cron (60/30/0 days, `documents.jobs.ts`) over `client_document_expiry`.; backend-only: expiry reminder cron |
+| F-CRM-14 | Re-engagement | P2 | DONE | `mkt.winback` daily: inactive consented customers join `sq-inactive`; customers active again exit their run as `reactivated` (`winbackSweep`).; backend-only: win-back cron |
+| F-CRM-15 | GA4 + Consent Mode + MP | P2 | DONE | `marketing.ga4_event` Measurement Protocol forwarder from consented `site_events` (dormant until `GA4_MEASUREMENT_ID`/`GA4_API_SECRET`).; backend-only: GA4 forwarder |
 | F-CRM-16 | First-party visitor analytics | P2 | DONE | `site_events` + `POST /api/events` (consent-gated page_view beacon in `tracking.tsx`), `GET admin/mkt/events/summary`. |
-| F-CRM-17 | Social media monitoring | P3 | DONE | `mkt.social-pull` daily from Meta page insights and LinkedIn org statistics into social rows (`marketing.social.ts`); dormant until `META_PAGE_*` / `LINKEDIN_*` set. |
+| F-CRM-17 | Social media monitoring | P3 | DONE | `mkt.social-pull` daily from Meta page insights and LinkedIn org statistics into social rows (`marketing.social.ts`); dormant until `META_PAGE_*` / `LINKEDIN_*` set.; backend-only: social pull cron |
 | F-CRM-18 | Tasks & notes | P2 | DONE | S:marketing.crm.controller.ts:98-113 |
 | F-CRM-19 | Enquiries inbox | P1 | DONE | S:marketing.crm.controller.ts:121-131; WA:(marketing)/marketing/inbox |
 | F-CRM-20 | Promotions | P3 | DONE | Promo codes (`domain/marketing/promo.ts` + test; `admin/mkt/promos`, public `GET /promos/:code`, editor `/marketing/campaigns/promos`); finance `POST /invoices` `promoCode` adds a discount line and counts the use. |
@@ -100,31 +100,31 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 |---|---|---|---|---|
 | F-SET-01 | Typed settings registry | P1 | DONE | S:domain/system/settings-registry.ts:57-97; S:modules/system/system.config.controller.ts:46/51; WA:(system)/system/settings/[group]. (Values kept in system_records world, not a `settings` table) |
 | F-SET-02 | Change approval | P2 | DONE | requiresApproval → change request S:system.config.ts:156-186; decision S:system.ops.controller.ts:84; finance effective-dated S:finance.core.controller.ts:87/92 |
-| F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114 |
+| F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114; W:components/organisms/system/audit.tsx |
 | F-SET-04 | Custom sub-statuses | P1 | DONE | S:modules/catalogue/catalogue.controller.ts:169-189; WA:(ops)/ops/settings/statuses |
-| F-SET-05 | SLA & working calendar | P1 | DONE | Closed 2026-11-19: sla.business_start/end_hour settings drive support SLA + escalation. (was PARTIAL) |
-| F-SET-06 | Numbering formats | P1 | DONE | Closed 2026-11-19: customer numbers assigned (users/orgs customer_no, IAM-24) + finance sequences read view. (was PARTIAL) |
-| F-SET-07 | Company & tax identity | P1 | DONE | Closed 2026-11-19: company.* settings (legal name, TIN, VAT, EBM, address, footer) printed on invoice/quote/credit-note PDFs. (was PARTIAL) |
-| F-SET-08 | Payment methods matrix | P1 | DONE | Closed 2026-11-19: payments.method.* switches enforced at initiate / bank transfer. (was PARTIAL) |
-| F-SET-09 | Channel configuration | P2 | DONE | Closed 2026-11-19: platform quiet hours settings applied in delivery. (was PARTIAL) |
+| F-SET-05 | SLA & working calendar | P1 | DONE | Closed 2026-11-19: sla.business_start/end_hour settings drive support SLA + escalation. (was PARTIAL); W:components/organisms/system/settings.tsx |
+| F-SET-06 | Numbering formats | P1 | DONE | Closed 2026-11-19: customer numbers assigned (users/orgs customer_no, IAM-24) + finance sequences read view. (was PARTIAL); W:components/organisms/system/user-detail.tsx |
+| F-SET-07 | Company & tax identity | P1 | DONE | Closed 2026-11-19: company.* settings (legal name, TIN, VAT, EBM, address, footer) printed on invoice/quote/credit-note PDFs. (was PARTIAL); W:components/organisms/system/settings.tsx |
+| F-SET-08 | Payment methods matrix | P1 | DONE | Closed 2026-11-19: payments.method.* switches enforced at initiate / bank transfer. (was PARTIAL); W:components/organisms/system/settings.tsx |
+| F-SET-09 | Channel configuration | P2 | DONE | Closed 2026-11-19: platform quiet hours settings applied in delivery. (was PARTIAL); W:components/organisms/system/settings.tsx |
 | F-SET-10 | Languages | P2 | DONE | Closed 2026-11-19: i18n.enabled_locales editable (rw required) → public settings, language switcher, notification language. (was PARTIAL) |
 | F-SET-11 | Maintenance mode | P1 | DONE | Closed 2026-11-19: PlatformGuard: API read-only for clients when on or in the scheduled window. (was PARTIAL) |
-| F-SET-12 | Feature flags | P1 | DONE | Closed 2026-11-19: PlatformGuard route flags (assistant, booking, field cash) + WhatsApp in delivery. (was PARTIAL) |
+| F-SET-12 | Feature flags | P1 | DONE | Closed 2026-11-19: PlatformGuard route flags (assistant, booking, field cash) + WhatsApp in delivery. (was PARTIAL); W:components/organisms/system/settings.tsx |
 | F-SET-13 | Export/import | P3 | DONE | Closed 2026-11-19: settings import (validated, approvals + audit) + UI. (was PARTIAL) |
-| F-SET-14 | Remove dead settings | P1 | DONE | Closed 2026-11-19: dead platform_settings columns removed from schema + read model (migration by integrator). (was PARTIAL) |
+| F-SET-14 | Remove dead settings | P1 | DONE | Closed 2026-11-19: dead platform_settings columns removed from schema + read model (migration by integrator). (was PARTIAL); backend-only: schema cleanup |
 ## Audit trail (AUD)
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-AUD-01 | Mandatory category | P1 | DONE | Closed 2026-11-19: audit_log.kind = catalogue category; prefix map. (was PARTIAL) |
-| F-AUD-02 | Event catalogue + CI test | P1 | DONE | Closed 2026-11-19: audit-catalogue.test.ts scans all emitted codes. (was PARTIAL) |
+| F-AUD-01 | Mandatory category | P1 | DONE | Closed 2026-11-19: audit_log.kind = catalogue category; prefix map. (was PARTIAL); W:components/organisms/system/audit.tsx |
+| F-AUD-02 | Event catalogue + CI test | P1 | DONE | Closed 2026-11-19: audit-catalogue.test.ts scans all emitted codes. (was PARTIAL); backend-only: CI catalogue test |
 | F-AUD-03 | Before/after diff | P1 | DONE | Closed 2026-11-19: @Route audits snapshot before (core/http/audit-before.ts) + auditBefore(). (was PARTIAL) |
 | F-AUD-04 | Tamper evidence | P2 | DONE | chain cols schema.ts:161-163, advisory lock audit.ts:46, append-only trigger migrations/0001; daily verify S:modules/system/system.jobs.ts:62; UI WA:(system)/system/audit/integrity |
-| F-AUD-05 | Sensitive-read logging | P1 | DONE | Closed 2026-11-19: document_access.document.viewed on staff case-document views. (was PARTIAL) |
-| F-AUD-06 | Request context | P1 | DONE | Closed 2026-11-19: request id, user agent, session id in hash-chained details. (was PARTIAL) |
+| F-AUD-05 | Sensitive-read logging | P1 | DONE | Closed 2026-11-19: document_access.document.viewed on staff case-document views. (was PARTIAL); backend-only: audit write on document view |
+| F-AUD-06 | Request context | P1 | DONE | Closed 2026-11-19: request id, user agent, session id in hash-chained details. (was PARTIAL); backend-only: request context in audit details |
 | F-AUD-07 | Audit viewer | P1 | DONE | S:system.audit.controller.ts:14/48; W:components/organisms/system/audit.tsx, WA:(system)/system/audit |
 | F-AUD-08 | Export | P2 | DONE | S:system.audit.controller.ts:39, csv/pdf + `data_export.audit.exported` (system.audit.ts:505) |
-| F-AUD-09 | Retention / archive | P3 | DONE | Closed 2026-11-19: daily gzip JSONL copy to locked R2 bucket (core/db/audit-export.ts). (was MISSING) |
+| F-AUD-09 | Retention / archive | P3 | DONE | Closed 2026-11-19: daily gzip JSONL copy to locked R2 bucket (core/db/audit-export.ts). (was MISSING); backend-only: daily archive export job |
 | F-AUD-10 | Per-resource history | P2 | DONE | Closed 2026-11-19: invoice History tab (HistoryTab resourceType=invoice) + cases/users/workers. (was PARTIAL) |
 ## Cross-cutting
 

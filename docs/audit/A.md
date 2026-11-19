@@ -21,72 +21,72 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-IAM-13 | Session management | P1 | DONE | me/sessions list/revoke and admin revoke (auth.controller.ts:196-325). W components/organisms/client/settings-security.tsx. No geo-IP (shortcut) |
 | F-IAM-14 | Invitations | P1 | DONE | staff/users/invitations, auth/invite/:token, set-password, forced MFA setup (W (auth)/team/invite/[token]). Expiry/terms+NDA step not verified |
 | F-IAM-15 | Impersonation | P2 | DONE | user notified (in-app + email) when an impersonation ends, with date and reason. Reason ≥10 chars, protected targets, audited start/end (S auth.admin.ts:155-251), banner in W (system)/layout.tsx. No "notify user afterwards" |
-| F-IAM-16 | Password policy | P1 | DONE | verified from 0e0cfb7: client min 10, staff 12 + classes, HIBP breach check at signup/reset. Staff need ≥12 chars (auth.rules.ts:48), but clients need only ≥8, not 10 (auth.dto.ts:37). `PasswordService.isBreached` (core/auth/password.ts:21) is never called |
-| F-IAM-17 | Seed admin fix | P1 | DONE | verified from 0e0cfb7: admin-create never overwrites; TOTP enrolment forced at first sign-in. `admin-create.ts:27` uses `onConflictDoUpdate`, which overwrites the password (the B13 bug the spec says to fix). It also creates the admin with twofa off rather than forced MFA at first sign-in |
+| F-IAM-16 | Password policy | P1 | DONE | verified from 0e0cfb7: client min 10, staff 12 + classes, HIBP breach check at signup/reset. Staff need ≥12 chars (auth.rules.ts:48), but clients need only ≥8, not 10 (auth.dto.ts:37). `PasswordService.isBreached` (core/auth/password.ts:21) is never called W:components/organisms/auth/signup-form.tsx W:components/organisms/client/settings-security.tsx |
+| F-IAM-17 | Seed admin fix | P1 | DONE | backend-only: seed admin CLI script, no screen. verified from 0e0cfb7: admin-create never overwrites; TOTP enrolment forced at first sign-in. `admin-create.ts:27` uses `onConflictDoUpdate`, which overwrites the password (the B13 bug the spec says to fix). It also creates the admin with twofa off rather than forced MFA at first sign-in |
 | F-IAM-18 | Forgot password | P1 | DONE | reset revokes sessions and trusted devices; staff must pass MFA on the next sign-in (response says mfaRequired); lost MFA → admin MFA reset. forgot/reset routes exist (auth.controller.ts:79-89). For staff, MFA after reset relies on the normal login MFA; there is no explicit post-reset MFA requirement |
 | F-IAM-19 | Personal data export | P2 | DONE | ZIP export (profile, requests, messages, invoices, documents list, consents, notifications) kept 24 h, email notice, audited data_export.client_data.exported. me/data-export builds a JSON synchronously (S account.service.ts:217-260). It has only profile, apps, notifications and consents: no messages, invoices, documents, ZIP, email link or 24h expiry. W settings-privacy.tsx |
 | F-IAM-20 | Account deletion | P1 | DONE | verified from 90e4816 + 38c73ce: 14-day cooling-off, sweep, finance pseudonymisation. `DELETE /api/auth/account` anonymises immediately and is blocked when cases are open (auth.service.ts:962-1000). There is no 14-day cooling-off and no retention pseudonymisation of finance records |
-| F-IAM-21 | Consent/terms | P1 | DONE | Closed 2026-11-19: settings consents append to the versioned consent ledger per channel. (was PARTIAL) |
-| F-IAM-22 | Company representatives | P2 | DONE | verified from ORG commits: organization_members roles owner/admin/viewer with invites and rep verification. See ORG: org roles owner/admin/member live in a per-user JSON doc |
-| F-IAM-23 | Access reviews | P3 | DONE | Quarterly job (S system.jobs.ts:69), W system/access-reviews |
-| F-IAM-24 | Customer ID | P1 | DONE | verified from 40c0d27/0e0cfb7: users.customer_no assigned + backfilled, shown in session/admin/CRM. `customerNo` exists only in the system store seed (seed/system.ts:467). There is no `users` column or sequence and nothing is assigned at signup |
+| F-IAM-21 | Consent/terms | P1 | DONE | Closed 2026-11-19: settings consents append to the versioned consent ledger per channel. (was PARTIAL) W:components/organisms/client/settings-privacy.tsx W:components/organisms/auth/terms-gate.tsx |
+| F-IAM-22 | Company representatives | P2 | DONE | verified from ORG commits: organization_members roles owner/admin/viewer with invites and rep verification. See ORG: org roles owner/admin/member live in a per-user JSON doc W:components/organisms/client/org-detail.tsx |
+| F-IAM-23 | Access reviews | P3 | DONE | Quarterly job (S system.jobs.ts:69), W system/access-reviews W:components/organisms/system/access-reviews.tsx |
+| F-IAM-24 | Customer ID | P1 | DONE | verified from 40c0d27/0e0cfb7: users.customer_no assigned + backfilled, shown in session/admin/CRM. `customerNo` exists only in the system store seed (seed/system.ts:467). There is no `users` column or sequence and nothing is assigned at signup W:components/organisms/client/settings-profile.tsx W:components/organisms/system/user-detail.tsx |
 
 ## client-portal (CLP)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-CLP-01 | Registration & login | P1 | DONE | as IAM-04 |
+| F-CLP-01 | Registration & login | P1 | DONE | as IAM-04 W:components/organisms/auth/login-forms.tsx W:components/organisms/auth/signup-form.tsx |
 | F-CLP-02 | Password recovery | P1 | DONE | POST auth/forgot: email link; asked by phone → reset link by SMS (even if the account has an email), OTP SMS→WhatsApp→email chain (IAM-05). W (auth)/forgot, reset. Note: SMS carries a one-time link, not a numeric OTP |
 | F-CLP-03 | Profile | P1 | DONE | Closed 2026-11-19: PATCH me/profile accepts language; me/address (province…street) feeds prefill; avatar already. (was PARTIAL) |
 | F-CLP-04 | Customer ID | P1 | DONE | Closed 2026-11-19: HBC-YYYY-NNNNNN-C customer number (Luhn) assigned at signup/claim, users.customer_no, shown in profile, admin, emails, invoices/PDFs; backfill script. (was MISSING) |
-| F-CLP-05 | Dashboard | P1 | DONE | Closed 2026-11-19: dashboard adds open quotes, new results, upcoming deadlines cards + link to reminders hub. (was PARTIAL) |
+| F-CLP-05 | Dashboard | P1 | DONE | Closed 2026-11-19: dashboard adds open quotes, new results, upcoming deadlines cards + link to reminders hub. (was PARTIAL) W:components/organisms/client/dashboard.tsx |
 | F-CLP-06 | Requests list | P1 | DONE | Closed 2026-11-19: basket cases carry group_code; list shows/sorts/searches by RG code. (was PARTIAL) |
 | F-CLP-07 | Quotes & invoices | P1 | DONE | W client/billing.tsx:687 accept/decline; receipts (S payments.controller.ts:53). Audited in FIN group |
-| F-CLP-08 | Documents & deliverables | P1 | DONE | Closed 2026-11-19: Results tab reads deliverables written on release (DLV-01). (was PARTIAL) |
+| F-CLP-08 | Documents & deliverables | P1 | DONE | Closed 2026-11-19: Results tab reads deliverables written on release (DLV-01). (was PARTIAL) W:components/organisms/client/deliverables.tsx |
 | F-CLP-09 | Messages | P1 | DONE | W (client)/messages/page.tsx; S chat.controller.ts |
 | F-CLP-10 | Consultations | P2 | DONE | W (client)/bookings; S booking.controller.ts:136 |
-| F-CLP-11 | Feedback & complaints | P2 | DONE | Closed 2026-11-19: complaints filed by clients (help or not-OK receipt) also open an ops-register ticket (owner, response clock, resolution). (was PARTIAL) |
+| F-CLP-11 | Feedback & complaints | P2 | DONE | Closed 2026-11-19: complaints filed by clients (help or not-OK receipt) also open an ops-register ticket (owner, response clock, resolution). (was PARTIAL) W:components/organisms/client/help.tsx W:components/organisms/client/ticket.tsx |
 | F-CLP-12 | Reminders hub | P2 | DONE | Closed 2026-11-19: GET/PUT me/reminders hub (documents, payments, quotes, expiring docs) with snooze/done; /dashboard/reminders. (was MISSING) |
 | F-CLP-13 | History & request again | P2 | DONE | Closed 2026-11-19: POST applications/:code/clone prefills a new draft (answers, personal details, library docs map); history "Request again" uses it. (was PARTIAL) |
 | F-CLP-14 | Consent centre | P1 | DONE | Per-channel marketing (email/SMS/WhatsApp), profile reuse, AI history (opt-out purges assistant sessions after 1 day), each change in `consent_ledger`; `GET me/consents/history` + history view in privacy settings. |
 | F-CLP-15 | Data export & deletion | P1 | DONE | IAM-19 ZIP export now JSON + summary.pdf (account.service requestExport, emailed 24 h link, audited); IAM-20 `DELETE /api/auth/account` 14-day cooling-off, blocked with open cases, finance PII pseudonymised |
-| F-CLP-16 | Company switcher | P2 | DONE | Closed 2026-11-19: active company files requests (wizard), company cases listed for reps; company page scoped to the org. (was PARTIAL) |
+| F-CLP-16 | Company switcher | P2 | DONE | Closed 2026-11-19: active company files requests (wizard), company cases listed for reps; company page scoped to the org. (was PARTIAL) W:components/organisms/client/orgs.tsx |
 | F-CLP-17 | Notification preferences | P1 | DONE | W client/settings-channels.tsx, `notification_preferences` table |
 | F-CLP-18 | Security page | P2 | DONE | W (client)/settings/security, settings-security.tsx (sessions + sign out others) |
 
 ## company-profiles (ORG)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-ORG-01 | Company profile | P2 | DONE | Closed 2026-11-19: organizations table + POST/PATCH (legal/trade name, type, TIN, RDB, address, size); web add-company form. (was MISSING) |
-| F-ORG-02 | Authorised representatives | P2 | DONE | Closed 2026-11-19: organization_members owner/admin/viewer + title; role changes/removal rules (owner protected). (was PARTIAL) |
-| F-ORG-03 | Invitations | P2 | DONE | Closed 2026-11-19: organization_invites: mail/SMS token, 7-day expiry, accept page /org-invite/[token]. (was PARTIAL) |
-| F-ORG-04 | Verification | P2 | DONE | Closed 2026-11-19: SM verify/reject with note, verified-TIN uniqueness, duplicate-TIN alert; ops /ops/companies. (was MISSING) |
-| F-ORG-05 | Company customer ID | P2 | DONE | Closed 2026-11-19: companies get HBC customer numbers from the same sequence. (was MISSING) |
+| F-ORG-01 | Company profile | P2 | DONE | Closed 2026-11-19: organizations table + POST/PATCH (legal/trade name, type, TIN, RDB, address, size); web add-company form. (was MISSING) W:components/organisms/client/orgs.tsx W:components/organisms/client/org-detail.tsx |
+| F-ORG-02 | Authorised representatives | P2 | DONE | Closed 2026-11-19: organization_members owner/admin/viewer + title; role changes/removal rules (owner protected). (was PARTIAL) W:components/organisms/client/org-detail.tsx |
+| F-ORG-03 | Invitations | P2 | DONE | Closed 2026-11-19: organization_invites: mail/SMS token, 7-day expiry, accept page /org-invite/[token]. (was PARTIAL) W:components/organisms/client/org-invite.tsx W:components/organisms/client/org-detail.tsx |
+| F-ORG-04 | Verification | P2 | DONE | Closed 2026-11-19: SM verify/reject with note, verified-TIN uniqueness, duplicate-TIN alert; ops /ops/companies. (was MISSING) W:components/organisms/ops/companies.tsx |
+| F-ORG-05 | Company customer ID | P2 | DONE | Closed 2026-11-19: companies get HBC customer numbers from the same sequence. (was MISSING) W:components/organisms/client/org-detail.tsx W:components/organisms/ops/companies.tsx |
 | F-ORG-06 | Profile reuse in forms | P2 | DONE | Closed 2026-11-19: profile_reuse consent, GET me/prefill (person.*, org.*), builder field → profile path binding, wizard prefill. (was MISSING) |
-| F-ORG-07 | Company document vault | P2 | DONE | Closed 2026-11-19: company document vault + audited download. (was MISSING) |
-| F-ORG-08 | Party switcher | P2 | DONE | Closed 2026-11-19: switcher on /orgs; wizard files for the active company (owner/admin). (was PARTIAL) |
-| F-ORG-09 | Company timeline | P2 | DONE | Closed 2026-11-19: company page timeline (status changes, invoices, documents), requests and invoices tabs. (was MISSING) |
+| F-ORG-07 | Company document vault | P2 | DONE | Closed 2026-11-19: company document vault + audited download. (was MISSING) W:components/organisms/client/org-detail.tsx W:components/organisms/client/vault.tsx |
+| F-ORG-08 | Party switcher | P2 | DONE | Closed 2026-11-19: switcher on /orgs; wizard files for the active company (owner/admin). (was PARTIAL) W:components/organisms/client/orgs.tsx W:components/organisms/flow/apply-wizard.tsx |
+| F-ORG-09 | Company timeline | P2 | DONE | Closed 2026-11-19: company page timeline (status changes, invoices, documents), requests and invoices tabs. (was MISSING) W:components/organisms/client/org-detail.tsx |
 
 ## service-request-lifecycle (REQ)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-REQ-01 | Submit single-service | P1 | DONE | `applications/submit`, server-side fee (S applications.service.ts:613-721), W flow/apply-wizard.tsx. No idempotency key on submit |
 | F-REQ-02 | Service basket | P1 | DONE | Closed 2026-11-19: POST applications/submit-basket → one RG- request group in one tx; groupCases() hook for combined payment; wizard submits once. (was PARTIAL) |
-| F-REQ-03 | Reference numbers | P1 | DONE | Closed 2026-11-19: RG-YYYY-NNNNNN group code on acknowledgement, emails and client list. (was PARTIAL) |
+| F-REQ-03 | Reference numbers | P1 | DONE | Closed 2026-11-19: RG-YYYY-NNNNNN group code on acknowledgement, emails and client list. (was PARTIAL) W:components/organisms/client/requests.tsx |
 | F-REQ-04 | Canonical status machine | P1 | DONE | 16 statuses (S domain/domain/case-status.ts:2-38), transition table `movesFor` (domain/ops/transitions.ts:146) enforced in `transitionTx` (applications.service.ts:786-817) |
 | F-REQ-05 | Configurable sub-statuses | P2 | DONE | S catalogue.service.ts:1296-1343, W ops/settings/statuses |
-| F-REQ-06 | External outcome | P1 | DONE | Closed 2026-11-19: external_outcome(+ref/institution/at) columns written by agent outcome, read by client detail. (was PARTIAL) |
+| F-REQ-06 | External outcome | P1 | DONE | Closed 2026-11-19: external_outcome(+ref/institution/at) columns written by agent outcome, read by client detail. (was PARTIAL) W:components/organisms/client/request-detail.tsx W:components/organisms/agent/workbench-dialogs.tsx |
 | F-REQ-07 | Completeness review | P1 | DONE | `checklist/complete`, `document-request`, `documents/:doc/decision` (S ops.cases.controller.ts:163-196), domain/ops/completeness.ts |
-| F-REQ-08 | SLA pause | P1 | DONE | Closed 2026-11-19: sla_paused_at/sla_paused_ms tracked on every status change; sla_deadline extended on resume (wall-clock, marked shortcut). (was PARTIAL) |
+| F-REQ-08 | SLA pause | P1 | DONE | Closed 2026-11-19: sla_paused_at/sla_paused_ms tracked on every status change; sla_deadline extended on resume (wall-clock, marked shortcut). (was PARTIAL) backend-only: SLA clock pause/resume rule on status change |
 | F-REQ-09 | Public tracking | P1 | DONE | `track/:code` + `verify` (applications.controller.ts:40-46), W (public)/track/[code]. Coarse status, contact unlocks detail |
-| F-REQ-10 | Claim guest case | P1 | DONE | Closed 2026-11-19: claim is two-step: SMS OTP to the case phone, verified before linking. (was PARTIAL) |
-| F-REQ-11 | Client cancellation | P1 | DONE | Closed 2026-11-19: POST applications/:code/cancel: cancels before work, else opens an SM approval; paid early cancel → refund request; client button. (was PARTIAL) |
+| F-REQ-10 | Claim guest case | P1 | DONE | Closed 2026-11-19: claim is two-step: SMS OTP to the case phone, verified before linking. (was PARTIAL) W:components/organisms/auth/recovery-forms.tsx |
+| F-REQ-11 | Client cancellation | P1 | DONE | Closed 2026-11-19: POST applications/:code/cancel: cancels before work, else opens an SM approval; paid early cancel → refund request; client button. (was PARTIAL) W:components/organisms/client/request-detail.tsx |
 | F-REQ-12 | Assisted submission | P2 | DONE | Closed 2026-11-19: POST admin/applications/assisted (SM/agent): guest case with recorded consent method, tracking code + claim link sent to the client; /ops/assisted. (was MISSING) |
-| F-REQ-13 | Request again | P2 | DONE | Closed 2026-11-19: see CLP-13. (was PARTIAL) |
-| F-REQ-14 | AI draft intake | P3 | DONE | Closed 2026-11-19: wizard ?draft=<id> loads the assistant draft into answers; client reviews every step and submits; ai_draft_id marks the draft submitted. (was PARTIAL) |
+| F-REQ-13 | Request again | P2 | DONE | Closed 2026-11-19: see CLP-13. (was PARTIAL) W:components/organisms/client/history.tsx |
+| F-REQ-14 | AI draft intake | P3 | DONE | Closed 2026-11-19: wizard ?draft=<id> loads the assistant draft into answers; client reviews every step and submits; ai_draft_id marks the draft submitted. (was PARTIAL) W:components/organisms/flow/apply-wizard.tsx W:components/organisms/booking/assistant.tsx |
 | F-REQ-15 | Case timeline | P1 | DONE | `admin/applications/:code/timeline` (ops.cases.controller.ts:210), client timeline (W request-detail.tsx:82,185), me/activity |
-| F-REQ-16 | Completion record | P1 | DONE | Closed 2026-11-19: completion_record jsonb frozen on completed_delivered (assignees, fee, payment, SLA, message/deliverable counts). (was MISSING) |
-| F-REQ-17 | Refund states | P2 | DONE | Closed 2026-11-19: case moves to refund_requested on RFD request, refunded on payout/credit, back to its prior status on decline (status_before_refund). (was PARTIAL) |
-| F-REQ-18 | Guest upload guard | P1 | DONE | Closed 2026-11-19: client uploads refused while on_hold and 30 days after completion (plus terminal check). (was PARTIAL) |
+| F-REQ-16 | Completion record | P1 | DONE | Closed 2026-11-19: completion_record jsonb frozen on completed_delivered (assignees, fee, payment, SLA, message/deliverable counts). (was MISSING) backend-only: completion_record frozen on status transition |
+| F-REQ-17 | Refund states | P2 | DONE | Closed 2026-11-19: case moves to refund_requested on RFD request, refunded on payout/credit, back to its prior status on decline (status_before_refund). (was PARTIAL) W:components/organisms/client/refunds.tsx |
+| F-REQ-18 | Guest upload guard | P1 | DONE | Closed 2026-11-19: client uploads refused while on_hold and 30 days after completion (plus terminal check). (was PARTIAL) backend-only: upload guard on case status |
 
 ## documents (DOC)
 | F-ID | title | phase | status | evidence / gap |
@@ -95,29 +95,29 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-02 | Attach from library | P1 | DONE | `me/documents/:id/attach` (controller:39), used by W apply-wizard.tsx:297 |
 | F-DOC-03 | Requirement uploads | P1 | DONE | `applications/:code/documents` with requirement_key (documents.service.ts:746-785) |
 | F-DOC-04 | QC review | P1 | DONE | agent `documents/:id/qc` (agent.controller.ts:162), ops `documents/:doc/decision` (ops.cases.controller.ts:163) |
-| F-DOC-05 | Version history | P1 | DONE | Closed 2026-11-19: restore endpoint me/documents/:id/versions/:v/restore. (was PARTIAL) |
-| F-DOC-06 | Expiry tracking | P2 | DONE | Closed 2026-11-19: 60/30/0-day expiry reminders (documents.expiry cron). (was PARTIAL) |
-| F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive |
-| F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) |
-| F-DOC-09 | Retention engine | P2 | DONE | Closed 2026-11-19: nightly documents.retention flags per class (ID 2y, case 5y, deliverable 10y, chat 7y) → SM queue /ops/retention → shred (object deleted, path tombstoned, audited, step-up) or keep with reason. (was PARTIAL) |
-| F-DOC-10 | Company vault | P2 | DONE | Closed 2026-11-19: company vault: client_documents.organization_id, upload for a company, rep download (ORG-07). (was MISSING) |
-| F-DOC-11 | Guest upload guard | P1 | DONE | Closed 2026-11-19: see REQ-18. (was PARTIAL) |
-| F-DOC-12 | OCR / auto-classify | P3 | DONE | Closed 2026-11-19: OCR job (OCR_ENDPOINT) + keyword classifier; suggestion shown in agent QC. (was MISSING) |
-| F-DOC-13 | Shared docs with members | P1 | DONE | agent/papers (agent.controller.ts:439-449), partner_documents, work contract docs |
+| F-DOC-05 | Version history | P1 | DONE | Closed 2026-11-19: restore endpoint me/documents/:id/versions/:v/restore. (was PARTIAL) W:components/organisms/client/vault.tsx |
+| F-DOC-06 | Expiry tracking | P2 | DONE | Closed 2026-11-19: 60/30/0-day expiry reminders (documents.expiry cron). (was PARTIAL) backend-only: documents.expiry reminder cron |
+| F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive W:components/organisms/system/sensitive.tsx |
+| F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) backend-only: ClamAV scan job + quarantine |
+| F-DOC-09 | Retention engine | P2 | DONE | Closed 2026-11-19: nightly documents.retention flags per class (ID 2y, case 5y, deliverable 10y, chat 7y) → SM queue /ops/retention → shred (object deleted, path tombstoned, audited, step-up) or keep with reason. (was PARTIAL) W:components/organisms/ops/retention.tsx |
+| F-DOC-10 | Company vault | P2 | DONE | Closed 2026-11-19: company vault: client_documents.organization_id, upload for a company, rep download (ORG-07). (was MISSING) W:components/organisms/client/vault.tsx W:components/organisms/client/org-detail.tsx |
+| F-DOC-11 | Guest upload guard | P1 | DONE | Closed 2026-11-19: see REQ-18. (was PARTIAL) backend-only: upload guard, see REQ-18 |
+| F-DOC-12 | OCR / auto-classify | P3 | DONE | Closed 2026-11-19: OCR job (OCR_ENDPOINT) + keyword classifier; suggestion shown in agent QC. (was MISSING) W:components/organisms/agent/workbench-panels.tsx |
+| F-DOC-13 | Shared docs with members | P1 | DONE | agent/papers (agent.controller.ts:439-449), partner_documents, work contract docs W:components/organisms/agent/onboarding.tsx |
 
 ## deliverables-and-review (DLV)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-DLV-01 | Deliverable upload | P1 | DONE | Closed 2026-11-19: releaseDeliverables writes deliverables rows from approved slot versions on approve-release and the no-review path. (was PARTIAL) |
-| F-DLV-02 | Submit for review | P1 | DONE | `submit-review` → `awaiting_internal_review` + openReview (agent.service.ts:1425-1432), W work/jobs/[ref] |
+| F-DLV-01 | Deliverable upload | P1 | DONE | Closed 2026-11-19: releaseDeliverables writes deliverables rows from approved slot versions on approve-release and the no-review path. (was PARTIAL) W:components/organisms/agent/deliverables.tsx |
+| F-DLV-02 | Submit for review | P1 | DONE | `submit-review` → `awaiting_internal_review` + openReview (agent.service.ts:1425-1432), W work/jobs/[ref] W:components/organisms/agent/workbench-dialogs.tsx |
 | F-DLV-03 | Review decision | P1 | DONE | 4-eyes `own_work` check (S ops.manage.ts:708-709), return/approve, second level, W ops/reviews/[id]. `review_required` is a hard-coded NO_REVIEW set (agent.service.ts:1405), not per-service config |
-| F-DLV-04 | Release gate | P1 | DONE | Closed 2026-11-19: release writes client-visible rows; downloads stay locked while a balance is due (payment gate); override path audited. (was PARTIAL) |
-| F-DLV-05 | Watermarked preview | P2 | DONE | Closed 2026-11-19: preview while a balance is due: images downscaled + "PREVIEW — HEBUZA — {code}" stamp; PDFs a stamped notice page (shortcut: no PDF rasteriser). (was MISSING) |
+| F-DLV-04 | Release gate | P1 | DONE | Closed 2026-11-19: release writes client-visible rows; downloads stay locked while a balance is due (payment gate); override path audited. (was PARTIAL) W:components/organisms/client/deliverables.tsx |
+| F-DLV-05 | Watermarked preview | P2 | DONE | Closed 2026-11-19: preview while a balance is due: images downscaled + "PREVIEW — HEBUZA — {code}" stamp; PDFs a stamped notice page (shortcut: no PDF rasteriser). (was MISSING) W:components/organisms/client/document-preview.tsx |
 | F-DLV-06 | Secure download links | P1 | DONE | Closed 2026-11-19: download_tokens: single-use 72 h links sent on release (email/WhatsApp via notifications), GET d/:token (signed-in owner) → file; web /d/[token]. (was PARTIAL) |
-| F-DLV-07 | Download log | P1 | DONE | `deliverable.downloaded` audit (documents.service.ts:797) |
-| F-DLV-08 | Delivery receipt | P2 | DONE | Closed 2026-11-19: not-OK receipt opens a complaint ticket on the case (one open at a time). (was PARTIAL) |
+| F-DLV-07 | Download log | P1 | DONE | `deliverable.downloaded` audit (documents.service.ts:797) backend-only: deliverable.downloaded audit write |
+| F-DLV-08 | Delivery receipt | P2 | DONE | Closed 2026-11-19: not-OK receipt opens a complaint ticket on the case (one open at a time). (was PARTIAL) W:components/organisms/client/deliverables.tsx |
 | F-DLV-09 | Deliverable vault | P1 | DONE | Closed 2026-11-19: Results show released rows; POST me/deliverables/:id/save-to-library copies the file into the library. (was PARTIAL) |
-| F-DLV-10 | E-signature hook | P3 | DONE | Closed 2026-11-19: built-in signing: staff/agent flag a file (per slot), client signs typed or drawn; record keeps the file SHA-256, a sealed audit hash, IP and user agent; dormant external-provider hook (core/esign). (was MISSING) |
+| F-DLV-10 | E-signature hook | P3 | DONE | Closed 2026-11-19: built-in signing: staff/agent flag a file (per slot), client signs typed or drawn; record keeps the file SHA-256, a sealed audit hash, IP and user agent; dormant external-provider hook (core/esign). (was MISSING) W:components/organisms/client/document-preview.tsx |
 
 ## feedback-complaints-ratings (FBK)
 | F-ID | title | phase | status | evidence / gap |
@@ -127,11 +127,11 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-FBK-03 | Complaints register | P2 | DONE | wave 5: severity ladder critical 4 h / high 1 / normal 3 / low 5 business days, audited `severity` action + select. wave 4: unified register `admin/ops/register` + "All channels" tab; severity ladder still high/medium/low. Ops tickets with complaint/dispute/enquiry kinds, category, priority and responseDueAt (S ops.manage.ts:947-972), W ops/tickets. Severity uses high/medium/low rather than the spec's critical-4h SLA ladder. Client complaints go to a separate `support_tickets` table (support.service.ts) |
 | F-FBK-04 | Dispute unification | P2 | DONE | wave 4: chat disputes are ops tickets; one register over ops, help desk and website enquiries. Ops tickets cover chat disputes (ops.manage.ts:1081-1118), but the chat module keeps its own `chat/.../disputes` (chat.controller.ts:194-210). There are two to three registers |
 | F-FBK-05 | Enquiry inbox | P2 | DONE | wave 5: website enquiries assign/reply (email)/convert-to-lead/close from the register. wave 4: enquiries appear in the register; assign/reply/convert still in marketing inbox. `contact_inquiries` (cms.service.ts:1424) and W marketing/inbox. Assign/reply/convert-to-request not verified, and they are not tickets in the register |
-| F-FBK-06 | Escalation ladder | P2 | DONE | wave 3: `ops.ticket_escalation` SM at response target, exec +24 h. Manual `escalate` action (ops.manage.ts ~1210). No SLA-driven job to SM/exec |
-| F-FBK-07 | Resolution & follow-up | P2 | DONE | wave 4: resolution kind enum required on resolve; reopen only within 14 days. resolve/confirm/reopen/refund/credit/reassign actions (ops.manage.ts:1140-1240). There is no resolution-kind enum, and the 14-day reopen limit was not verified |
-| F-FBK-08 | Low-rating alert | P2 | DONE | wave 3: `ops.low_rating` rating ≤2 → high complaint + SM alert. No rating ≤2 → complaint + SM alert |
-| F-FBK-09 | Testimonials | P3 | DONE | S marketing.insights.ts:701, W marketing/testimonials |
-| F-FBK-10 | Agent quality score | P2 | DONE | wave 3: `ops.quality_scores` CSAT/complaints/on-time → agent_profiles rating/onTime used by rankAgents. CSAT and complaint rate are not fed into WRK/ASN scoring (nothing found in agent/ops performance) |
+| F-FBK-06 | Escalation ladder | P2 | DONE | wave 3: `ops.ticket_escalation` SM at response target, exec +24 h. Manual `escalate` action (ops.manage.ts ~1210). No SLA-driven job to SM/exec W:components/organisms/ops/tickets.tsx |
+| F-FBK-07 | Resolution & follow-up | P2 | DONE | wave 4: resolution kind enum required on resolve; reopen only within 14 days. resolve/confirm/reopen/refund/credit/reassign actions (ops.manage.ts:1140-1240). There is no resolution-kind enum, and the 14-day reopen limit was not verified W:components/organisms/ops/tickets.tsx |
+| F-FBK-08 | Low-rating alert | P2 | DONE | wave 3: `ops.low_rating` rating ≤2 → high complaint + SM alert. No rating ≤2 → complaint + SM alert backend-only: ops.low_rating job opens complaint + SM alert |
+| F-FBK-09 | Testimonials | P3 | DONE | S marketing.insights.ts:701, W marketing/testimonials W:components/organisms/marketing/community.tsx W:components/organisms/client/testimonial-prompt.tsx |
+| F-FBK-10 | Agent quality score | P2 | DONE | wave 3: `ops.quality_scores` CSAT/complaints/on-time → agent_profiles rating/onTime used by rankAgents. CSAT and complaint rate are not fed into WRK/ASN scoring (nothing found in agent/ops performance) backend-only: ops.quality_scores job feeds agent ranking |
 
 ## Journeys (client-individual, company-rep, visitor, internal-agent, service-manager)
 - Visitor → track → claim: works, but claim has no OTP (REQ-10).

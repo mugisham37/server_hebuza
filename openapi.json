@@ -28878,6 +28878,46 @@
         ]
       }
     },
+    "/api/staff/payout-destinations/pending": {
+      "get": {
+        "operationId": "WorkStaffController_pendingDestinations",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "WorkStaff"
+        ]
+      }
+    },
     "/api/staff/workers/{id}/work": {
       "get": {
         "operationId": "WorkStaffController_staffWork",

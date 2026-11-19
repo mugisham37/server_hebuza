@@ -1937,3 +1937,11 @@ export async function staffWork(db: Exec, uid: string) {
     access: access.map((x) => x.data).filter((x) => x.status === "pending"),
   };
 }
+
+/** Finance queue: external workers whose new payout destination waits for call-back verification (F-WRK, sup.bank.verify). */
+export async function pendingDestinations(db: Exec) {
+  const rows = await recList<ExtState>(db, "work_ext", {}); // shortcut: scans first 500 work_ext rows, filter in SQL on data->payoutDest once workers exceed that
+  return rows
+    .filter((r) => r.data.payoutDest?.status === "pending_verification")
+    .map((r) => ({ workerId: r.ownerId as string, ...r.data.payoutDest! }));
+}
