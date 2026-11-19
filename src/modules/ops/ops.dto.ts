@@ -245,6 +245,7 @@ export class TicketActionDto extends dto(
       "resolve",
       "confirm",
       "reopen",
+      "severity",
     ]),
     body: z.string().max(4000).optional(),
     reason: z.string().max(1000).optional(),
@@ -261,3 +262,6 @@ export class AssignmentBlockDto extends dto(
   z.object({ agentId: Id, clientId: Id, reason: z.string().trim().min(3).max(500) }),
 ) {}
 export class AssignmentBlockQueryDto extends dto(z.object({ agentId: Id.optional(), clientId: Id.optional() })) {}
+export class EnquiryActionDto extends dto(
+  z.object({ action: z.enum(["assign", "reply", "close", "convert"]), agentId: z.string().max(64).optional(), body: z.string().max(4000).optional() }),
+) {}

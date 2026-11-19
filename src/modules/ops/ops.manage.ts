@@ -971,7 +971,7 @@ export type Ticket = {
   caseRef: string;
   service: string;
   paid: number;
-  priority: "high" | "medium" | "low";
+  priority: Severity;
   status: string;
   owner: { id: string; name: string };
   responseDueAt: string;
@@ -1021,8 +1021,21 @@ const strip = (t: Ticket) => {
   ];
   return rest;
 };
-// PLACEHOLDER(ticket-response-minutes, apology-credit-rwf): until support settings exist.
-const RESPONSE_MIN = { high: 120, medium: 240, low: 1440 } as const;
+// F-FBK-03 severity ladder (spec): critical 4 h, high 1 business day, normal ("medium") 3, low 5 business days.
+export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+export type Severity = (typeof SEVERITIES)[number];
+/** Due time for a severity from `from`; business days skip Saturday/Sunday in Kigali time. */
+export function responseDue(sev: Severity, from = Date.now()) {
+  if (sev === "critical") return iso(from + 4 * 3_600_000);
+  let t = from, left = sev === "high" ? 1 : sev === "medium" ? 3 : 5;
+  while (left > 0) {
+    t += 86_400_000;
+    const dow = new Date(t + 2 * 3_600_000).getUTCDay();
+    if (dow !== 0 && dow !== 6) left--;
+  }
+  return iso(t);
+}
+// PLACEHOLDER(apology-credit-rwf): until support settings exist.
 export const APOLOGY_CREDIT_RWF = 5000;
 
 /** F-FBK-03/04/05: one register over every complaint channel — ops tickets (incl. chat disputes), client help-desk
@@ -1046,11 +1059,43 @@ export async function complaintsRegister(db: Exec) {
     })),
     ...enq.map((e) => ({
       source: "website" as const, ref: e.id, kind: "enquiry", subject: e.topic, client: e.name, caseRef: null,
-      status: "open", priority: null, at: new Date(e.createdAt).toISOString(), href: "/marketing/inbox",
+      status: e.status === "open" ? "open" : e.status === "answered" ? "waiting" : "resolved", priority: null,
+      at: new Date(e.createdAt).toISOString(), href: null, contact: e.contact, message: e.message, assigneeId: e.assigneeId,
     })),
   ].sort((a, b) => b.at.localeCompare(a.at));
   const by = (k: string) => items.filter((x) => x.kind === k).length;
   return { items, counts: { complaint: by("complaint"), dispute: by("dispute"), enquiry: by("enquiry"), open: items.filter((x) => x.status !== "resolved").length } };
+}
+
+/** F-FBK-05: handle a website enquiry from the register — assign an owner, reply by email, close, or convert to a CRM lead. */
+export async function enquiryAction(
+  ctx: Ctx,
+  id: string,
+  b: { action: "assign" | "reply" | "close" | "convert"; agentId?: string; body?: string },
+  ports: { mail: (m: { to: string; subject: string; text: string }) => Promise<void>; lead: (l: { name: string; email?: string; phone?: string }) => Promise<void> },
+) {
+  const [e] = await ctx.db.select().from(contactInquiries).where(eq(contactInquiries.id, id)).for("update");
+  if (!e) throw err.notFound("Enquiry not found");
+  const now = iso();
+  const email = /@/.test(e.contact) ? e.contact.trim() : undefined;
+  let set: Partial<typeof contactInquiries.$inferInsert> = {};
+  if (b.action === "assign") {
+    const name = (await namesOf(ctx.db, [b.agentId ?? ""])).get(b.agentId ?? "");
+    if (!name) throw new AppError(422, "invalid_agent", "Unknown staff member.");
+    set = { assigneeId: b.agentId! };
+    await notify(ctx.db, { userId: b.agentId!, kind: "ticket", title: `Website enquiry from ${e.name} assigned to you`, href: "/ops/tickets?tab=register" });
+  } else if (b.action === "reply") {
+    if (!b.body?.trim()) throw new AppError(422, "validation", "Write a reply.");
+    if (!email) throw new AppError(422, "no_email", "This enquiry left a phone number. Call or message them instead.");
+    await ports.mail({ to: email, subject: `Re: ${e.topic}`, text: b.body.trim() });
+    set = { status: "answered", repliedAt: now };
+  } else if (b.action === "convert") {
+    await ports.lead({ name: e.name, email, phone: email ? undefined : e.contact.trim() });
+    set = { status: "converted" };
+  } else set = { status: "closed" };
+  await ctx.db.update(contactInquiries).set(set).where(eq(contactInquiries.id, id));
+  ctx.audit = { resourceId: id, details: { action: b.action, ...set } };
+  return { id, ...set };
 }
 
 export async function listTickets(db: Exec, tab: TicketTab) {
@@ -1124,7 +1169,7 @@ export async function openTicket(
     priority,
     status: "open",
     owner: { id: owner, name: names.get(owner) ?? "Staff" },
-    responseDueAt: iso(Date.now() + RESPONSE_MIN[priority] * 60_000),
+    responseDueAt: responseDue(priority),
     responded: false,
     escalatedAt: null,
     disputeId: b.kind === "dispute" ? `dsp-${ref}` : null,
@@ -1251,6 +1296,16 @@ export async function ticketAction(
         href: `/ops/tickets/${t.ref}`,
       });
       log(`Reassigned to ${name}`);
+      break;
+    }
+    case "severity": {
+      // F-FBK-03: severity changes are audited and re-time the response target from when the ticket was opened.
+      const to = str("severity") as Severity;
+      if (!(SEVERITIES as readonly string[]).includes(to)) throw new AppError(422, "validation", "Unknown severity.");
+      const from = t.priority;
+      t.priority = to;
+      t.responseDueAt = responseDue(to, Date.parse(rec.createdAt));
+      log(`Severity ${from} → ${to}${str("note") ? `: ${str("note")}` : ""}`);
       break;
     }
     case "escalate":

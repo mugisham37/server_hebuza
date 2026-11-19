@@ -1,4 +1,6 @@
 // Oversight (reference lanes C/D): workload + capacity, workforce approvals, SLA, deliverable reviews, tickets.
+import { OutboxService } from "../../core/db/outbox";
+import { CryptoService } from "../../core/crypto/crypto.service";
 import {
   Body,
   Controller,
@@ -27,6 +29,7 @@ import {
   ReviewOverrideDto,
   TabQueryDto,
   TicketActionDto,
+  EnquiryActionDto,
   TicketDto,
   TicketsQueryDto,
   WeekQueryDto,
@@ -34,7 +37,11 @@ import {
 
 @Controller()
 export class OpsOversightController {
-  constructor(private readonly o: OpsRunner) {}
+  constructor(
+    private readonly o: OpsRunner,
+    private readonly outbox: OutboxService,
+    private readonly crypto: CryptoService,
+  ) {}
 
   @Get("admin/ops/workload")
   @Route({ auth: SMR, permission: "asn.workload.read" })
@@ -204,6 +211,16 @@ export class OpsOversightController {
   @Route({ auth: SMR, permission: "fbk.ticket.read" })
   register() {
     return this.o.read((db) => m.complaintsRegister(db));
+  }
+  @Post("admin/ops/register/enquiries/:id")
+  @Route({ auth: SM, permission: "fbk.ticket.resolve", idempotent: true, audit: "enquiry.action" })
+  enquiry(@Req() r: OpsReq, @Param("id") id: string, @Body() b: EnquiryActionDto) {
+    return this.o.run(r, (c) =>
+      m.enquiryAction(c, id, b, {
+        mail: (x) => this.outbox.add(c.db, { type: "auth.mail", queue: "critical", payload: this.crypto.seal(x, ["text"]) }),
+        lead: (l) => this.outbox.add(c.db, { type: "booking.lead_captured", payload: this.crypto.seal({ leadId: id, source: "website_enquiry", ...l }, ["phone", "email"]) }),
+      }),
+    );
   }
   @Get("admin/ops/tickets/:ref")
   @Route({ auth: SMR, permission: "fbk.ticket.read" })

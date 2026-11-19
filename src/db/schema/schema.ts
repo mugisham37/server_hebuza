@@ -926,6 +926,10 @@ export const contactInquiries = pgTable("contact_inquiries", {
 	topic: varchar({ length: 128 }).notNull(),
 	message: text().notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
+	// F-FBK-05 register handling: open | answered | closed | converted, owner, last reply.
+	status: varchar({ length: 16 }).default('open').notNull(),
+	assigneeId: varchar("assignee_id", { length: 64 }),
+	repliedAt: timestamp("replied_at", { withTimezone: true, mode: 'string' }),
 });
 
 export const refreshTokens = pgTable("refresh_tokens", {
