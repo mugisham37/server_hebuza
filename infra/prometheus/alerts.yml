@@ -1,0 +1,33 @@
+# OBS-alert: Prometheus alerting rules for the API's /metrics (scrape with `Authorization: Bearer $METRICS_TOKEN`).
+groups:
+  - name: hebuza-api
+    rules:
+      - alert: ApiHighErrorRate
+        expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1) > 0.01
+        for: 5m
+        labels: { severity: page }
+        annotations: { summary: "API 5xx rate above 1% for 5 min", runbook: "docs/RUNBOOK.md#health-checks" }
+      - alert: ApiSlowP95
+        expr: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels: { severity: ticket }
+        annotations: { summary: "API p95 latency above 500 ms for 10 min" }
+      - alert: QueueBacklog
+        expr: sum(queue_waiting) > 500
+        for: 10m
+        labels: { severity: page }
+        annotations: { summary: "BullMQ backlog above 500 jobs: worker down or slow", runbook: "docs/RESILIENCE.md#3-worker-crash-process-killed-mid-job" }
+      - alert: QueueDeadLetters
+        expr: increase(queue_failed[1h]) > 10
+        labels: { severity: ticket }
+        annotations: { summary: "More than 10 jobs dead-lettered in the last hour" }
+      - alert: ApiDown
+        expr: up{job="hebuza-api"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations: { summary: "API scrape failing", runbook: "docs/RESILIENCE.md" }
+      - alert: ApiMemoryHigh
+        expr: process_resident_memory_bytes > 900e6
+        for: 15m
+        labels: { severity: ticket }
+        annotations: { summary: "API RSS above 900 MB" }

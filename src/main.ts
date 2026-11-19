@@ -13,6 +13,8 @@ import multipart from "@fastify/multipart";
 import { Logger } from "nestjs-pino";
 import { AppModule } from "./app.module";
 import type { Env } from "./core/config/env";
+import { installObservability } from "./core/http/observability";
+import { QueueService } from "./core/queue/queues";
 
 async function bootstrap() {
   const adapter = new FastifyAdapter({
@@ -40,6 +42,15 @@ async function bootstrap() {
     const g = originGate({ url: req.url, headers: req.headers, socket: req.raw.socket }, originSecret);
     if (g === "forbidden") return reply.code(403).send({ success: false, message: "Forbidden", errorType: "forbidden", data: null });
     if (g) Object.defineProperty(req, "ip", { value: g });
+  });
+  // OBS: Prometheus /metrics (token-gated) + request spans/traceparent (OTLP export when the endpoint is set).
+  const queues = app.get(QueueService);
+  installObservability(app.getHttpAdapter().getInstance(), {
+    metricsToken: cfg.get("METRICS_TOKEN", { infer: true }), otelEndpoint: cfg.get("OTEL_EXPORTER_OTLP_ENDPOINT", { infer: true }), service: "hebuza-api",
+    queueDepth: async () => Object.fromEntries((await Promise.all((["critical", "default", "bulk"] as const).map(async (q) => {
+      const c = await queues.get(q).getJobCounts("waiting", "failed", "delayed");
+      return [[`queue_waiting{queue="${q}"}`, c.waiting ?? 0], [`queue_failed{queue="${q}"}`, c.failed ?? 0], [`queue_delayed{queue="${q}"}`, c.delayed ?? 0]] as [string, number][];
+    }))).flat()),
   });
   await app.register(helmet);
   // Phase 7: API responses carry personal data; never let shared caches/proxies keep them (public catalogue sets its own).

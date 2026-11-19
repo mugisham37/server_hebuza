@@ -36,6 +36,8 @@ export const envSchema = z.object({
   WHATSAPP_APP_SECRET: z.string().optional(), // Meta app secret: X-Hub-Signature-256 on the WhatsApp webhook
   WHATSAPP_VERIFY_TOKEN: z.string().optional(), // hub.verify_token for the webhook subscription handshake
   RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the Resend webhook; set → svix signature required
+  METRICS_TOKEN: z.string().min(24).optional(), // OBS-metrics: Bearer token for GET /metrics; unset → 404
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(), // OBS-tracing: OTLP/HTTP collector base URL; unset → spans not exported
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
   BACKUP_STATUS_ENDPOINT: z.string().url().optional(),
