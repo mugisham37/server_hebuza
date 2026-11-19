@@ -5,7 +5,7 @@
 // PublicCache.bust("plans") after each write.
 import { Injectable } from "@nestjs/common";
 import { and, asc, count, eq, gte, inArray, lte } from "drizzle-orm";
-import { applications, clientSubscriptions, organizationSubscriptions, subscriptionPlans, users } from "@/db/schema";
+import { applications, clientSubscriptions, organizationMembers, organizationSubscriptions, subscriptionPlans, users } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { AuditService } from "../../core/db/audit";
@@ -228,6 +228,19 @@ export async function activateOrgSubscription(
     .onConflictDoUpdate({ target: organizationSubscriptions.organizationId, set: row });
 }
 
+/** F-SUB-02: a new company gets the signup trial once (per organization, independent of its members' own trials). */
+export async function startTrialForOrg(db: Exec, organizationId: string) {
+  const plan = await getPlan(db, TRIAL_PLAN_ID);
+  if (!plan || !plan.isActive || plan.archivedAt) return null;
+  const now = new Date();
+  const [row] = await db.insert(organizationSubscriptions).values({
+    organizationId, planId: plan.planId, status: "active", startedAt: now.toISOString(),
+    currentPeriodEnd: new Date(now.getTime() + (plan.trialDays ?? 30) * DAY_MS).toISOString(),
+    createdAt: now.toISOString(), updatedAt: now.toISOString(),
+  }).onConflictDoNothing().returning();
+  return row ?? null;
+}
+
 /** SUB-10: the company's subscription, expired on read when the period lapsed. */
 export async function orgSubscription(db: Exec, organizationId: string) {
   const [s] = await db.select({ s: organizationSubscriptions, name: subscriptionPlans.name, kind: subscriptionPlans.kind })
@@ -356,7 +369,14 @@ export async function coverageFor(db: Exec, clientId: string, role: string) {
   if (role === "partner") return { covered: false, dedicatedAgentId: null };
   const s = await expireIfLapsed(db, await byClient(db, clientId));
   const live = !!s && covers(s);
-  return { covered: live, dedicatedAgentId: live ? s!.dedicatedAgentId : null };
+  if (live) return { covered: true, dedicatedAgentId: s!.dedicatedAgentId };
+  // F-SUB-10: an active member of a company with a live plan is covered by the company's plan.
+  const [org] = await db.select({ id: organizationSubscriptions.organizationId }).from(organizationSubscriptions)
+    .innerJoin(organizationMembers, eq(organizationMembers.organizationId, organizationSubscriptions.organizationId))
+    .where(and(eq(organizationMembers.userId, clientId), eq(organizationMembers.status, "active"),
+      eq(organizationSubscriptions.status, "active"), gte(organizationSubscriptions.currentPeriodEnd, new Date().toISOString())))
+    .limit(1);
+  return { covered: !!org, dedicatedAgentId: null };
 }
 
 /** Only the monthly cap of a LIVE plan blocks a new application (a lapsed plan just means paying per case). */

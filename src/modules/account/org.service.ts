@@ -36,7 +36,7 @@ import { generateId } from "../../core/db/ids";
 import { nextCustomerNo } from "../../core/db/customer-no";
 import { NotificationsService } from "../notifications/notifications.service";
 import { normalizePhone } from "../auth/auth.rules";
-import { orgSubscription } from "../subscriptions/subscriptions.service";
+import { orgSubscription, startTrialForOrg } from "../subscriptions/subscriptions.service";
 import { StorageService } from "../../core/storage/storage.service";
 
 export type OrgProfile = {
@@ -294,6 +294,7 @@ export class OrgService {
           status: "active",
           acceptedAt: t,
         });
+      await startTrialForOrg(tx, id); // F-SUB-02: one trial per company
       await this.audit.record(tx, {
         action: "org.created",
         entity: "organization",
