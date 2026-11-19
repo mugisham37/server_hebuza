@@ -1,10 +1,11 @@
 // Report catalogue (RPT §9): /api/reports/catalog · /{key} · /{key}/drill · POST /{key}/export · /exports/{id}.
 // Finance users and executives (D12) only.
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Post, Query } from "@nestjs/common";
+import { METRICS } from "@/domain/reports/metrics";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { DrillQueryDto, ExecSummaryOut, ExportDto, FINX, RunQueryDto } from "./reports.dto";
+import { DrillQueryDto, ExecSummaryOut, ExportDto, FINX, RunQueryDto, SubscriptionDto } from "./reports.dto";
 import { ReportsService } from "./reports.service";
 
 @Controller("reports")
@@ -20,6 +21,26 @@ export class ReportsController {
   @Route({ auth: ["staff:executive", "staff:sysadmin"], out: ExecSummaryOut })
   execSummary() {
     return this.svc.execSummary();
+  }
+  @Get("definitions")
+  @Route({ auth: FINX })
+  definitions() {
+    return { items: Object.entries(METRICS).map(([key, d]) => ({ key, ...d })) };
+  }
+  @Get("subscriptions")
+  @Route({ auth: FINX })
+  subscriptions(@CurrentUser() me: SessionUser) {
+    return this.svc.subscriptions(me);
+  }
+  @Post("subscriptions")
+  @Route({ auth: FINX, limit: "write", audit: "report.subscribed" })
+  subscribe(@Body() b: SubscriptionDto, @CurrentUser() me: SessionUser) {
+    return this.svc.subscribe(me, b);
+  }
+  @Delete("subscriptions/:id")
+  @Route({ auth: FINX, limit: "write", audit: "report.unsubscribed" })
+  unsubscribe(@Param("id") id: string, @CurrentUser() me: SessionUser) {
+    return this.svc.unsubscribe(me, id);
   }
   @Get("exports/:id")
   @Route({ auth: FINX })

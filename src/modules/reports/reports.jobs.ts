@@ -12,9 +12,9 @@ export class ReportsJobs {
     return this.svc.runExport(d.id);
   }
 
-  // shortcut: reference had no scheduled reports; fixed weekly fin.revenue CSV to finance users until report subscriptions exist.
-  @Cron("reports.scheduled", "0 6 * * 1")
-  scheduled() {
-    return this.svc.scheduledExports();
+  /** F-RPT-05: per-user report subscriptions (weekly Mondays / monthly on the 1st), emailed when ready. */
+  @Cron("reports.subscriptions", "0 4 * * *")
+  subscriptions() {
+    return this.svc.runSubscriptions();
   }
 }

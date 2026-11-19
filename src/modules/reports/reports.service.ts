@@ -1,12 +1,14 @@
 // Finance reports (U3, U16, F-FIN-13): catalogue/run/drill, export jobs (CSV → object storage, presigned link via
 // GET /reports/exports/:id + notification), and the overview / cash position / journal read models finance calls.
 // shortcut: reads primary, move to read replica when provisioned.
+type Sub = { id: string; userId: string; report: ReportKey; format: "csv" | "xlsx"; freq: "weekly" | "monthly"; createdAt: string; lastRunAt: string | null; deleted?: boolean };
+import { definitionOf } from "@/domain/reports/metrics";
+import { xlsx } from "@/domain/reports/xlsx";
 import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
-import { and, eq, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import type IORedis from "ioredis";
 import { REDIS } from "../../core/queue/queue.module";
-import { users } from "@/db/schema";
 import type { ExportJob } from "@/domain/finance/types";
 import { AuditService } from "../../core/db/audit";
 import type { Tx } from "../../core/db/db";
@@ -176,7 +178,7 @@ export class ReportsService {
           period: { from: r.from, to: r.to },
           tz: "Africa/Kigali" as const,
           filters: { group: r.group },
-          definitions: r.cols.map((x) => ({ key: x.key, text: x.key })),
+          definitions: r.cols.map((x) => ({ key: x.key, text: definitionOf(x.key) })), // F-RPT-02
           generatedAt: at,
           freshness: at,
         },
@@ -287,17 +289,14 @@ export class ReportsService {
       const j = await one<Job>(db, "export_job", id, true);
       if (!j || j.status !== "queued") return;
       try {
-        const { csv, rows } = this.reportCsv(
-          await this.ctx(db),
-          j.report,
-          j.filters,
-        );
-        // shortcut: xlsx/pdf formats are delivered as CSV (as in the reference); render real XLSX/PDF when the templates are approved.
-        const file = await this.publishFile(
-          `${j.report}-${j.filters.from ?? ""}_${j.filters.to ?? ""}.csv`,
-          csv,
-          "text/csv",
-        );
+        const c = await this.ctx(db);
+        const base = `${j.report}-${j.filters.from ?? ""}_${j.filters.to ?? ""}`;
+        // F-RPT-04: real XLSX; pdf is still delivered as CSV.
+        // shortcut: no PDF report frame yet (needs the approved PDF template), pdf requests get CSV.
+        const { csv, rows, table } = this.reportCsv(c, j.report, j.filters);
+        const file = j.format === "xlsx"
+          ? await this.publishFile(`${base}.xlsx`, xlsx(table, j.report), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+          : await this.publishFile(`${base}.csv`, csv, "text/csv");
         Object.assign(j, {
           status: "ready",
           rowCount: rows,
@@ -317,26 +316,45 @@ export class ReportsService {
             ? `Your ${j.report} export is ready`
             : `Your ${j.report} export failed`,
         link: `/finance/reports/${j.report}?export=${j.id}`,
+        channels: ["email"], // scheduled reports arrive by email (F-RPT-05)
         data: { type: ok ? "report.export_ready" : "report.export_failed", vars: { report: j.report } },
       });
     });
   }
 
-  /** Weekly cron: last 7 days of fin.revenue to every active finance user. */
-  scheduledExports() {
+  // ---------------------------------------------------------------- subscriptions (F-RPT-05)
+  subscriptions(me: SessionUser) {
+    return this.tx.run(async (db) => ({ items: (await all<Sub>(db, "report_sub")).filter((x) => x.userId === me.id && !x.deleted) }));
+  }
+  subscribe(me: SessionUser, b: { report: string; format: "csv" | "xlsx"; freq: "weekly" | "monthly" }) {
+    if (!isReportKey(b.report)) throw notFound("Report");
+    return this.tx.run(async (db) => {
+      const sub: Sub = { id: rid("rsub"), userId: me.id, report: b.report as ReportKey, format: b.format, freq: b.freq, createdAt: nowIso(), lastRunAt: null };
+      await put(db, "report_sub", sub.id, sub);
+      return sub;
+    });
+  }
+  unsubscribe(me: SessionUser, id: string) {
+    return this.tx.run(async (db) => {
+      const sub = await one<Sub>(db, "report_sub", id, true);
+      if (!sub || sub.userId !== me.id || sub.deleted) throw notFound("Subscription");
+      await put(db, "report_sub", id, { ...sub, deleted: true });
+      return { id };
+    });
+  }
+  /** Daily: weekly subs run on Mondays (last 7 days), monthly on the 1st (previous month). */
+  runSubscriptions(now = new Date()) {
     return this.tx.runAsSystem(async (db) => {
-      const to = today(),
-        from = addDays(to, -7);
-      const fin = await db
-        .select({ id: users.userId })
-        .from(users)
-        .where(and(eq(users.role, "staff:finance"), eq(users.isActive, true)));
-      for (const u of fin)
-        await this.queueExport(db, u.id, "fin.revenue", {
-          format: "csv",
-          filters: { from, to },
-        });
-      return fin.length;
+      const to = today(), monday = now.getUTCDay() === 1, first = now.getUTCDate() === 1;
+      let n = 0;
+      for (const sub of await all<Sub>(db, "report_sub")) {
+        if (sub.deleted || !((sub.freq === "weekly" && monday) || (sub.freq === "monthly" && first)) || sub.lastRunAt?.slice(0, 10) === to) continue;
+        const from = sub.freq === "weekly" ? addDays(to, -7) : addDays(to, -new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0)).getUTCDate());
+        await this.queueExport(db, sub.userId, sub.report, { format: sub.format, filters: { from, to: addDays(to, -1) } });
+        await put(db, "report_sub", sub.id, { ...sub, lastRunAt: nowIso() });
+        n++;
+      }
+      return n;
     });
   }
 
@@ -344,14 +362,22 @@ export class ReportsService {
     const r = run(c, key, filters);
     const base = r.cols.map((x) => x.key);
     // Every export carries period, filters and definitions (RPT AC).
+    const table: (string | number)[][] = [
+      ["report", key], ["period", `${r.from}..${r.to}`], ["timezone", "Africa/Kigali"], ["filters", JSON.stringify(filters)], [],
+      [r.group, ...base],
+      ...r.rows.map((row) => [row.label, ...base.map((k) => row.values[k] ?? 0)]),
+      ["total", ...base.map((k) => r.total[k] ?? 0)],
+      [], ["definitions"], ...base.map((k) => [k, definitionOf(k)]),
+    ];
     return {
       rows: r.rows.length,
+      table,
       csv: [
         csvLine(["report", key]),
         csvLine(["period", `${r.from}..${r.to}`]),
         csvLine(["timezone", "Africa/Kigali"]),
         csvLine(["filters", JSON.stringify(filters)]),
-        csvLine(["definitions", "see /finance/reports definitions drawer"]),
+        ...base.map((k) => csvLine(["definition", k, definitionOf(k)])),
         "",
         csvLine([r.group, ...base]),
         ...r.rows.map((row) =>
@@ -362,9 +388,10 @@ export class ReportsService {
     };
   }
 
-  private async publishFile(name: string, content: string, type: string) {
+  private async publishFile(name: string, content: string | Buffer, type: string) {
     const key = `exports/${rid("f")}/${name}`;
-    await this.storage.putObject(key, `\uFEFF${content}`, `${type}; charset=utf-8`);
+    if (typeof content === "string") await this.storage.putObject(key, `\uFEFF${content}`, `${type}; charset=utf-8`);
+    else await this.storage.putObject(key, content, type);
     return { key, name, expiresAt: new Date(Date.now() + DAY).toISOString() };
   }
 

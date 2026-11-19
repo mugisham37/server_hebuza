@@ -86,7 +86,9 @@ export type Kind =
   | "config"
   | "account"
   | "report_run"
-  | "export_job";
+  | "export_job"
+  | "report_sub"
+  | "disbursement";
 
 type Doc = { status?: string; state?: string; rev?: number };
 const statusOf = (d: Doc) =>

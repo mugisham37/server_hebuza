@@ -21,6 +21,10 @@ export class ExportDto extends dto(
     filters: z.record(z.string(), z.string().max(200)).default({}),
   }),
 ) {}
+/** F-RPT-05: scheduled email report. */
+export class SubscriptionDto extends dto(
+  z.object({ report: z.string().max(64), format: z.enum(["csv", "xlsx"]), freq: z.enum(["weekly", "monthly"]) }),
+) {}
 const byStatus = z.array(z.object({ status: z.string(), n: z.number() }));
 export const ExecSummaryOut = z.object({
   date: z.string(),

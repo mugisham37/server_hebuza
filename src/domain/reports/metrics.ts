@@ -1,0 +1,38 @@
+// F-RPT-01/02/11: metric definitions shared by report frames, exports and the definitions page. One entry per column key.
+export type MetricDef = { unit: "money" | "count" | "pct"; owner: "staff:finance"; label: Record<"en" | "fr" | "rw", string>; definition: Record<"en" | "fr" | "rw", string> };
+const m = (unit: MetricDef["unit"], en: [string, string], fr: [string, string], rw: [string, string]): MetricDef => ({
+  unit, owner: "staff:finance", label: { en: en[0], fr: fr[0], rw: rw[0] }, definition: { en: en[1], fr: fr[1], rw: rw[1] },
+});
+export const METRICS: Record<string, MetricDef> = {
+  allocated: m("money", ["Allocated", "Payments applied to invoices in the period."], ["Affecté", "Paiements imputés aux factures sur la période."], ["Byashyizwe ku nyemezabuguzi", "Amafaranga yishyuwe yashyizwe ku nyemezabuguzi muri icyo gihe."]),
+  amount: m("money", ["Amount", "Sum of the record amounts, VAT included, in RWF."], ["Montant", "Somme des montants TTC, en RWF."], ["Amafaranga", "Igiteranyo cy'amafaranga harimo TVA, mu RWF."]),
+  approved: m("money", ["Approved", "Amounts approved by the approval chain in the period."], ["Approuvé", "Montants approuvés sur la période."], ["Byemejwe", "Amafaranga yemejwe muri icyo gihe."]),
+  base: m("money", ["Taxable base", "Amount before VAT/WHT is applied."], ["Base imposable", "Montant avant TVA/retenue."], ["Agaciro gasoreshwa", "Amafaranga mbere ya TVA cyangwa umusoro ukatwa."]),
+  collected: m("money", ["Collected", "Confirmed payments received (cash basis)."], ["Encaissé", "Paiements confirmés reçus (base caisse)."], ["Byakiriwe", "Ubwishyu bwemejwe bwakiriwe."]),
+  confirmed: m("count", ["Confirmed", "Payments the gateway or finance confirmed."], ["Confirmés", "Paiements confirmés par la passerelle ou la finance."], ["Byemejwe", "Ubwishyu bwemejwe."]),
+  credit_notes: m("count", ["Credit notes", "Credit notes issued in the period."], ["Avoirs", "Avoirs émis sur la période."], ["Inyemezabuguzi zo gusubiza", "Inyandiko zo gusubiza zatanzwe."]),
+  difference: m("money", ["Difference", "Expected minus matched; non-zero needs investigation."], ["Écart", "Attendu moins rapproché ; un écart doit être analysé."], ["Itandukaniro", "Ibyari byitezwe ukuyemo ibyahujwe."]),
+  due: m("money", ["Due", "Amount owed and not yet paid at period end."], ["Dû", "Montant dû non payé en fin de période."], ["Bitarishyurwa", "Amafaranga agomba kwishyurwa ataratangwa."]),
+  expected: m("money", ["Expected", "Amount the books expect to see on the statement."], ["Attendu", "Montant attendu sur le relevé."], ["Byari byitezwe", "Amafaranga yari yitezwe kuri konti."]),
+  failed: m("count", ["Failed", "Payment attempts that failed or expired."], ["Échoués", "Tentatives échouées ou expirées."], ["Byanze", "Ubwishyu bwanze cyangwa bwarengeje igihe."]),
+  failure_rate: m("pct", ["Failure rate", "Failed ÷ initiated payment attempts."], ["Taux d'échec", "Échoués ÷ initiés."], ["Igipimo cyo kwanga", "Ibyanze ugabanyije ibyatangijwe."]),
+  gross: m("money", ["Gross", "Invoiced amount before refunds and credit notes."], ["Brut", "Facturé avant remboursements et avoirs."], ["Mbumbe", "Ibyishyurijwe mbere yo gusubiza."]),
+  hebuza: m("money", ["HEBUZA share", "Revenue kept by HEBUZA after partner shares."], ["Part HEBUZA", "Revenu conservé après parts partenaires."], ["Umugabane wa HEBUZA", "Inyungu HEBUZA isigarana."]),
+  inflows: m("money", ["Inflows", "Cash received into HEBUZA accounts."], ["Entrées", "Encaissements sur les comptes HEBUZA."], ["Ibyinjiye", "Amafaranga yinjiye kuri konti za HEBUZA."]),
+  initiated: m("count", ["Initiated", "Payment attempts started by clients."], ["Initiés", "Tentatives de paiement lancées."], ["Byatangijwe", "Ubwishyu bwatangijwe n'abakiriya."]),
+  invoiced: m("money", ["Invoiced", "Invoices issued in the period (accrual basis), VAT included."], ["Facturé", "Factures émises sur la période, TTC."], ["Byishyurijwe", "Inyemezabuguzi zatanzwe muri icyo gihe."]),
+  invoices: m("count", ["Invoices", "Number of invoices issued."], ["Factures", "Nombre de factures émises."], ["Inyemezabuguzi", "Umubare w'inyemezabuguzi zatanzwe."]),
+  matched: m("count", ["Matched", "Statement lines matched to a payment."], ["Rapprochés", "Lignes de relevé rapprochées."], ["Byahujwe", "Imirongo ya konti yahujwe n'ubwishyu."]),
+  missing_ebm: m("count", ["Missing EBM", "Invoices without an RRA EBM receipt number."], ["Sans EBM", "Factures sans numéro EBM RRA."], ["Nta EBM", "Inyemezabuguzi zidafite nimero ya EBM."]),
+  net: m("money", ["Net", "Gross minus refunds and credit notes."], ["Net", "Brut moins remboursements et avoirs."], ["Nyakuri", "Mbumbe ukuyemo ibyasubijwe."]),
+  outflows: m("money", ["Outflows", "Cash paid out (refunds, payouts, suppliers)."], ["Sorties", "Décaissements."], ["Ibyasohotse", "Amafaranga yasohotse."]),
+  outstanding: m("money", ["Outstanding", "Unpaid balance at period end, by age bucket."], ["Encours", "Solde impayé en fin de période."], ["Bisigaye", "Asigaye atarishyurwa."]),
+  paid: m("money", ["Paid", "Amounts settled in the period."], ["Payé", "Montants réglés sur la période."], ["Byishyuwe", "Amafaranga yishyuwe."]),
+  refunds: m("money", ["Refunds", "Refunds paid out in the period."], ["Remboursements", "Remboursements versés."], ["Ibyasubijwe", "Amafaranga yasubijwe."]),
+  renewals: m("count", ["Renewals", "Subscriptions renewed in the period."], ["Renouvellements", "Abonnements renouvelés."], ["Ivugurura", "Abiyandikishije bongeye."]),
+  total: m("money", ["Total", "Sum of the row's amounts in RWF."], ["Total", "Somme en RWF."], ["Igiteranyo", "Igiteranyo mu RWF."]),
+  unmatched: m("count", ["Unmatched", "Statement lines with no matching payment yet."], ["Non rapprochés", "Lignes sans paiement correspondant."], ["Bitahujwe", "Imirongo itarahuzwa."]),
+  vat: m("money", ["VAT", "Output VAT (18%) on invoices issued."], ["TVA", "TVA collectée (18 %)."], ["TVA", "TVA (18%) ku nyemezabuguzi."]),
+  wht: m("money", ["WHT", "Withholding tax deducted and payable to RRA."], ["Retenue", "Retenue à la source due à la RRA."], ["Umusoro ukatwa", "Umusoro ukatwa ugomba guhabwa RRA."]),
+};
+export const definitionOf = (key: string, lang: "en" | "fr" | "rw" = "en") => METRICS[key]?.definition[lang] ?? key;
