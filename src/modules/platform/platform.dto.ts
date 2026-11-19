@@ -3,9 +3,6 @@ import { z } from "zod";
 export const PlatformSettingsOut = z.object({
   acceptNewApps: z.boolean(),
   guestApps: z.boolean(),
-  dataRetention: z.string(),
-  compactTables: z.boolean(),
-  enforce2FA: z.boolean(),
   sessionTimeout: z.number().int(),
   ipAllowlist: z.string(),
   maintenanceMode: z.boolean(),

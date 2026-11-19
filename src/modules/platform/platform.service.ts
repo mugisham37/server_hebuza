@@ -11,7 +11,7 @@ export const PLATFORM_SETTINGS_ID = "global";
 
 // Python model defaults (models.py) — the table has no DB-side defaults.
 const DEFAULTS = {
-  acceptNewApps: true, guestApps: true, dataRetention: "24-months", compactTables: true, enforce2Fa: true,
+  acceptNewApps: true, guestApps: true,
   sessionTimeoutMinutes: 60, maintenanceMode: false, requireAgentPapers: false, paymentsEnabled: false,
   defaultMonthlyPercent: 30, defaultOneOffPercent: 30,
 };
@@ -21,9 +21,6 @@ type Row = typeof platformSettings.$inferSelect;
 const project = (r: Row) => ({
   acceptNewApps: r.acceptNewApps,
   guestApps: r.guestApps,
-  dataRetention: r.dataRetention,
-  compactTables: r.compactTables,
-  enforce2FA: r.enforce2Fa,
   sessionTimeout: r.sessionTimeoutMinutes,
   ipAllowlist: r.ipAllowlist ?? "",
   maintenanceMode: r.maintenanceMode,

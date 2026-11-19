@@ -961,9 +961,7 @@ export const platformSettings = pgTable("platform_settings", {
 	id: varchar({ length: 16 }).primaryKey().notNull(),
 	acceptNewApps: boolean("accept_new_apps").notNull(),
 	guestApps: boolean("guest_apps").notNull(),
-	dataRetention: varchar("data_retention", { length: 32 }).notNull(),
-	compactTables: boolean("compact_tables").notNull(),
-	enforce2Fa: boolean("enforce_2fa").notNull(),
+	// F-SET-14: data_retention / compact_tables / enforce_2fa dropped (nothing enforced them; retention + MFA live in the registry).
 	sessionTimeoutMinutes: integer("session_timeout_minutes").notNull(),
 	ipAllowlist: text("ip_allowlist"),
 	maintenanceMode: boolean("maintenance_mode").notNull(),
