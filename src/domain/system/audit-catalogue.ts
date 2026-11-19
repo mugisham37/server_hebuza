@@ -87,6 +87,7 @@ export const PREFIX_CATEGORY: Record<string, AuditCategory> = {
   lead: "case", campaign: "config", segment: "config", referral: "case", tracking: "config", report: "data_export",
   access: "access_control", sup: "financial", supplier_payment: "financial", procurement: "financial",
   profile: "access_control", org: "access_control", kyc: "access_control", view_as: "access_control", privacy: "data_deletion", file: "case", notifications: "config",
+  partner: "config", assignment: "workforce", request_group: "case", enquiry: "case",
 };
 export const knownCode = (code: string) =>
   code in AUDIT_CATALOGUE || AUDIT_CATEGORIES.some((c) => code.startsWith(`${c}.`)) || code.split(".")[0] in PREFIX_CATEGORY;

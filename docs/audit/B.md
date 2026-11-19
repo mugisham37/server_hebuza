@@ -102,7 +102,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-AIA-09 | Logs & retention | P3 | DONE | `ai_sessions`/`ai_messages`/`ai_usage`, rating route, nightly retention purge (`assistant.jobs.ts:20`). |
 | F-AIA-10 | Cost control | P3 | DONE | `budgetUsd`, token counters in Redis, `ai_usage` monthly cap (`assistant.engine.ts:66,798`). The per-IP 30/day cap was not verified. |
 | F-AIA-11 | Data-use guarantees | P3 | N/A | Contract/DPA work, not code. Only Anthropic and Voyage are called. |
-| F-AIA-12 | Eval set & QA | P3 | PARTIAL | The runner is real and blocks deploy below 95% (`assistant.service.ts:1215-1320`), but `EVAL_SET` has about 12 base cases plus a few fr/rw (l.1644-1718), against the 150 required. | Progress: rw/fr guardrail patterns + 18 more fr/rw cases (intent test `intent-i18n.test.ts`); still short of 150.
+| F-AIA-12 | Eval set & QA | P3 | DONE | EVAL_SET ≥150 cases (en/fr/rw per guardrail and intent; `EXTRA_CASES`), rw/fr intent patterns; `intent-i18n.test.ts` checks every case routes as expected (no bare-word false refusals). |
 | F-AIA-13 | Staff copilot | P3 | DONE | `POST assistant/copilot/{kind}`; used in the agent case view. |
 | F-AIA-14 | Kill switch | P3 | DONE | `ai_settings.enabled`, `assistant/status`, admin settings PUT. |
 | F-AIA-15 | Documented limitations | P3 | DONE | `(public)/assistant/about/page.tsx`. |

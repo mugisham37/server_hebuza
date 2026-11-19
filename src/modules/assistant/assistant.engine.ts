@@ -154,9 +154,9 @@ export const INTENT = {
   guarantee: /guarant|garanti|ingwate|promise|promettre|approve my|izeza|nyizeze|izemerwa|bizemerwa|byanze bikunze/, // F-AIA-12: rw kwizeza/byanze bikunze
   advice:
     /legal advice|tax advice|conseil juridique|conseil fiscal|dois-je|inama y'amategeko|inama y'imisoro|inama ku misoro|ubujyanama|should i\b/,
-  offTopic: /\bhotel|football|weather|meteo|recipe|recette|cuisine|ikirere|umupira|indirimbo|chanson/,
+  offTopic: /\bhotel|football|weather|meteo|recipe|recette|ikirere|umupira|indirimbo|chanson/,
   human:
-    /\bhuman\b|\bperson\b|humain|personne|umuntu|\bagent\b|someone|real person/,
+    /\bhuman\b|\bperson\b|humain|personne|\bumuntu\b|\bagent\b|someone|real person/,
   minor: /\bminor\b|mineur|umwana|my child/,
   status:
     /hbz-|where is my|mon dossier|ma demande|dosiye yanjye|\bstatus\b|statut/,

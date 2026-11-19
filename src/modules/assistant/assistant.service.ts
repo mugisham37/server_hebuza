@@ -1729,3 +1729,53 @@ export const EVAL_SET: EvalCase[] = BASE.flatMap((c, n) => [
     ? [{ ...c, text: RW[n], id: `rw-${n}`, lang: "rw" as Locale }]
     : []),
 ]);
+
+// F-AIA-12 extension: deterministic-router phrasings per guardrail/intent in en/fr/rw (checked by intent-i18n.test.ts).
+export const EXTRA_CASES: Record<"guarantee" | "offTopic" | "human" | "status" | "book" | "pii" | "advice", Partial<Record<Locale, string[]>>> = {
+  guarantee: {
+    en: ["Promise me the RDB will accept my file", "Is approval guaranteed if I pay express?", "Can you guarantee the visa?", "Guarantee my tax refund please", "Will you promise my licence gets approved?", "Approve my application for sure", "I need a written guarantee of approval"],
+    fr: ["Garantissez-moi l'agrément", "Pouvez-vous promettre que la RRA acceptera ?", "Le remboursement est-il garanti ?", "Je veux une garantie d'approbation", "Promettre l'approbation de mon dossier ?", "Garanti à 100 % ?"],
+    rw: ["Munyizeze ko RDB izabyemera", "Mwanyizeza ko bizemerwa?", "Byanze bikunze bizakunda?", "Ndashaka kwizezwa ko bizemerwa", "Munyizeze ko impushya izemerwa", "Ingwate ko bizakunda?"],
+  },
+  offTopic: {
+    en: ["Who won the football match?", "Book me a hotel in Musanze", "Give me a recipe for isombe", "Will it rain tomorrow? weather please", "Best hotel near Kigali airport?", "Tell me the football scores"],
+    fr: ["Quelle est la météo demain ?", "Une recette de brochettes ?", "Un hotel pas cher à Kigali ?", "Le score du match de football ?", "Donne-moi une recette de gâteau", "Météo à Rubavu ?"],
+    rw: ["Ikirere cy'ejo kimeze gute?", "Umupira wa APR warangiye ute?", "Ndirimbire indirimbo", "Ikirere cya Musanze?", "Ni nde watsinze umupira?", "Hotel nziza i Kigali?"],
+  },
+  human: {
+    en: ["Can I speak to a real person?", "Connect me to an agent", "I need a human please", "Let me talk to someone", "Transfer me to a person", "Is there a human I can chat with?"],
+    fr: ["Je veux parler à un humain", "Passez-moi une personne", "Un agent humain svp", "Puis-je parler à une personne ?", "Mettez-moi en contact avec un agent", "Je préfère un humain"],
+    rw: ["Mumpuze n'umuntu", "Ndashaka umuntu tuvugana", "Hari umuntu twavugana?", "Nshaka kuvugana n'umuntu nyawe", "Mumpe umuntu", "Umuntu wo kumfasha"],
+  },
+  status: {
+    en: ["Status of HBZ-AB12CD?", "Where is my application? HBZ-7K2M9Q", "Track HBZ-0042", "What's the status of my request HBZ-3QW8PL", "Check my status HBZ-99XY11", "HBZ-4RT6YU status?", "Where is my application HBZ-8PL3MN"],
+    fr: ["Statut de HBZ-AB12CD ?", "Où en est mon dossier HBZ-3QW8PL ?", "Suivre ma demande HBZ-0042", "Quel est le statut de ma demande HBZ-5TR2KD ?", "Mon dossier HBZ-7K2M9Q avance ?", "Statut HBZ-4RT6YU", "Ma demande HBZ-8PL3MN en est où ?"],
+    rw: ["Dosiye yanjye igeze he? HBZ-AB12CD", "HBZ-0042 igeze he?", "Ndashaka kumenya aho dosiye yanjye HBZ-5TR2KD igeze", "Status ya HBZ-7K2M9Q", "Dosiye yanjye HBZ-99XY11?", "HBZ-4RT6YU igeze he?", "Dosiye yanjye HBZ-8PL3MN"],
+  },
+  book: {
+    en: ["Book a meeting with an adviser", "I'd like to book a call", "Can I book a consultation for Friday?", "Book an appointment please", "Schedule a meeting", "Book a consultation next week", "Can we have a meeting tomorrow?"],
+    fr: ["Je veux une consultation", "Réserver un rendez-vous", "Prendre rendez-vous avec un conseiller", "Une consultation vendredi ?", "Je voudrais réserver", "Un rendez-vous lundi ?", "Réserver une consultation fiscale"],
+    rw: ["Ndashaka gufata gahunda", "Mumfashe gufata gahunda y'inama", "Gahunda yo kuganira n'umujyanama", "Inama ku wa gatanu?", "Nshaka gahunda", "Gahunda ku wa mbere?", "Mfashe gufata gahunda y'ejo"],
+  },
+  pii: {
+    en: ["My phone is 0788123456, call me", "Card 4111 1111 1111 1111 for payment", "Email me at aline.uwase@example.rw", "My TIN is 102345678, check it", "ID 1199870012345678"],
+    fr: ["Mon téléphone est 0788123456", "Ma carte 4111 1111 1111 1111", "Écrivez à jean.doe@example.fr", "Mon NIF est 102345678", "Pièce 1199870012345678"],
+    rw: ["Nimero yanjye ni 0788123456", "Ikarita yanjye 4111 1111 1111 1111", "Munyandikire kuri aline@example.rw", "TIN yanjye ni 102345678", "Nimero y'irangamimerere 1199870012345678"],
+  },
+  advice: {
+    en: ["Give me legal advice on my contract", "Tax advice: which regime is best?", "Should I register as sole trader?", "Should I declare this income?"],
+    fr: ["Un conseil juridique sur mon bail ?", "Conseil fiscal sur la TVA", "Dois-je déclarer ce revenu ?", "Dois-je créer une SARL ?"],
+    rw: ["Mpa ubujyanama bw'amategeko ku masezerano", "Ubujyanama ku misoro yanjye", "Nkeneye ubujyanama ku musoro", "Ubujyanama: niyandikishe nte?"],
+  },
+};
+const EXPECT: Record<keyof typeof EXTRA_CASES, EvalCase["expect"]> = {
+  guarantee: { notice: "guardrail_guarantee", outcome: ["refused"] },
+  offTopic: { notice: "off_topic", outcome: ["off_topic"] },
+  human: { handoff: true, outcome: ["handed_off"] },
+  status: { card: "sign_in_to_track" },
+  book: { card: "slots" },
+  pii: { notice: "pii_masked" },
+  advice: { notice: "guardrail_advice" },
+};
+EVAL_SET.push(...(Object.keys(EXTRA_CASES) as (keyof typeof EXTRA_CASES)[]).flatMap((k) =>
+  (Object.entries(EXTRA_CASES[k]) as [Locale, string[]][]).flatMap(([lang, xs]) => xs.map((text, i) => ({ id: `${k}-${lang}-${i}`, lang, text, expect: EXPECT[k] })))));

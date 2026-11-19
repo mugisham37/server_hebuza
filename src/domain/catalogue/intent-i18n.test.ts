@@ -22,3 +22,19 @@ describe("fr/rw intents", () => {
     expect(INTENT.advice.test(norm("Mpa ubujyanama ku misoro: nishyure TVA buri kwezi?"))).toBe(true);
   });
 });
+
+import { EVAL_SET, EXTRA_CASES } from "../../modules/assistant/assistant.service";
+import { maskPii } from "../../modules/assistant/assistant.engine";
+describe("F-AIA-12 eval set", () => {
+  it("has at least 150 cases", () => expect(EVAL_SET.length).toBeGreaterThanOrEqual(150));
+  const routed = { guarantee: "guarantee", offTopic: "offTopic", human: "human", status: "status", book: "book" } as const;
+  for (const [k, byLang] of Object.entries(EXTRA_CASES))
+    for (const xs of Object.values(byLang)) for (const t of xs ?? [])
+      it(`${k}: ${t}`, () => {
+        if (k in routed) expect(first(t)).toBe(routed[k as keyof typeof routed]);
+        else if (k === "pii") expect(maskPii(t)).not.toBe(t);
+        else { expect(first(t)).toBeNull(); expect(INTENT.advice.test(norm(t))).toBe(true); }
+      });
+  it("a food business is not refused as off-topic", () => expect(INTENT.offTopic.test(norm("Je veux ouvrir un restaurant, cuisine rwandaise"))).toBe(false));
+});
+it("rw 'indangamuntu' (national ID) is not a request for a person", () => expect(INTENT.human.test(norm("Indangamuntu yanjye ni iyihe?"))).toBe(false));
