@@ -375,6 +375,29 @@ export async function changePlan(db: Exec, clientId: string, planId: string, aud
   return { action: "checkout" as const, planId, amountRwf: await checkoutAmount(db, clientId, plan), effectiveAt: null };
 }
 
+/** F-SUB-11 plan admin (finance): all plans incl. hidden/archived. */
+export async function allPlans(db: Exec) {
+  const rows = await db.select().from(subscriptionPlans).orderBy(asc(subscriptionPlans.sortOrder), asc(subscriptionPlans.name));
+  return { plans: rows.map(planOut) };
+}
+export type PlanInput = {
+  name: string; interval: "month" | "year"; amountRwf: number; maxApplicationsPerMonth: number | null;
+  description: string | null; features: string[]; isPublic: boolean; isActive: boolean; sortOrder: number;
+};
+export async function savePlan(db: Exec, id: string | null, b: PlanInput, actorId: string, audit: AuditService) {
+  const now = new Date().toISOString();
+  const planId = id ?? generateId("pln");
+  if (id) {
+    const cur = await getPlan(db, id);
+    if (!cur) throw err.notFound("Plan not found.");
+    if (cur.kind === "trial" && b.amountRwf > 0) throw new AppError(422, "validation", "The trial plan stays free.");
+    await db.update(subscriptionPlans).set({ ...b, updatedAt: now }).where(eq(subscriptionPlans.planId, id));
+  } else
+    await db.insert(subscriptionPlans).values({ planId, kind: "paid", trialDays: null, badge: null, archivedAt: null, createdAt: now, updatedAt: now, ...b });
+  await audit.record(db, { action: id ? "subscription.plan_updated" : "subscription.plan_created", entity: "subscription_plan", entityId: planId, after: { ...b, by: actorId } });
+  return planOut((await getPlan(db, planId))!);
+}
+
 /** Finance list (F-SUB-09): every subscription with client and plan. */
 export async function listForFinance(db: Exec) {
   const rows = await db
@@ -555,6 +578,14 @@ export class SubscriptionsService {
   }
   changePlan(clientId: string, planId: string) {
     return this.tx.run((t) => changePlan(t, clientId, planId, this.audit));
+  }
+  allPlans() {
+    return this.tx.run(allPlans);
+  }
+  async savePlan(id: string | null, b: PlanInput, actorId: string) {
+    const out = await this.tx.run((t) => savePlan(t, id, b, actorId, this.audit));
+    await this.cache.bust("plans");
+    return out;
   }
   listForFinance() {
     return this.tx.run(listForFinance);

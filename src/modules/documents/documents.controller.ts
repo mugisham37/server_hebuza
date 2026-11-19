@@ -90,4 +90,14 @@ export class DocumentsController {
   rate(@Param("code") code: string, @Body() b: D.RatingDto, @CurrentUser() me: SessionUser) {
     return this.svc.rate(me, code, b.stars, { tags: b.tags, comment: b.comment });
   }
+  @Get("me/nps")
+  @Route({ auth: ["client"], out: D.NpsDue })
+  nps(@CurrentUser() me: SessionUser) {
+    return this.svc.npsDue(me);
+  }
+  @Post("me/nps")
+  @Route({ auth: ["client"], limit: "write", out: D.Recorded })
+  answerNps(@Body() b: D.NpsDto, @CurrentUser() me: SessionUser) {
+    return this.svc.answerNps(me, b.score, b.comment);
+  }
 }

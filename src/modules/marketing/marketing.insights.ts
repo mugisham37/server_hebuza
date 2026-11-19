@@ -1,7 +1,8 @@
 // P11 growth, feedback and insights (port of src/mocks/handlers-marketing-insights.ts) on real data: the dashboard
 // summary, report tabs and export, social metrics import, testimonials, feedback/NPS and the referral programme.
 // Visits are first-party (tracked /c and /r link clicks); GA4 traffic stays "not connected" until its API is wired.
-import { sql } from "drizzle-orm";
+import { gte, sql } from "drizzle-orm";
+import { npsResponses } from "@/db/schema";
 import type { Exec } from "./marketing.store";
 import {
   avgRating,
@@ -867,7 +868,9 @@ export async function feedback(db: Exec, q: RangeQ) {
   const xs = all.filter(
     (r) => Date.parse(r.at) >= from && (!q.service || r.service === q.service),
   );
-  const scores = xs.flatMap((r) => (r.nps == null ? [] : [r.nps]));
+  // F-FBK-02: real client NPS answers alongside seeded ones.
+  const real_nps = await db.select({ score: npsResponses.score }).from(npsResponses).where(gte(npsResponses.createdAt, new Date(from).toISOString()));
+  const scores = [...xs.flatMap((r) => (r.nps == null ? [] : [r.nps])), ...real_nps.map((r) => r.score)];
   const services = [...new Set(all.map((r) => r.service))];
   return {
     generatedAt: nowIso(),

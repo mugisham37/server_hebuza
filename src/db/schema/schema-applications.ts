@@ -95,3 +95,12 @@ export const assignmentBlocks = pgTable("assignment_blocks", {
   createdBy: varchar("created_by", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 }, (t) => [index("ix_assignment_blocks_agent").on(t.agentId), index("ix_assignment_blocks_client").on(t.clientId)]);
+
+/** F-FBK-02 NPS answers (0–10), one per client per survey; asked after a 2nd delivered case or 90 days after the first. */
+export const npsResponses = pgTable("nps_responses", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  clientId: varchar("client_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  score: integer().notNull(),
+  comment: text(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_nps_responses_client").on(t.clientId, t.createdAt), check("ck_nps_responses_score", sql`score BETWEEN 0 AND 10`)]);

@@ -200,6 +200,11 @@ export class OpsOversightController {
       ref: (await this.o.run(r, (c) => m.openTicket(c.db, c.session, b))).ref,
     };
   }
+  @Get("admin/ops/register")
+  @Route({ auth: SMR, permission: "fbk.ticket.read" })
+  register() {
+    return this.o.read((db) => m.complaintsRegister(db));
+  }
   @Get("admin/ops/tickets/:ref")
   @Route({ auth: SMR, permission: "fbk.ticket.read" })
   ticket(@Param("ref") ref: string) {

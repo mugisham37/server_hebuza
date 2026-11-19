@@ -7,7 +7,7 @@ import type { Session } from "./lib/ctx";
 import { generateId } from "./lib/ctx";
 import { AppError, err } from "./lib/ctx";
 import { publish } from "./lib/ctx";
-import { agentProfiles, assignmentBlocks, users } from "@/db/schema";
+import { agentProfiles, assignmentBlocks, contactInquiries, supportTickets, users } from "@/db/schema";
 import { applications } from "@/db/schema";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { CaseStatus } from "@/domain/domain/case-status";
@@ -953,6 +953,10 @@ export type TicketMsg = {
   body: string;
   at: string;
 };
+/** F-FBK-07 resolution kinds. */
+export const RESOLUTION_KINDS = ["fixed", "explained", "refunded", "credited", "redone", "no_fault"] as const;
+export type ResolutionKind = (typeof RESOLUTION_KINDS)[number];
+export const REOPEN_DAYS = 14;
 export type Ticket = {
   ref: string;
   kind: "complaint" | "dispute" | "enquiry";
@@ -977,7 +981,7 @@ export type Ticket = {
   history: { ref: string; category: string; status: string }[];
   refundRequest: { amount: number; reason: string; status: string } | null;
   credits: number;
-  resolution: { summary: string; rootCause: string; preventive: string } | null;
+  resolution: { kind?: ResolutionKind; summary: string; rootCause: string; preventive: string; at?: string } | null;
 };
 type TicketTab = "complaints" | "disputes" | "enquiries" | "resolved";
 const tabOf = (t: Ticket): TicketTab =>
@@ -1015,6 +1019,34 @@ const strip = (t: Ticket) => {
 // PLACEHOLDER(ticket-response-minutes, apology-credit-rwf): until support settings exist.
 const RESPONSE_MIN = { high: 120, medium: 240, low: 1440 } as const;
 export const APOLOGY_CREDIT_RWF = 5000;
+
+/** F-FBK-03/04/05: one register over every complaint channel — ops tickets (incl. chat disputes), client help-desk
+ * tickets and website enquiries — newest first, each linking to where it is handled. */
+export async function complaintsRegister(db: Exec) {
+  const [ops, help, enq] = await Promise.all([
+    recList<Ticket>(db, "ticket", {}, 2000),
+    db.select({ t: supportTickets, client: users.name }).from(supportTickets).innerJoin(users, eq(users.userId, supportTickets.userId)),
+    db.select().from(contactInquiries),
+  ]);
+  const items = [
+    ...ops.map((t) => ({
+      source: t.data.conversationId ? ("chat" as const) : ("ops" as const), ref: t.data.ref, kind: t.data.kind, subject: t.data.category,
+      client: t.data.client, caseRef: t.data.caseRef, status: t.data.status, priority: t.data.priority, at: t.createdAt, href: `/ops/tickets/${t.data.ref}`,
+    })),
+    ...help.map(({ t, client }) => ({
+      source: "help_desk" as const, ref: t.ref,
+      kind: /dispute/.test(t.type ?? "") ? "dispute" : /complain/.test(t.type ?? "") ? "complaint" : "enquiry",
+      subject: t.subject, client, caseRef: t.caseRef, status: t.status === "resolved" ? "resolved" : "open", priority: null, at: new Date(t.createdAt).toISOString(),
+      href: null,
+    })),
+    ...enq.map((e) => ({
+      source: "website" as const, ref: e.id, kind: "enquiry", subject: e.topic, client: e.name, caseRef: null,
+      status: "open", priority: null, at: new Date(e.createdAt).toISOString(), href: "/marketing/inbox",
+    })),
+  ].sort((a, b) => b.at.localeCompare(a.at));
+  const by = (k: string) => items.filter((x) => x.kind === k).length;
+  return { items, counts: { complaint: by("complaint"), dispute: by("dispute"), enquiry: by("enquiry"), open: items.filter((x) => x.status !== "resolved").length } };
+}
 
 export async function listTickets(db: Exec, tab: TicketTab) {
   const all = await recList<Ticket>(db, "ticket");
@@ -1225,7 +1257,11 @@ export async function ticketAction(
       break;
     case "resolve":
       if (!t.responded) throw err.conflict("Reply to the client first.");
+      if (!(RESOLUTION_KINDS as readonly string[]).includes(str("resolutionKind")))
+        throw new AppError(422, "validation", "Choose how this was resolved.");
       t.resolution = {
+        kind: str("resolutionKind") as ResolutionKind,
+        at: stamp,
         summary: str("summary"),
         rootCause: str("rootCause"),
         preventive: str("preventive"),
@@ -1245,6 +1281,9 @@ export async function ticketAction(
       );
       break;
     case "reopen":
+      // F-FBK-07: a resolved ticket reopens within 14 days; later, open a new one.
+      if (t.resolution?.at && Date.now() - Date.parse(t.resolution.at) > REOPEN_DAYS * 86_400_000)
+        throw new AppError(409, "reopen_window_closed", `Tickets reopen within ${REOPEN_DAYS} days of resolution. Open a new ticket.`);
       t.status = "open";
       t.resolution = null;
       log("Reopened");

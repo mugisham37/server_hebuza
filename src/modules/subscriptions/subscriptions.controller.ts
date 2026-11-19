@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { FinSubList, CancelDto, ChangeOut, ChangePlanDto, CheckoutOut, Mine, PauseDto, PauseOut, PlanList } from "./subscriptions.dto";
+import { Plan, PlanDto, FinSubList, CancelDto, ChangeOut, ChangePlanDto, CheckoutOut, Mine, PauseDto, PauseOut, PlanList } from "./subscriptions.dto";
 import { SubscriptionsService } from "./subscriptions.service";
 
 @Controller()
@@ -43,6 +43,21 @@ export class SubscriptionsController {
   @Route({ auth: ["client"], limit: "write", out: ChangeOut })
   change(@Body() b: ChangePlanDto, @CurrentUser() me: SessionUser) {
     return this.svc.changePlan(me.id, b.planId);
+  }
+  @Get("finance/subscriptions/plans")
+  @Route({ auth: ["staff:finance"], out: PlanList })
+  finPlans() {
+    return this.svc.allPlans();
+  }
+  @Post("finance/subscriptions/plans")
+  @Route({ auth: ["staff:finance"], limit: "write", out: Plan })
+  createPlan(@Body() b: PlanDto, @CurrentUser() me: SessionUser) {
+    return this.svc.savePlan(null, b, me.id);
+  }
+  @Patch("finance/subscriptions/plans/:id")
+  @Route({ auth: ["staff:finance"], limit: "write", out: Plan })
+  updatePlan(@Param("id") id: string, @Body() b: PlanDto, @CurrentUser() me: SessionUser) {
+    return this.svc.savePlan(id, b, me.id);
   }
   @Get("finance/subscriptions")
   @Route({ auth: ["staff:finance"], out: FinSubList })

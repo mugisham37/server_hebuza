@@ -1,6 +1,7 @@
 // Port of .ref documents.service (client document library, case uploads, deliverables). Files live in object storage:
 // uploads are presigned PUTs (the API never sees bytes) finalized by the worker (documents.finalize: type sniff, scan,
 // EXIF strip, activation); downloads are 5-minute presigned redirects after a per-document access check.
+import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -18,6 +19,7 @@ import {
 import {
   applicationDocuments,
   applicationFeedback,
+  npsResponses,
   applications,
   clientDocumentExpiry,
   clientDocuments,
@@ -542,6 +544,25 @@ export async function rateCase(
 }
 
 
+// ── F-FBK-02 NPS ──────────────────────────────────────────────────────────────────────────────────
+const NPS_REPEAT_DAYS = 180;
+/** Due after a 2nd delivered case or 90 days after the first, and not answered in the last 180 days. */
+export async function npsDue(db: Tx, s: SessionUser) {
+  const [d] = await db.execute<{ n: number; first: string | null }>(sql`
+    select count(*)::int n, min(completed_at)::text first from applications
+    where client_id = ${s.id} and status = 'completed_delivered'`);
+  const [last] = await db.select({ at: npsResponses.createdAt }).from(npsResponses)
+    .where(eq(npsResponses.clientId, s.id)).orderBy(desc(npsResponses.createdAt)).limit(1);
+  const eligible = d.n >= 2 || (!!d.first && Date.now() - Date.parse(d.first) >= 90 * 86_400_000);
+  const recent = !!last && Date.now() - Date.parse(last.at) < NPS_REPEAT_DAYS * 86_400_000;
+  return { due: eligible && !recent };
+}
+export async function answerNps(db: Tx, s: SessionUser, score: number, comment?: string) {
+  if (!(await npsDue(db, s)).due) throw new AppError(409, "conflict", "No survey is open right now.");
+  await db.insert(npsResponses).values({ id: `nps_${randomUUID()}`, clientId: s.id, score, comment: comment?.trim() || null, createdAt: new Date().toISOString() });
+  return { recorded: true };
+}
+
 // ── finalize (worker, runAsSystem) ────────────────────────────────────────────────────────────
 /** The stored object of an upload, or null when the row is gone/already handled. */
 export async function finalizeTarget(db: Tx, j: FinalizeJob) {
@@ -814,5 +835,11 @@ export class DocumentsService {
 
   rate(s: SessionUser, code: string, stars: number, extra?: { tags?: string[]; comment?: string }) {
     return this.tx.run((db) => rateCase(db, s, code, stars, extra));
+  }
+  npsDue(s: SessionUser) {
+    return this.tx.run((db) => npsDue(db, s));
+  }
+  answerNps(s: SessionUser, score: number, comment?: string) {
+    return this.tx.run((db) => answerNps(db, s, score, comment));
   }
 }

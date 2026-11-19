@@ -53,12 +53,14 @@ import {
   refOf,
   sum,
   today,
+  where,
   type Actor,
   type Fin,
-  where,
 } from "./finance.store";
 import type { Inv } from "./finance.billing";
 import { postAllocation, postPayoutLine } from "../ledger/ledger.postings";
+import { xlsx } from "@/domain/reports/xlsx";
+import { textPdf } from "../chat/chat.service";
 
 export type Alloc = Allocation & {
   rev?: number;
@@ -79,10 +81,10 @@ type LineMeta = {
   paidAt?: string;
   carriedFrom: string[];
   consumed?: boolean;
-};
-export type Batch = PayoutBatch & {
   /** F-REV-07: MTN disbursement reference while the transfer is in flight. */
   momoRef?: string;
+};
+export type Batch = PayoutBatch & {
   chain: Step[];
   rev: number;
   last?: { by: string; at: string };
@@ -1401,8 +1403,7 @@ export async function lineAction(
 
 /**
  * Bank / MoMo / WHT / summary file for an authorised batch. Content is returned inline (the UI saves it) with a checksum.
- * shortcut: every format is CSV text (WHT "pdf", summary "xlsx" names kept for the bank portal mapping); render real
- * PDF/XLSX through core/pdf and an XLSX writer when the bank confirms its template.
+ * Content is base64 with its mime type. Column sets follow the bank portal mapping; confirm when the bank sends its template.
  */
 export async function exportBatch(f: Fin, no: string, format: string) {
   const b = await batchOr404(f.db, no);
@@ -1424,19 +1425,19 @@ export async function exportBatch(f: Fin, no: string, format: string) {
         : kind === "wht"
           ? live.filter((l) => l.wht > 0)
           : live;
-  const head =
+  const table: (string | number)[][] =
     kind === "wht"
-      ? "name,tin,taxable,wht"
-      : "name,destination,amount,reference";
-  const content = [
-    head,
-    ...rows.map((l) =>
-      kind === "wht"
-        ? `${f.D.workerName(l.workerId)},PLACEHOLDER(agent-tin),${b.meta[l.id]?.taxable ?? 0},${l.wht}`
-        : `${f.D.workerName(l.workerId)},${l.destination.masked},${l.net},${b.no}`,
-    ),
-  ].join("\n");
-  const ext = kind === "wht" ? "pdf" : kind === "summary" ? "xlsx" : "csv";
+      ? [["name", "tin", "taxable", "wht"], ...rows.map((l) => [f.D.workerName(l.workerId), "PLACEHOLDER(agent-tin)", b.meta[l.id]?.taxable ?? 0, l.wht])]
+      : [["name", "destination", "amount", "reference"], ...rows.map((l) => [f.D.workerName(l.workerId), l.destination.masked, l.net, b.no])];
+  // F-REV-13: bank + summary as real XLSX, WHT certificate list as PDF, MoMo bulk file as CSV (the MTN portal format).
+  const ext = kind === "wht" ? "pdf" : kind === "momo" ? "csv" : "xlsx";
+  const bytes =
+    ext === "xlsx"
+      ? xlsx(table, `${b.no} ${kind}`)
+      : ext === "pdf"
+        ? Buffer.from(textPdf(`WHT ${b.no} · ${b.period}`, table.slice(1).map((r) => `${r[0]}  taxable ${r[2]} RWF  WHT ${r[3]} RWF`)))
+        : Buffer.from(table.map((r) => r.join(",")).join("\n"), "utf8");
+  const content = bytes.toString("base64");
   const file: ExportFile = {
     kind,
     name: `${b.no}_${kind.toUpperCase()}.${ext}`,
@@ -1454,7 +1455,8 @@ export async function exportBatch(f: Fin, no: string, format: string) {
     undefined,
     "data",
   );
-  return { ...file, content, rows: rows.length };
+  const mime = ext === "xlsx" ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : ext === "pdf" ? "application/pdf" : "text/csv";
+  return { ...file, content, encoding: "base64" as const, mime, rows: rows.length };
 }
 
 // ---------------------------------------------------------------- F-REV-07 MoMo disbursement (FinanceJobs drives it)

@@ -72,3 +72,16 @@ export const FinSubList = z.object({
     periodEnd: z.string(), pausedUntil: z.string().nullable(), cancelAtPeriodEnd: z.boolean(),
   })),
 }).meta({ id: "FinanceSubscriptionList" });
+export class PlanDto extends dto(
+  z.object({
+    name: z.string().trim().min(1).max(255),
+    interval: z.enum(["month", "year"]),
+    amountRwf: z.number().int().min(0).max(100_000_000),
+    maxApplicationsPerMonth: z.number().int().min(1).max(10_000).nullable(),
+    description: z.string().trim().max(2000).nullable(),
+    features: z.array(z.string().trim().min(1).max(200)).max(20),
+    isPublic: z.boolean(),
+    isActive: z.boolean(),
+    sortOrder: z.number().int().min(0).max(10_000),
+  }),
+) {}

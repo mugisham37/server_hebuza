@@ -36,3 +36,5 @@ export class ReceiptDto extends dto(z.object({ ok: z.boolean(), note: z.string()
 export class RatingDto extends dto(z.object({ stars: z.number().int().min(1, "Rating must be 1–5.").max(5, "Rating must be 1–5."), tags: z.array(z.string().trim().min(1).max(40)).max(10).optional(), comment: z.string().trim().max(1000).optional() })) {}
 export class CaseUploadDto extends dto(UploadIn.extend({ need_id: z.string().max(64).nullish(), requirement_key: z.string().max(128).nullish() })) {}
 export const CaseUploadOut = z.object({ id: z.string(), code: z.string(), uploaded: z.boolean(), status: z.string(), upload: UploadOut });
+export class NpsDto extends dto(z.object({ score: z.number().int().min(0).max(10), comment: z.string().trim().max(1000).optional() })) {}
+export const NpsDue = z.object({ due: z.boolean() }).meta({ id: "NpsDueResponse" });
