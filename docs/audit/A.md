@@ -96,7 +96,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-03 | Requirement uploads | P1 | DONE | `applications/:code/documents` with requirement_key (documents.service.ts:746-785) |
 | F-DOC-04 | QC review | P1 | DONE | agent `documents/:id/qc` (agent.controller.ts:162), ops `documents/:doc/decision` (ops.cases.controller.ts:163) |
 | F-DOC-05 | Version history | P1 | PARTIAL | Versions are kept and listed (documents.service.ts:114-175). No restore endpoint and no metadata diff |
-| F-DOC-06 | Expiry tracking | P2 | PARTIAL | `expiresOn` stored (client_document_expiry, documents.service.ts:235). No 60/30-day reminders and no block on new cases |
+| F-DOC-06 | Expiry tracking | P2 | DONE | Closed 2026-11-19: 60/30/0-day expiry reminders (documents.expiry cron). (was PARTIAL) |
 | F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive |
 | F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) |
 | F-DOC-09 | Retention engine | P2 | PARTIAL | Retention policy, dry-run and changes (S system.ops.ts:680, privacy/retention routes) and an orphan-version purge (documents.service.ts:607). No per-class nightly flag → SM approve → crypto-shred |

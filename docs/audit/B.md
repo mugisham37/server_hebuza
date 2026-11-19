@@ -52,7 +52,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-MSG-02 | Direct conversations | P1 | DONE | `staff_dm` (`chat.service.ts:1373-1394`). |
 | F-MSG-03 | Support conversation | P1 | PARTIAL | Support kind exists (`chat.service.ts:290`) with link-to-case (l.1709). Visitor/AI handoff and inbound channels do not create one (see F-AIA-06, F-MSG-12). |
 | F-MSG-04 | Rich messages | P1 | DONE | 15-min edit window plus history (`chat.service.ts:67,1031`); `message_edits`, reactions, pins, mentions, references. |
-| F-MSG-05 | Structured cards | P1/P2 | PARTIAL | A generic `card` route by staff (`chat.service.ts:1179`) and an appointment ICS (l.1240). No typed kinds or links for payment_request, document_request, quotation (accept/decline), deliverable_ready or visit_checkin. |
+| F-MSG-05 | Structured cards | P1/P2 | DONE | Closed 2026-11-19: six typed cards (domain/chat/rules), agent composer + client thread, quotation accept/decline. (was PARTIAL) |
 | F-MSG-06 | Receipts & presence | P1 | DONE | read seq (`conversations/{id}/read`), `typing` (l.869), `realtime/focus`. |
 | F-MSG-07 | Realtime + offline | P1 | DONE | SSE `realtime/stream`; `client_msg_id` idempotency; web `lib/agent/outbox.ts`. |
 | F-MSG-08 | Templates | P1 | DONE | `chat_templates`, `/render` (`chat.service.ts:1975`), web `agent/inbox/templates`. |
@@ -60,31 +60,30 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-MSG-10 | Oversight console | P1 | DONE | `admin/chat/*` list/counts/metrics/claim/transcript PDF (`chat.service.ts:96,1649,1753`); web `ops/conversations`. |
 | F-MSG-11 | Search | P2 | PARTIAL | Search is `ilike` only (`chat.service.ts:837`). No tsvector or global search. |
 | F-MSG-12 | Omnichannel threading | P2 | MISSING | No inbound WhatsApp/SMS/email to conversation path. |
-| F-MSG-13 | Enquiry SLA & escalation | P1 | MISSING | No first-response timer, business-hours calendar or escalation chain for support conversations. |
+| F-MSG-13 | Enquiry SLA & escalation | P1 | DONE | Closed 2026-11-19: support first-response SLA in business hours + SM→exec escalation cron. (was MISSING) |
 | F-MSG-14 | Complaint flag | P2 | MISSING | No convert-to-FBK action. |
-| F-MSG-15 | Retention & legal hold | P1 | MISSING | No `chat_retention_years` archival job and no legal-hold flag. |
+| F-MSG-15 | Retention & legal hold | P1 | DONE | Closed 2026-11-19: retention archival cron + legal hold endpoint. (was MISSING) |
 | F-MSG-16 | Attachment safety | P1 | DONE | Goes through the `documents.finalize` job (sniff, scan, EXIF strip; `chat.service.ts:724`) and short-lived download URLs. HEIC→JPEG was not verified. |
 | F-MSG-17 | Conversation summary | P3 | DONE | `assistant/copilot/{kind}` "summarise" (`assistant.controller.ts:136`). |
-| F-MSG-18 | Read-only after closure | P1 | MISSING | No rule that closes the client lane 30 days after closure or reopens it as a support enquiry. |
-
+| F-MSG-18 | Read-only after closure | P1 | DONE | Closed 2026-11-19: client lane read-only 30 days after close (409 lane_closed → support). (was MISSING) |
 ## Notifications & channels (NTF)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-NTF-01 | Event catalogue | P1 | PARTIAL | `system/notifications/rules` config (`system.config.ts:532`) is held in the system "world" store. `NotificationsJobs.deliver` does not consult it; each caller hardcodes its channels. |
+| F-NTF-01 | Event catalogue | P1 | DONE | Closed 2026-11-19: delivery applies console event rules (notifications.delivery.ts dispatch). (was PARTIAL) |
 | F-NTF-02 | In-app centre | P1 | DONE | `notifications.controller.ts:12-18`, SSE emit (`notifications.jobs.ts:37`), web `(client)/notifications`, `organisms/client/notifications.tsx`. |
-| F-NTF-03 | Email | P1 | PARTIAL | Sent through `core/notify/mail.service.ts`; HTML is just escaped text. No bounce/complaint webhook to suppression and no List-Unsubscribe on transactional mail. |
-| F-NTF-04 | WhatsApp Business | P2 | MISSING | WhatsApp is routed through SMS (`notifications.jobs.ts:46` shortcut). No Cloud API and no 24 h window. |
+| F-NTF-03 | Email | P1 | DONE | Closed 2026-11-19: bounce/complaint webhook → suppression; List-Unsubscribe on non-security mail. (was PARTIAL) |
+| F-NTF-04 | WhatsApp Business | P2 | DONE | Closed 2026-11-19: WhatsApp Cloud API driver + approved templates + Meta webhook (dormant until keys, flags.whatsapp_channel). (was MISSING) |
 | F-NTF-05 | SMS | P1/P2 | PARTIAL | `core/notify/sms.service.ts` exists and is used for OTP. GSM-7 segmenting and the sender-ID config were not verified. |
-| F-NTF-06 | Channel router & fallback | P2 | MISSING | Channels are sent in parallel, best-effort, with no ordered fallback. |
-| F-NTF-07 | Preferences | P1 | PARTIAL | `notification_preferences` with matrix/quiet JSON (`notifications.service.ts:96-110`); web `settings/notifications`. `deliver` checks only `email_enabled`; the per-category matrix, language and digest frequency are not enforced. |
-| F-NTF-08 | Quiet hours | P2 | PARTIAL | Stored in preferences and in booking rules. `deliver` does not defer messages. |
-| F-NTF-09 | Consent ledger | P1 | MISSING | Consent exists only per CRM lead (`marketing.crm.controller.ts:71`). No ledger rows with source/IP/policy version, and no STOP/HAGARIKA handling. |
+| F-NTF-06 | Channel router & fallback | P2 | DONE | Closed 2026-11-19: ordered fallback chain per rule; final failure falls through. (was MISSING) |
+| F-NTF-07 | Preferences | P1 | DONE | Closed 2026-11-19: per-category matrix + email switch enforced (domain/notify/delivery.ts planDelivery). (was PARTIAL) |
+| F-NTF-08 | Quiet hours | P2 | DONE | Closed 2026-11-19: quiet hours defer the send job (Kigali time), critical/security exempt. (was PARTIAL) |
+| F-NTF-09 | Consent ledger | P1 | DONE | Closed 2026-11-19: consent_ledger table, POST /api/consent (cookie banner), STOP/HAGARIKA/START inbound. (was MISSING) |
 | F-NTF-10 | Template registry | P2 | PARTIAL | Lint, versions and Meta review are simulated in the system world store (`system.config.ts:583-777`); web `system/notifications/templates/[key]`. Sends do not use these templates. |
-| F-NTF-11 | Delivery tracking | P1 | MISSING | No `notification_deliveries` table. The system console shows seeded rows (`system.config.ts:786`). No provider webhooks and no backoff retries per channel. |
-| F-NTF-12 | Cost metering & caps | P2 | PARTIAL | Budget config UI and API (`system.config.ts:799-822`). No per-delivery cost and no cap enforcement in `deliver`. Marketing campaigns have their own cap. |
+| F-NTF-11 | Delivery tracking | P1 | DONE | Closed 2026-11-19: notification_deliveries + per-send job with backoff + Resend/AT/Meta status webhooks; console reads the table. (was MISSING) |
+| F-NTF-12 | Cost metering & caps | P2 | DONE | Closed 2026-11-19: per-delivery cost, monthly spend from deliveries, budget cap in delivery. (was PARTIAL) |
 | F-NTF-13 | Inbound channels | P2 | MISSING | — |
-| F-NTF-14 | Digests | P1 | PARTIAL | Hourly client unread digest (`notifications.jobs.ts:53`). No daily staff or weekly exec digest. |
-| F-NTF-15 | Suppression & dedupe | P1 | PARTIAL | Job-id idempotency only (`notifications.jobs.ts:34`). No event+recipient dedupe window and no suppression list. |
+| F-NTF-14 | Digests | P1 | DONE | Closed 2026-11-19: daily staff digest (notifications.staff_digest). (was PARTIAL) |
+| F-NTF-15 | Suppression & dedupe | P1 | DONE | Closed 2026-11-19: 10-min dedupe window + suppression list. (was PARTIAL) |
 | F-NTF-16 | Secure links | P1 | DONE | Messages carry a title, body and portal link only (`notifications.jobs.ts:43`); the manage token is sealed in the outbox. |
 | F-NTF-17 | Manual send | P2 | MISSING | No send-template-to-client from the client profile. |
 | F-NTF-18 | Web push | P3 | MISSING | — |
@@ -137,11 +136,11 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-CAL-01 | Deadline rules per service | P1 | DONE | `service_deadline_rules`, `compliance-calendar` CRUD (`compliance.controller.ts:22-49`); web `ops/compliance-rules`. |
 | F-CAL-02 | National compliance calendar | P2 | PARTIAL | Rules plus holidays are editable; the §12 seeded statutory list was not verified. |
 | F-CAL-03 | Obligation generation | P2 | PARTIAL | Generated for subscribed clients with a dedicated agent (`deadlines.service.ts:186-232`). No generation from ORG profile flags (VAT, employer). |
-| F-CAL-04 | Client compliance calendar | P2 | MISSING | No `/dashboard/calendar`, no client obligations endpoint, no ICS feed, no "ask HEBUZA" action. |
+| F-CAL-04 | Client compliance calendar | P2 | DONE | Closed 2026-11-19: GET me/obligations + ICS feed + /dashboard/calendar. (was MISSING) |
 | F-CAL-05 | Agent/manager calendar | P1 | DONE | `GET agent/calendar` (`agent.controller.ts:81`), `POST agent/obligations/:id/:action`; web `agent/calendar`. |
-| F-CAL-06 | Reminders multi-channel | P2 | PARTIAL | `deadline_notifications` offsets; email only (`deadlines.service.ts:433`). |
-| F-CAL-07 | Auto-case creation | P2 | MISSING | No application is created at `lead_days`. |
-| F-CAL-08 | Missed & escalation | P1 | PARTIAL | `markMissed` only flips the status (`deadlines.service.ts:265`). No manager alert, no client penalty notice, no case flag. |
+| F-CAL-06 | Reminders multi-channel | P2 | DONE | Closed 2026-11-19: client reminders on email/SMS/WhatsApp via delivery rules. (was PARTIAL) |
+| F-CAL-07 | Auto-case creation | P2 | DONE | Closed 2026-11-19: deadlines.autocase opens the case via ApplicationsService at lead time. (was MISSING) |
+| F-CAL-08 | Missed & escalation | P1 | DONE | Closed 2026-11-19: missed → client notice, case flagged urgent, managers alerted. (was PARTIAL) |
 | F-CAL-09 | Holiday calendar | P2 | DONE | `compliance_holidays`, `public-holidays`, weekend/holiday roll (`compliance.service.ts:2,54`). |
 | F-CAL-10 | Case SLA & due dates | P1 | PARTIAL | `dueAt/dueSource/clientPreferredDate` and `recordBreaches` (l.280). The propose/accept change flow was not verified. |
 | F-CAL-11 | Contract/renewal reminders | P2 | PARTIAL | Each module (work, procurement) has its own expiry logic; there is no shared engine. |

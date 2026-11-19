@@ -86,8 +86,7 @@ Module is 454 lines: 4 read routes (`subscriptions/subscriptions.controller.ts:1
 | F-SUB-10 | Company subscriptions       | P2    | MISSING | `client_subscriptions` keyed by `clientId` only                                                                                                                   |
 | F-SUB-11 | Annual billing              | P3    | DONE | wave 4: plan admin API + /finance/subscriptions Plans tab (monthly/yearly). wave 3: `addPeriod` calendar months/years (Kigali, month-end clamp, tested); plans may be `year` (no admin plan editor yet). `interval` column exists but period is fixed `PERIOD_MS = 30d` (`subscriptions.service.ts`) |
 | F-SUB-12 | Usage meter                 | P1    | DONE | wave 2: 80% warning banner + notification. used/cap in `GET me/subscription`; meter `billing.tsx:485`. 80% warning not found |
-| F-SUB-13 | Subscription reports        | P2    | PARTIAL | `fin.subscriptions` = renewals/amount/due only (`reports.engine.ts:460`); no MRR/churn/by-plan/trial conversion                                                   |
-
+| F-SUB-13 | Subscription reports        | P2    | DONE | Closed 2026-11-19: MRR (annual spread) + churn in fin.subscriptions. (was PARTIAL) |
 ## suppliers-landlords-payables (SUP)
 
 Procurement is a full module (5.1k lines, JSON world over `procurement_records`, advisory-locked) with all screens under `app/[locale]/(procurement)/procurement/*`.
@@ -116,18 +115,17 @@ Procurement is a full module (5.1k lines, JSON world over `procurement_records`,
 
 | F-ID     | title                 | phase | status  | evidence / gap                                                                                                                                                                                                                 |
 | -------- | --------------------- | ----- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| F-RPT-01 | Metrics layer         | P1    | PARTIAL | report registry `reports/reports.engine.ts`, 12 keys `reports/lib/types.ts:9-22`; no `metric_key` registry with label/definition/owner shared by widgets (overview tiles computed separately in `finance.core`/`exec-summary`) |
-| F-RPT-02 | Report frame          | P1    | PARTIAL | period/tz/filters/freshness `reports.service.ts:177-181`; definitions are just column keys (`text: x.key`, `:179`)                                                                                                             |
+| F-RPT-01 | Metrics layer         | P1    | DONE | Closed 2026-11-19: domain/reports/metrics.ts registry. (was PARTIAL) |
+| F-RPT-02 | Report frame          | P1    | DONE | Closed 2026-11-19: frame/export definitions from the registry. (was PARTIAL) |
 | F-RPT-03 | Drill-down            | P2    | DONE    | `GET reports/:key/drill` `reports.controller.ts:29`, `DrillItem.href`; web `/finance/reports/[key]`                                                                                                                            |
-| F-RPT-04 | Exports               | P2    | PARTIAL | async export jobs `reports.controller.ts:24,39`; xlsx/pdf served as CSV (`reports.service.ts:295`)                                                                                                                             |
-| F-RPT-05 | Scheduled reports     | P2    | PARTIAL | fixed Monday `fin.revenue` CSV to finance users `reports.jobs.ts:15-18`; no per-user subscriptions                                                                                                                             |
-| F-RPT-06 | Saved views           | P3    | MISSING |                                                                                                                                                                                                                                |
+| F-RPT-04 | Exports               | P2    | DONE | Closed 2026-11-19: real XLSX + PDF exports. (was PARTIAL) |
+| F-RPT-05 | Scheduled reports     | P2    | DONE | Closed 2026-11-19: per-user report subscriptions, emailed. (was PARTIAL) |
+| F-RPT-06 | Saved views           | P3    | DONE | Closed 2026-11-19: saved views per user. (was MISSING) |
 | F-RPT-07 | Pre-aggregation       | P2    | MISSING | no `fact_*` tables; engine reads `finance_records` live                                                                                                                                                                        |
-| F-RPT-08 | Executive dashboard   | P2    | PARTIAL | `GET reports/exec-summary` `reports.controller.ts:19`; web `components/organisms/exec/overview.tsx`. No targets vs actual / traffic lights; `/exec/reports` is a placeholder (`app/[locale]/(exec)/exec/[[...rest]]/page.tsx`) |
+| F-RPT-08 | Executive dashboard   | P2    | DONE | Closed 2026-11-19: targets with traffic lights on report frames. (was PARTIAL) |
 | F-RPT-09 | Role dashboards       | P1–P3 | PARTIAL | finance overview `finance/x/overview`, procurement summary, exec overview, client dashboard exist; not audited per §9 for every role                                                                                           |
-| F-RPT-10 | Targets               | P3    | MISSING |                                                                                                                                                                                                                                |
-| F-RPT-11 | Data definitions page | P2    | MISSING | no `/staff/reports/definitions` route                                                                                                                                                                                          |
-
+| F-RPT-10 | Targets               | P3    | DONE | Closed 2026-11-19: exec targets screen /exec/targets. (was MISSING) |
+| F-RPT-11 | Data definitions page | P2    | DONE | Closed 2026-11-19: /finance/reports/definitions. (was MISSING) |
 ## Gaps (by phase)
 
 ### P1

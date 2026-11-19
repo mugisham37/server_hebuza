@@ -108,8 +108,8 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-SET-08 | Payment methods matrix | P1 | PARTIAL | only `flags.card_payments`. Gap: per-method enable/limits/fees per context |
 | F-SET-09 | Channel configuration | P2 | PARTIAL | rules/templates/costs S:system.config.controller.ts:111-167. Gap: sender IDs, WhatsApp number, global quiet hours (only per-user prefs, notifications.service.ts:31) |
 | F-SET-10 | Languages | P2 | PARTIAL | missing-translation report S:system.config.ts:235, POST :71. Gap: `i18n.enabled_locales` readonly (needs deploy) |
-| F-SET-11 | Maintenance mode | P1 | PARTIAL | registry keys + banner W:components/organisms/layout/system-shell.tsx:137. Gap: client read-only guard only on submit and reads legacy `platform_settings.maintenanceMode` (S:modules/applications/applications.service.ts:618), public/client banner not verified, window not scheduled |
-| F-SET-12 | Feature flags | P1 | PARTIAL | 6 flags in registry (settings-registry.ts:54). Gap: only `custom_roles` enforced server-side (system.governance.ts:75); ai/field_cash/whatsapp/booking ungated |
+| F-SET-11 | Maintenance mode | P1 | DONE | Closed 2026-11-19: PlatformGuard: API read-only for clients when on or in the scheduled window. (was PARTIAL) |
+| F-SET-12 | Feature flags | P1 | DONE | Closed 2026-11-19: PlatformGuard route flags (assistant, booking, field cash) + WhatsApp in delivery. (was PARTIAL) |
 | F-SET-13 | Export/import | P3 | PARTIAL | export S:system.config.controller.ts:56; no import |
 | F-SET-14 | Remove dead settings | P1 | PARTIAL | columns still present S:db/schema/schema.ts:907-909 (`data_retention`, `compact_tables`, `enforce_2fa`) |
 
@@ -117,12 +117,12 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-AUD-01 | Mandatory category | P1 | PARTIAL | catalogue maps code→category S:domain/system/audit-catalogue.ts. Gap: column `kind` still free-text "admin/system" (S:core/db/audit.ts:55); @Route `audit:` codes (e.g. "case.document_qc") are off-catalogue |
-| F-AUD-02 | Event catalogue + CI test | P1 | PARTIAL | catalogue exists; no CI test greping call sites |
-| F-AUD-03 | Before/after diff | P1 | PARTIAL | record() stores before/after (core/db/audit.ts:54), redaction S:domain/system/audit.ts. Gap: @Route-decorator audits carry no diff |
+| F-AUD-01 | Mandatory category | P1 | DONE | Closed 2026-11-19: audit_log.kind = catalogue category; prefix map. (was PARTIAL) |
+| F-AUD-02 | Event catalogue + CI test | P1 | DONE | Closed 2026-11-19: audit-catalogue.test.ts scans all emitted codes. (was PARTIAL) |
+| F-AUD-03 | Before/after diff | P1 | DONE | Closed 2026-11-19: @Route audits snapshot before (core/http/audit-before.ts) + auditBefore(). (was PARTIAL) |
 | F-AUD-04 | Tamper evidence | P2 | DONE | chain cols schema.ts:161-163, advisory lock audit.ts:46, append-only trigger migrations/0001; daily verify S:modules/system/system.jobs.ts:62; UI WA:(system)/system/audit/integrity |
-| F-AUD-05 | Sensitive-read logging | P1 | PARTIAL | worker private fields + exports logged; ext-agent doc download (work.controller.ts:179). Gap: staff/agent viewing client ID documents not logged as `document_access.*` (only filter exists, system.audit.ts:403) |
-| F-AUD-06 | Request context | P1 | PARTIAL | ip + impersonatorId only (audit.ts:54-55). Gap: user_agent, request_id, session_id |
+| F-AUD-05 | Sensitive-read logging | P1 | DONE | Closed 2026-11-19: document_access.document.viewed on staff case-document views. (was PARTIAL) |
+| F-AUD-06 | Request context | P1 | DONE | Closed 2026-11-19: request id, user agent, session id in hash-chained details. (was PARTIAL) |
 | F-AUD-07 | Audit viewer | P1 | DONE | S:system.audit.controller.ts:14/48; W:components/organisms/system/audit.tsx, WA:(system)/system/audit |
 | F-AUD-08 | Export | P2 | DONE | S:system.audit.controller.ts:39, csv/pdf + `data_export.audit.exported` (system.audit.ts:505) |
 | F-AUD-09 | Retention / archive | P3 | MISSING | no archive job to R2 `audit-archive` |
@@ -135,7 +135,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 |---|---|---|---|---|
 | A11Y-skip | Skip link / landmarks | P1 | DONE | WA:(public)/layout.tsx:23, W:organisms/layout/workspace-shell.tsx:229 |
 | A11Y-motion | Reduced motion | P1 | DONE | W:components/atoms/motion.tsx |
-| A11Y-axe | axe in e2e every route/locale | P1 | PARTIAL | `@axe-core/playwright` in web/package.json, unused in web/e2e/*.spec.ts |
+| A11Y-axe | axe in e2e every route/locale | P1 | DONE | Closed 2026-11-19: axe WCAG A/AA in every e2e visit(). (was PARTIAL) |
 | A11Y-lint | eslint-plugin-jsx-a11y | P1 | PARTIAL | only what eslint-config-next bundles; not enabled explicitly |
 | A11Y-stmt | /accessibility statement | P1 | DONE | WA:(public)/accessibility/page.tsx |
 | A11Y-manual | Manual keyboard/SR passes | P1 | N/A | process, not code |
@@ -143,19 +143,17 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 ### Backups & DR
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| BDR-design | Automated PITR/dumps to 2nd provider | P1 | MISSING | no backup job/script in repo; RUNBOOK describes provider snapshots (server/docs/RUNBOOK.md:61) |
-| BDR-runbook | Restore runbook | P1 | PARTIAL | server/docs/RUNBOOK.md; spec path `docs/runbooks/restore.md` absent |
+| BDR-design | Automated PITR/dumps to 2nd provider | P1 | DONE | Closed 2026-11-19: server/backup/backup.sh daily age-encrypted pg_dump to R2. (was MISSING) |
+| BDR-runbook | Restore runbook | P1 | DONE | Closed 2026-11-19: docs/RESILIENCE.md §4 + backup/restore.sh. (was PARTIAL) |
 | BDR-drill | Monthly automated restore test | P1 | MISSING | /system/ops backups/drills tabs read seeded `w.backups` (S:modules/system/system.world.ts:154, S:db/seed/system.ts) — fake data |
-| BDR-monitor | Backup monitoring/alerts | P1 | MISSING | — |
-
+| BDR-monitor | Backup monitoring/alerts | P1 | DONE | Closed 2026-11-19: system console reads status/LATEST-<env>.json (BACKUP_STATUS_*), stale > 26 h shows not ok. (was MISSING) |
 ### i18n
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | I18N-urls | Locale-prefixed URLs + negotiation | P1 | DONE | WA: routes, W:proxy.ts:66-69 |
 | I18N-locales | rw/en/fr dictionaries | P1 | DONE | S:domain/i18n/dictionaries/*, web content per locale |
 | I18N-report | Missing-translation report | P2 | DONE | S:system.config.ts:235 |
-| I18N-ci | CI key-parity check | P1 | PARTIAL | not found in CI config (not verified) |
-
+| I18N-ci | CI key-parity check | P1 | DONE | Closed 2026-11-19: web scripts/check-i18n.mjs in CI. (was PARTIAL) |
 ### Observability
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
@@ -181,7 +179,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | PRV-banner | Cookie banner, Consent Mode v2 | P1 | DONE | W:components/organisms/site/cookie-consent + tracking.tsx |
-| PRV-ledger | Consent ledger (profile reuse, per-channel marketing) | P1 | PARTIAL | per-channel consent on contacts (marketing.jobs.ts:296), unsubscribe S:marketing.crm.controller.ts:27; no unified ledger table |
+| PRV-ledger | Consent ledger (profile reuse, per-channel marketing) | P1 | DONE | Closed 2026-11-19: consent_ledger (see F-NTF-09). (was PARTIAL) |
 | PRV-dsr | Data-subject requests | P1 | DONE | S:system.ops.controller.ts:139-149; WA:(system)/system/privacy/requests/[id], client WA:(client)/settings/privacy |
 | PRV-processors | Processor register / map | P1 | DONE | S:system.ops.controller.ts:100-115 |
 | PRV-retention | Retention enforcement | P1 | PARTIAL | dry-run/changes S:system.ops.controller.ts:124-134; cron only counts (system.jobs.ts:76-93); AI + lead retention crons do delete (assistant.jobs.ts:20, marketing.jobs.ts:232) |
@@ -192,14 +190,14 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 ### Security
 | ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| SEC-headers | HTTP headers | P1 | PARTIAL | web/next.config.ts:19-24 HSTS etc.; CSP is `Report-Only` (:24) — not enforced |
+| SEC-headers | HTTP headers | P1 | DONE | Closed 2026-11-19: CSP enforced (web/next.config.ts), API no-store + helmet. (was PARTIAL) |
 | SEC-rate | Rate limits | P1 | DONE | S:core/auth/rate.ts, throttle.ts, `@Route({limit})` |
 | SEC-upload | Upload malware scan | P1 | DONE | ClamAV S:core/storage/scan.processor.ts |
 | SEC-pwd | Password hashing | P1 | DONE | S:core/auth/password.ts (argon2) |
 | SEC-enc | Field encryption at rest | P1 | DONE | S:core/crypto/crypto.service.ts (Fernet; e.g. field_visits.client_enc) |
 | SEC-rotation | Key rotation | P2 | PARTIAL | service-account rotate S:system.users.controller.ts:117; no data-key rotation procedure |
 | SEC-csrf | CSRF / session | P1 | DONE | S:core/auth/csrf.ts, cookies.ts |
-| SEC-vuln | Dependency scanning | P1 | PARTIAL | not verified in CI |
+| SEC-vuln | Dependency scanning | P1 | DONE | Closed 2026-11-19: pnpm audit --prod in both CIs. (was PARTIAL) |
 | SEC-ir | Incident response | P1 | DONE | incidents module (see PRV-breach) |
 
 ### SEO & analytics
