@@ -92,6 +92,8 @@ export type Inv = Invoice & {
   gatewayPaymentIds?: string[];
   /** Day offsets already reminded automatically (F-FIN-16). */
   autoReminders?: number[];
+  /** Plan invoices: months the invoice covers (1 monthly, 12 yearly) so MRR spreads annual billing (F-SUB-13). */
+  planMonths?: number;
 };
 export const keyOf = (i: Inv) => i.no ?? i.id;
 export const saveInv = (db: Exec, i: Inv) => put(db, "invoice", i.id, i, i.no);
@@ -551,7 +553,7 @@ export async function issueCaseInvoice(
 /** Plan renewal invoice (F-SUB-04): cash-basis like case invoices (subscription payments post revenue). */
 export async function issuePlanInvoice(
   f: Fin,
-  o: { clientId: string; subscriptionId: string; label: string; amountGross: number; dueAt: string },
+  o: { clientId: string; subscriptionId: string; label: string; amountGross: number; dueAt: string; planMonths?: number },
 ) {
   const inv = newInvoice(f, {
     clientId: o.clientId,
@@ -561,6 +563,7 @@ export async function issuePlanInvoice(
     lines: [{ kind: "service_fee", label: o.label, qty: 1, unit: splitVat(o.amountGross, f.S.vat_bps).net }],
   });
   inv.cashBasis = true;
+  inv.planMonths = o.planMonths ?? 1;
   return issue(f, inv, false);
 }
 function newInvoice(

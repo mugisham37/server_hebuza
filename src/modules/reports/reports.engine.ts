@@ -481,20 +481,27 @@ const DEFS: Record<ReportKey, Def> = {
     ],
     // F-SUB-13: MRR = plan billing per month (monthly plans bill monthly); churn = a client billed in month M with no plan
     // invoice in M+1 (counted in M+1, once that month has ended).
-    // shortcut: annual plans would overstate MRR in their billing month; normalise by plan period once invoices carry it.
+    // Annual plans spread over the 12 months they cover (invoice.planMonths); older invoices without it count as monthly.
     recs: (c) => {
       const plan = c.data.invs.filter((i) => i.series === "plan" && i.issuedAt && i.status !== "void");
-      const billed = plan.map((i) => ({
-        date: i.issuedAt!,
-        dims: { client: clientDim(c, i.clientId), ...timeDims(i.issuedAt!) },
-        values: { renewals: 1, amount: i.totals.total, due: i.balanceDue, mrr: i.totals.total, churned: 0 },
-        ref: i.no ?? "",
-        href: invHref(i.no ?? ""),
-        party: i.billTo.name,
-        state: i.status,
+      const span = (i: (typeof plan)[number]) => Math.max(1, i.planMonths ?? 1);
+      const monthOf = (iso: string, add: number) => { const d = new Date(`${iso.slice(0, 7)}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + add); return d.toISOString().slice(0, 10); };
+      const billed = plan.flatMap((i) => Array.from({ length: span(i) }, (_, k) => {
+        const date = k === 0 ? i.issuedAt! : monthOf(i.issuedAt!, k);
+        const mrr = Math.round(i.totals.total / span(i));
+        return {
+          date,
+          dims: { client: clientDim(c, i.clientId), ...timeDims(date) },
+          values: k === 0 ? { renewals: 1, amount: i.totals.total, due: i.balanceDue, mrr, churned: 0 } : { renewals: 0, amount: 0, due: 0, mrr, churned: 0 },
+          ref: i.no ?? "",
+          href: invHref(i.no ?? ""),
+          party: i.billTo.name,
+          state: i.status,
+        };
       }));
+      // Months a client is covered (annual plans cover 12), so churn is only counted after coverage ends.
       const months = new Map<string, Set<string>>();
-      for (const i of plan) (months.get(i.clientId) ?? months.set(i.clientId, new Set()).get(i.clientId)!).add(i.issuedAt!.slice(0, 7));
+      for (const i of plan) for (let k = 0; k < span(i); k++) (months.get(i.clientId) ?? months.set(i.clientId, new Set()).get(i.clientId)!).add(monthOf(i.issuedAt!, k).slice(0, 7));
       const current = new Date().toISOString().slice(0, 7);
       const churn = [...months].flatMap(([client, ms]) =>
         [...ms].map((m) => { const d = new Date(`${m}-01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() + 1); return d.toISOString().slice(0, 7); })

@@ -258,7 +258,7 @@ export async function renewalInvoices(f: Fin) {
     if (invs.some((i) => i.subscriptionId === subId && i.status !== "void")) continue;
     await issuePlanInvoice(f, {
       clientId: s.clientId, subscriptionId: subId, label: `${p.name} · renewal from ${period}`,
-      amountGross: p.amountRwf, dueAt: period,
+      amountGross: p.amountRwf, dueAt: period, planMonths: p.interval === "year" ? 12 : 1,
     });
     made++;
   }
