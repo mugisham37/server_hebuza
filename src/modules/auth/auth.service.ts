@@ -124,6 +124,9 @@ export function sessionModel(u: User, expiresAt: Date | null) {
 const label = (role: string) =>
   role === "partner" ? "partner" : isStaffRole(role) ? "team" : "client";
 
+/** F-IAM-08: finance and sysadmin always confirm the second factor (trusted devices never apply). */
+export const NO_TRUST_ROLES = new Set(["staff:finance", "staff:sysadmin"]);
+
 @Injectable()
 export class AuthService {
   private dummy?: Promise<string>;
@@ -569,7 +572,7 @@ export class AuthService {
       if (
         isStaffRole(u.role) &&
         (await this.mfaEnrolled(tx, u.userId)) &&
-        !(await this.trustedDeviceFor(tx, h, u.userId))
+        (NO_TRUST_ROLES.has(u.role) || !(await this.trustedDeviceFor(tx, h, u.userId)))
       ) {
         // Password ok, second factor pending: a 5-min pre_2fa handle only; POST /api/auth/mfa/verify finishes.
         const t = opaqueToken("p2f");

@@ -26,7 +26,7 @@ export class StatusDto extends dto(
   }),
 ) {}
 export class AssignDto extends dto(
-  z.object({ agent_id: Id, helpers: z.array(Id).max(5).optional() }),
+  z.object({ agent_id: Id, helpers: z.array(Id).max(5).optional(), reviewer_id: Id.nullable().optional() }),
 ) {}
 export class ExternalQueryDto extends dto(
   z.object({ external: z.string().optional() }),
@@ -145,6 +145,9 @@ export class AutoAssignDto extends dto(
     pool: z.array(Id).max(100),
     cap: z.number().int(),
     vipApproval: z.boolean(),
+    // F-ASN-07: manual (never auto), suggest (ranked list only), auto (top candidate if score ≥ threshold).
+    assignMode: z.enum(["manual", "suggest", "auto"]).optional(),
+    threshold: z.number().int().min(0).max(100).optional(),
   }),
 ) {}
 

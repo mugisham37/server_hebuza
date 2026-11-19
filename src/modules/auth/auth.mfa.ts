@@ -1,5 +1,7 @@
 // Staff MFA: TOTP enrolment with backup codes, the /login/2fa challenge (pre_2fa cookie → session), trusted devices
-// and step-up. Secret: staff_profiles.totp_secret_encrypted (CryptoService). Backup codes: backup_codes (sha256).
+// and step-up. Secret: staff_profiles.totp_secret_encrypted (CryptoService). Backup codes: backup_codes (Argon2id).
+import { PasswordService } from "../../core/auth/password";
+import { NO_TRUST_ROLES } from "./auth.service";
 import { Inject, Injectable } from "@nestjs/common";
 import type IORedis from "ioredis";
 import QRCode from "qrcode";
@@ -39,6 +41,7 @@ export class MfaService {
     private readonly crypto: CryptoService,
     private readonly audit: AuditService,
     @Inject(REDIS) private readonly redis: IORedis,
+    private readonly passwords: PasswordService,
   ) {}
 
   private profile = (tx: Tx, uid: string) =>
@@ -72,17 +75,17 @@ export class MfaService {
         "Two-factor sign-in isn't set up on this account.",
       );
     if (backup) {
-      const [hit] = await tx
-        .update(backupCodes)
-        .set({ usedAt: iso() })
-        .where(
-          and(
-            eq(backupCodes.userId, uid),
-            eq(backupCodes.codeHash, sha256(normalizeBackup(code))),
-            isNull(backupCodes.usedAt),
-          ),
-        )
-        .returning({ id: backupCodes.id });
+      // F-IAM-07: Argon2id hashes (legacy sha256 rows still verify until the set is regenerated).
+      const plain = normalizeBackup(code);
+      const open = await tx.select({ id: backupCodes.id, h: backupCodes.codeHash }).from(backupCodes)
+        .where(and(eq(backupCodes.userId, uid), isNull(backupCodes.usedAt)));
+      let match: string | undefined;
+      for (const c of open)
+        if (c.h.startsWith("$argon2") ? await this.passwords.verify(c.h, plain) : c.h === sha256(plain)) { match = c.id; break; }
+      const [hit] = match
+        ? await tx.update(backupCodes).set({ usedAt: iso() })
+            .where(and(eq(backupCodes.id, match), isNull(backupCodes.usedAt))).returning({ id: backupCodes.id })
+        : [];
       if (!hit) throw await this.failure(uid);
     } else {
       const step = totp.verify(
@@ -98,13 +101,14 @@ export class MfaService {
   private async issueBackupCodes(tx: Tx, uid: string) {
     const list = Array.from({ length: MFA.backupCount }, backupCode);
     await tx.delete(backupCodes).where(eq(backupCodes.userId, uid));
+    const hashes = await Promise.all(list.map((c) => this.passwords.hash(normalizeBackup(c))));
     await tx
       .insert(backupCodes)
       .values(
-        list.map((c) => ({
+        list.map((_c, i) => ({
           id: genId("bkc"),
           userId: uid,
-          codeHash: sha256(c),
+          codeHash: hashes[i],
           createdAt: iso(),
         })),
       );
@@ -204,6 +208,7 @@ export class MfaService {
       if (pre) await this.auth.startSession(tx, h, u);
       if (
         (b.trust ?? b.trustDevice) &&
+        !NO_TRUST_ROLES.has(u.role) &&
         !(await this.auth.trustedDeviceFor(tx, h, uid))
       ) {
         const token = opaqueToken("dvc");

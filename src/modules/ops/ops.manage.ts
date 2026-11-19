@@ -300,11 +300,23 @@ export async function decideApproval(
         state,
         data: { ...l.data, status: state },
       });
-    if (state === "approved")
+    if (state === "approved") {
       await db
         .update(agentProfiles)
         .set({ onLeaveUntil: a.to!, status: "leave" })
         .where(eq(agentProfiles.userId, a.agentId));
+      // F-ASN-05: flag the agent's open cases that fall inside the leave so the approver can hand them over.
+      const open = await db.execute<{ code: string }>(sql`
+        select code from applications where assigned_agent_id = ${a.agentId}
+          and status not in ('completed_delivered','rejected','cancelled','refunded')
+          and coalesce(due_at, sla_deadline) <= ${a.to!}::date + interval '1 day'`);
+      if (open.length)
+        await notify(db, {
+          userId: ctx.session!.id, kind: "leave",
+          title: `${open.length} open case${open.length > 1 ? "s" : ""} due during this leave`,
+          body: open.map((o) => o.code).join(", ").slice(0, 900), href: `/ops/workload?agent=${a.agentId}`,
+        });
+    }
   }
   if (a.kind === "skill" && a.sourceId) {
     const sr = await recGet<Record<string, unknown>>(

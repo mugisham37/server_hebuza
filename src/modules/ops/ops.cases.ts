@@ -371,9 +371,10 @@ function assertCapacity(a: AgentRow) {
 export async function assign(
   ctx: Ctx,
   code: string,
-  b: { agent_id: string; helpers?: string[] },
+  b: { agent_id: string; helpers?: string[]; reviewer_id?: string | null },
 ) {
   const r = await loadCase(ctx.db, code, true);
+  const before = { helpers: [...r.x.helpers], reviewer: r.x.reviewerId ?? null };
   const a = await agentsAll(ctx.db, [b.agent_id]).then((x) => x[0]);
   if (!a) throw new AppError(422, "invalid_agent", "Unknown agent.");
   if (r.app.assignedAgentId !== a.id) {
@@ -385,11 +386,21 @@ export async function assign(
     if (why) throw new AppError(409, "agent_ineligible", `${a.name} can't take this case (${why}). Use an override with a reason.`);
   }
   r.x.helpers = (b.helpers ?? []).filter((h) => h !== a.id);
+  if (b.reviewer_id !== undefined) {
+    if (b.reviewer_id && (b.reviewer_id === a.id || r.x.helpers.includes(b.reviewer_id)))
+      throw new AppError(422, "validation", "The reviewer must be someone other than the lead and helpers.");
+    r.x.reviewerId = b.reviewer_id;
+  }
   await setLead(ctx.db, ctx.session!, r, a.id);
   await saveCase(ctx.db, r);
+  // F-ASN-11: new helpers and the reviewer hear about it (the lead is notified by setLead's offer).
+  for (const h of r.x.helpers.filter((x) => !before.helpers.includes(x)))
+    await notify(ctx.db, { userId: h, kind: "assignment", title: `You're helping on ${r.app.code}`, href: `/agent/cases/${r.app.code}` });
+  if (r.x.reviewerId && r.x.reviewerId !== before.reviewer)
+    await notify(ctx.db, { userId: r.x.reviewerId, kind: "assignment", title: `You're the reviewer on ${r.app.code}`, href: `/ops/cases/${r.app.code}` });
   ctx.audit = {
     resourceId: r.app.code,
-    details: { agent: a.id, helpers: r.x.helpers },
+    details: { agent: a.id, helpers: r.x.helpers, reviewer: r.x.reviewerId ?? null },
   };
   return summary(r, await bundle(ctx.db, [r]));
 }
@@ -1556,6 +1567,8 @@ type Rules = {
   pool: string[];
   cap: number;
   vipApproval: boolean;
+  assignMode?: "manual" | "suggest" | "auto";
+  threshold?: number;
 };
 export async function getAutoAssign(db: Exec, slug: string) {
   const [agents, rec] = await Promise.all([
@@ -1597,24 +1610,21 @@ export async function autoAssign(db: Exec, code: string, system: Session) {
   const r = await loadCase(db, code, true);
   if (r.app.assignedAgentId) return r.app.assignedAgentId;
   const rules = await getAutoAssign(db, r.app.serviceSlug);
-  const agents = (await agentsAll(db)).filter(
-    (a) =>
-      rules.pool.includes(a.id) &&
-      !a.onLeaveUntil &&
-      a.load < Math.min(a.cap, rules.cap),
+  // F-ASN-07: per-service manual | suggest | auto; only "auto" assigns, and only at or above the score threshold.
+  if ((rules.assignMode ?? "auto") !== "auto") return null;
+  // F-ASN-03: an agent whose offer on this case timed out or was declined is not offered it again; the next one is.
+  const passed = new Set(
+    (await recList<OfferData>(db, "offer", { ref: code }))
+      .filter((o) => o.state === "timeout" || o.state === "declined")
+      .map((o) => o.ownerId),
   );
-  const pick =
-    rules.mode === "leastLoaded"
-      ? agents.sort((a, b) => a.load - b.load)[0]
-      : rules.mode === "skill"
-        ? agents.sort(
-            (a, b) =>
-              (b.skills[r.app.serviceSlug] ?? 0) -
-                (a.skills[r.app.serviceSlug] ?? 0) || a.load - b.load,
-          )[0]
-        : agents.sort((a, b) => a.load - b.load || a.id.localeCompare(b.id))[0];
-  if (!pick) return null;
-  await setLead(db, { ...system, id: pick.managerId ?? pick.id }, r, pick.id, `auto-assign:${rules.mode}`);
+  const ranked = (await suggestions(db, code, false)).suggestions.filter(
+    (s) => rules.pool.includes(s.agent.id) && !passed.has(s.agent.id) && s.agent.load < Math.min(s.agent.cap, rules.cap),
+  );
+  const top = ranked[0];
+  if (!top || top.score < (rules.threshold ?? 50)) return null;
+  const pick = (await agentsAll(db, [top.agent.id]))[0];
+  await setLead(db, { ...system, id: pick.managerId ?? pick.id }, r, pick.id, `auto-assign:score ${top.score}`);
   return pick.id;
 }
 

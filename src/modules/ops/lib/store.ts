@@ -76,6 +76,8 @@ export type OpsX = {
   expectedDecision: string | null;
   firstResponseDueAt: string | null;
   helpers: string[];
+  /** F-ASN-11: per-case reviewer (checks deliverables before release); lead = assigned agent, helpers above. */
+  reviewerId?: string | null;
   docs: Record<
     string,
     { state: "accepted" | "rejected" | null; reason?: string }
