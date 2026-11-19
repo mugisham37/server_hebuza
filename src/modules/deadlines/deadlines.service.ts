@@ -262,7 +262,9 @@ export async function generateObligations(db: Tx, now: Date) {
   return created;
 }
 
-export async function markMissed(db: Tx, now: Date) {
+/** F-CAL-08: flips overdue obligations to missed, then tells the client (penalty notice), flags the linked case urgent
+ *  and alerts the service managers. */
+export async function markMissed(db: Tx, now: Date, notify?: Notify) {
   const r = await db
     .update(clientObligations)
     .set({ status: "missed", updatedAt: now.toISOString() })
@@ -272,7 +274,17 @@ export async function markMissed(db: Tx, now: Date) {
         lt(clientObligations.dueDate, kigaliToday(now)),
       ),
     )
-    .returning({ id: clientObligations.id });
+    .returning({ id: clientObligations.id, clientId: clientObligations.clientId, label: clientObligations.label, dueDate: clientObligations.dueDate, applicationId: clientObligations.applicationId });
+  if (!notify || !r.length) return r.length;
+  // shortcut: managers by users.role (+ legacy staff:admin); swap for the shared IAM role resolver when one exists.
+  const managers = await db.select({ id: users.userId }).from(users).where(and(inArray(users.role, ["staff:service_manager", "staff:admin"]), eq(users.isActive, true)));
+  for (const o of r) {
+    const label = (o.label as Record<string, string>).en ?? Object.values(o.label as Record<string, string>)[0] ?? "Obligation";
+    await notify(db, { userId: o.clientId, kind: "deadline.missed", title: `Missed deadline: ${label}`, body: `The due date ${o.dueDate} has passed. Late filing can bring penalties; reply to us and we will help you file now.`, link: "/dashboard/calendar", channels: ["email", "sms"] });
+    if (o.applicationId) await db.update(applications).set({ isUrgent: true }).where(eq(applications.applicationId, o.applicationId));
+    for (const m of managers)
+      await notify(db, { userId: m.id, kind: "deadline.missed_staff", title: `Client missed: ${label}`, body: `Due ${o.dueDate}.`, link: o.applicationId ? `/ops/cases/${o.applicationId}` : "/ops/compliance-rules", channels: ["email"] });
+  }
   return r.length;
 }
 
@@ -442,7 +454,7 @@ export async function runDaily(db: Tx, notify: Notify, now = new Date()) {
   // shortcut: Python also sends the agent daily summary and the admin digest; port with P5 (ops/agent workspace).
   return {
     obligationsCreated: await generateObligations(db, now),
-    obligationsMissed: await markMissed(db, now),
+    obligationsMissed: await markMissed(db, now, notify),
     breachesRecorded: await recordBreaches(db, now),
     remindersSent: await sendReminders(db, notify, now),
   };
