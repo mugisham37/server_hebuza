@@ -15,11 +15,11 @@ function sheet(rows: (string | number | null)[][]) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${body}</sheetData></worksheet>`;
 }
 
-export function zip(files: [string, string][]) {
+export function zip(files: [string, string | Uint8Array][]) {
   const parts: Buffer[] = [], central: Buffer[] = [];
   let off = 0;
   for (const [name, text] of files) {
-    const data = Buffer.from(text, "utf8"), n = Buffer.from(name), crc = crc32(data);
+    const data = typeof text === "string" ? Buffer.from(text, "utf8") : Buffer.from(text), n = Buffer.from(name), crc = crc32(data);
     const h = Buffer.alloc(30);
     h.writeUInt32LE(0x04034b50, 0); h.writeUInt16LE(20, 4); h.writeUInt16LE(0x0800, 6); h.writeUInt16LE(0, 8);
     h.writeUInt32LE(crc, 14); h.writeUInt32LE(data.length, 18); h.writeUInt32LE(data.length, 22); h.writeUInt16LE(n.length, 26);

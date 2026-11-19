@@ -718,8 +718,9 @@ export class AuthService {
         (u) =>
           OPEN_ROLES.includes(u.role) && (!b.audience || u.role === b.audience),
       );
+      // F-CLP-02: asked by phone → the reset goes by SMS even when the account also has an email.
       if (open.length === 1 && open[0].isActive)
-        await this.issueResetToken(tx, open[0]);
+        await this.issueResetToken(tx, type === "phone" && open[0].phoneE164 ? { ...open[0], email: null } : open[0]);
       return { maskedEmail: masked(id) };
     });
   }

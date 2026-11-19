@@ -5,6 +5,7 @@ import { Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { zip } from "@/domain/reports/xlsx";
+import { textImagePdf } from "@/core/pdf/pdf";
 import { clientInvoices } from "../finance/finance.billing";
 import {
   applicationClaimOtps,
@@ -376,7 +377,7 @@ export class AccountService {
       await this.storage.putObject(
         key,
         zip([
-          ["README.txt", `HEBUZA personal data export for ${u?.name ?? me.id}, generated ${requestedAt}.\nFiles: profile, consents, requests, messages, invoices, documents (list; download originals from your vault).`],
+          ["README.txt", `HEBUZA personal data export for ${u?.name ?? me.id}, generated ${requestedAt}.\nFiles: summary.pdf, profile, consents, requests, messages, invoices, documents (list; download originals from your vault).`],
           ["profile.json", j(u ?? null)],
           ["consents.json", j(await this.getDoc(tx, `${me.id}:consents`, NO_CONSENT))],
           ["requests.json", j(apps)],
@@ -384,6 +385,14 @@ export class AccountService {
           ["invoices.json", j(invs)],
           ["documents.json", j(docs)],
           ["notifications.json", j(ntf)],
+          // F-CLP-15: readable PDF summary alongside the JSON.
+          ["summary.pdf", await textImagePdf(`HEBUZA data export - ${u?.name ?? me.id}`, [
+            `Generated ${requestedAt}`, `Email: ${u?.email ?? "-"}  Phone: ${u?.phone ?? "-"}  Language: ${u?.language ?? "-"}`, "",
+            `Requests (${apps.length})`, ...apps.map((a) => `  ${a.code}  ${a.service}  ${a.status}  ${a.submittedAt ?? ""}`), "",
+            `Invoices (${invs.length})`, ...invs.map((i) => `  ${i.no}  ${i.status}  total ${i.total}  due ${i.balanceDue}`), "",
+            `Documents (${docs.length})`, ...docs.map((d) => `  ${d.name}  ${d.at}`), "",
+            `Messages: ${msgs.length}  Notifications: ${ntf.length} (full content in the JSON files)`,
+          ])],
         ]),
         "application/zip",
       );

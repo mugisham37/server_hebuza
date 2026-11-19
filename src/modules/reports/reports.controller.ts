@@ -5,7 +5,7 @@ import { METRICS } from "@/domain/reports/metrics";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { DrillQueryDto, ExecSummaryOut, ExportDto, FINX, RunQueryDto, SubscriptionDto, TargetDto, ViewDto } from "./reports.dto";
+import { BackfillDto, DrillQueryDto, ExecSummaryOut, ExportDto, FINX, RunQueryDto, SubscriptionDto, TargetDto, ViewDto } from "./reports.dto";
 import { ReportsService } from "./reports.service";
 
 @Controller("reports")
@@ -21,6 +21,11 @@ export class ReportsController {
   @Route({ auth: ["staff:executive", "staff:sysadmin"], out: ExecSummaryOut })
   execSummary() {
     return this.svc.execSummary();
+  }
+  @Post("rollups/backfill")
+  @Route({ auth: ["staff:finance", "staff:sysadmin"], limit: "write" })
+  backfill(@Body() b: BackfillDto) {
+    return this.svc.backfill(b);
   }
   @Get("definitions")
   @Route({ auth: FINX })

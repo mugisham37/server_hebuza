@@ -11,6 +11,7 @@ import {
   timestamp,
   index,
   primaryKey,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 
 export const financeRecords = pgTable(
@@ -46,3 +47,16 @@ export const financeSequences = pgTable("finance_sequences", {
   key: varchar({ length: 32 }).primaryKey().notNull(),
   last: integer().notNull().default(0),
 });
+
+/** F-RPT-07: one row per closed day and metric (finance facts in RWF/counts), written by the nightly reports.rollup
+ *  job and the on-demand backfill. The engine reads these for closed days and live records for today. */
+export const rptDailyFacts = pgTable(
+  "rpt_daily_facts",
+  {
+    day: varchar({ length: 10 }).notNull(), // YYYY-MM-DD (Africa/Kigali business day, same as finance `today()`)
+    metric: varchar({ length: 32 }).notNull(),
+    value: doublePrecision().notNull(),
+    computedAt: timestamp("computed_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (t) => [primaryKey({ name: "pk_rpt_daily_facts", columns: [t.day, t.metric] })],
+);

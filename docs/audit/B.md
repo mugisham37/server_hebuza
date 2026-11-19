@@ -123,7 +123,7 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-CMS-12 | Team & credentials | P1 | DONE | SM credential verify (`POST admin/cms/entries/:id/credential`), Verified badge on `/about/team` (CMS-fed). |
 | F-CMS-13 | Service page content | P1 | DONE | Service page: CAT facts + CMS FAQs. |
 | F-CMS-14 | Legal documents | P1 | DONE | Legal docs are CMS `legal_doc`; `GET/POST /api/me/terms[/accept]` compares acceptance with the published terms+privacy version; `TermsGate` re-accept dialog for signed-in users. |
-| F-CMS-15 | Cookie consent | P1 | PARTIAL | `organisms/site/cookie-consent.tsx` stores the choice in a first-party cookie only. Nothing is written to the NTF consent ledger; Consent Mode wiring is in `tracking.tsx`. |
+| F-CMS-15 | Cookie consent | P1 | DONE | `organisms/site/cookie-consent.tsx` banner + preferences (necessary/analytics/marketing), re-prompt on VERSION bump, localised; each choice POSTs `/api/consent` (notifications.controller, NTF consent ledger purposes cookies_analytics/cookies_marketing); Consent Mode v2 in `tracking.tsx` |
 | F-CMS-16 | Redirects & slugs | P1 | DONE | `cms_redirects`, `cms_not_found`, `content/not-found` logging, UI. |
 | F-CMS-17 | Preview & caching | P1 | DONE | Draft-mode preview routes (`/preview`), revalidate tags end to end (catalogue writes too), sitemap per-locale. |
 | F-CMS-18 | Status page | P2 | DONE | `/status` reads live `GET /api/status` (already). |

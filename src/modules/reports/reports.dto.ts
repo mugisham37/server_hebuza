@@ -43,3 +43,5 @@ export const ExecSummaryOut = z.object({
   ai: z.object({ usd: z.number(), calls: z.number() }),
 }).meta({ id: "ExecSummaryResponse" });
 export type ExecSummary = z.infer<typeof ExecSummaryOut>;
+const day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+export class BackfillDto extends dto(z.object({ from: day, to: day })) {}

@@ -121,9 +121,9 @@ Procurement is a full module (5.1k lines, JSON world over `procurement_records`,
 | F-RPT-04 | Exports               | P2    | DONE | Closed 2026-11-19: real XLSX + PDF exports. (was PARTIAL) |
 | F-RPT-05 | Scheduled reports     | P2    | DONE | Closed 2026-11-19: per-user report subscriptions, emailed. (was PARTIAL) |
 | F-RPT-06 | Saved views           | P3    | DONE | Closed 2026-11-19: saved views per user. (was MISSING) |
-| F-RPT-07 | Pre-aggregation       | P2    | MISSING | no `fact_*` tables; engine reads `finance_records` live                                                                                                                                                                        |
+| F-RPT-07 | Pre-aggregation       | P2    | DONE | `rpt_daily_facts` (migration 0018) daily finance facts; cron `reports.rollup.nightly` 01:15 recomputes last 7 closed days; POST `/api/reports/rollups/backfill` queues job `reports.rollup`; exec-summary reads rollups for closed days + live today (`reports.rollup.ts` factsBetween) |
 | F-RPT-08 | Executive dashboard   | P2    | DONE | Closed 2026-11-19: targets with traffic lights on report frames. (was PARTIAL) |
-| F-RPT-09 | Role dashboards       | P1–P3 | PARTIAL | finance overview `finance/x/overview`, procurement summary, exec overview, client dashboard exist; not audited per §9 for every role                                                                                           |
+| F-RPT-09 | Role dashboards       | P1–P3 | DONE | audited per §9: client /dashboard, agent /agent (queue, due, on-time, rating, + earnings this month), SM /ops (intake, unassigned, overdue/risk, review, workload heat), finance /finance overview, marketing /marketing, procurement /procurement (+ requests awaiting approval tile), partners list KPIs (health, overdue, meetings this week), exec /exec KPI grid, sysadmin /system (health incl. queue backlog detail, backups). Uptime/error-rate tiles wait on the monitoring feed (system.ops monitoring shortcut) |
 | F-RPT-10 | Targets               | P3    | DONE | Closed 2026-11-19: exec targets screen /exec/targets. (was MISSING) |
 | F-RPT-11 | Data definitions page | P2    | DONE | Closed 2026-11-19: /finance/reports/definitions. (was MISSING) |
 ## Gaps (by phase)

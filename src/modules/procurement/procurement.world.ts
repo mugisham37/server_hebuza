@@ -792,6 +792,7 @@ export function summary(w: World, a: Actor = w.actor): ProcSummary {
         )
         .reduce((s, x) => s + x.remaining, 0),
       budgetUsedPct: budgetTotal ? Math.round((used * 100) / budgetTotal) : 0,
+      awaitingApproval: w.prs.filter((p) => p.status === "submitted").length, // F-RPT-09
     },
     banner: {
       leaseDays:

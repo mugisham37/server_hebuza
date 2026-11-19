@@ -49,6 +49,7 @@ import {
   type RCtx,
   type RunQ,
 } from "./reports.engine";
+import { factsBetween, writeRollup } from "./reports.rollup";
 import {
   addDays,
   all,
@@ -114,14 +115,15 @@ export class ReportsService {
         rows<{ usd: number; calls: number }>(sql`select coalesce(sum(usd_micros), 0)::bigint::float8 / 1e6 usd, count(*)::int calls
           from ai_usage where at >= now() - interval '30 days'`),
       ]);
+      const f = await factsBetween(db, c, from, date); // F-RPT-07: rollups for closed days, live today
       const leadN = sum(leads, (l) => l.n);
       const won = leads.find((l) => l.stage === "won")?.n ?? 0;
       return {
         date,
         period: { from, to: date },
-        revenue: sum(inv.filter((i) => d10(i.issuedAt!) >= from), (i) => i.totals.total),
+        revenue: f.invoiced,
         revenueAll: sum(inv, (i) => i.totals.total),
-        collections: sum(c.data.pays.filter((p) => CONFIRMED.has(p.state) && d10(p.at) >= from), (p) => p.amountReceived ?? p.amountExpected),
+        collections: f.collected,
         receivables: sum(open, (i) => i.balanceDue),
         ageing: ageingSummary(open, date),
         cases: { total: sum(cases, (r) => r.n), byStatus: cases },
@@ -133,6 +135,21 @@ export class ReportsService {
     });
     await this.redis.set(KEY, JSON.stringify(v), "EX", 60).catch(() => null);
     return v;
+  }
+
+  /** F-RPT-07: (re)build daily facts for closed days in [from, to]; nightly cron does yesterday + a 7-day catch-up. */
+  rollup(from: string, to: string) {
+    // shortcut: loads the full finance ctx per run (fine at current volume); restrict reportCtx to the range past ~100k records.
+    return this.tx.runAsSystem(async (db) => writeRollup(db, await this.ctx(db), from, to));
+  }
+  /** On-demand backfill: queued on `bulk` so a long range never blocks the request. */
+  backfill(b: { from: string; to: string }) {
+    if (b.from > b.to) throw invalid();
+    return this.tx.run(async (db) => {
+      await this.outbox.add(db, { type: "reports.rollup", payload: b, queue: "bulk" });
+      await this.audit.record(db, { action: "report.rollup_backfilled", entity: "report", entityId: "rpt_daily_facts", after: b });
+      return { queued: true, ...b };
+    });
   }
 
   private async ctx(db: Tx): Promise<RCtx> {

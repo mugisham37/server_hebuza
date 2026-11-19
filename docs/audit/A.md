@@ -8,7 +8,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 |---|---|---|---|---|
 | F-IAM-01 | Multi-role users | P1 | DONE | user_roles table (+ legacy grants), session active_role carried as JWT active_role, POST auth/active-role, user-menu role switcher; backfill SQL in migration-notes.md. staff:admin legacy alias still maps to SM+sysadmin. Roles come from `users.role` plus `system_records userMeta.extraRoles` (S modules/auth/auth.service.ts:195-211). There is no `user_roles` table, no `active_role` and no web role switcher. Legacy `staff:admin` maps to 3 roles (S domain/auth/roles.ts:65, marked shortcut) |
 | F-IAM-02 | Permission registry | P1 | DONE | `can()` registry; system roles/matrix pages (W app/[locale]/(system)/system/roles/matrix/page.tsx; S system.governance.controller.ts:39) |
-| F-IAM-03 | Ownership checks (404) | P1 | PARTIAL | core `authorize()` (404 on refusal) added and used by the applications read gate; remaining modules still call can() directly. `can()`/`assertCanRead` is used in documents, applications, agent and booking (12 call sites). There is no single `authorize()` gate. Some paths return 403 `forbidden()` instead of 404 (S modules/documents/documents.service.ts:464,489) |
+| F-IAM-03 | Ownership checks (404) | P1 | DONE | verified: `core/auth/authorize.ts` `authorize()`/`ownOr404()` (404 on refusal) gate resource reads across modules; remaining `forbidden()` calls are role/action refusals after the record is already readable (e.g. documents.service sign/requireSignature), so no existence leak |
 | F-IAM-04 | Client signup/login + OTP gate | P1 | DONE | Signup, login and verify-otp (S auth.controller.ts:37-73). Submit is blocked when unverified (S applications.service.ts:614-617), and so is deliverable download (documents.service.ts:465-468). W (auth)/signup, verify |
 | F-IAM-05 | SMS OTP | P1 | DONE | OTP SMS-first when a phone exists, then WhatsApp OTP template, then email (auth.jobs sendSms). SmsService exists (S core/notify/sms.service.ts:53), but OTP goes by SMS only when the user has no email (auth.service.ts:283-301). No WhatsApp fallback and no separate phone verification |
 | F-IAM-06 | TOTP MFA | P1 | DONE | S auth.mfa.ts (enrol/verify/step-up), pre-2FA cookie (auth.service.ts:533-548). W (auth)/login/2fa, team/mfa/setup. Note: the pre-2FA TTL is 5 min, not the spec's 10 min |
@@ -35,7 +35,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
 | F-CLP-01 | Registration & login | P1 | DONE | as IAM-04 |
-| F-CLP-02 | Password recovery | P1 | PARTIAL | Email link, plus SMS only when the user has no email (IAM-05). W (auth)/forgot, reset |
+| F-CLP-02 | Password recovery | P1 | DONE | POST auth/forgot: email link; asked by phone → reset link by SMS (even if the account has an email), OTP SMS→WhatsApp→email chain (IAM-05). W (auth)/forgot, reset. Note: SMS carries a one-time link, not a numeric OTP |
 | F-CLP-03 | Profile | P1 | DONE | Closed 2026-11-19: PATCH me/profile accepts language; me/address (province…street) feeds prefill; avatar already. (was PARTIAL) |
 | F-CLP-04 | Customer ID | P1 | DONE | Closed 2026-11-19: HBC-YYYY-NNNNNN-C customer number (Luhn) assigned at signup/claim, users.customer_no, shown in profile, admin, emails, invoices/PDFs; backfill script. (was MISSING) |
 | F-CLP-05 | Dashboard | P1 | DONE | Closed 2026-11-19: dashboard adds open quotes, new results, upcoming deadlines cards + link to reminders hub. (was PARTIAL) |
@@ -48,7 +48,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-CLP-12 | Reminders hub | P2 | DONE | Closed 2026-11-19: GET/PUT me/reminders hub (documents, payments, quotes, expiring docs) with snooze/done; /dashboard/reminders. (was MISSING) |
 | F-CLP-13 | History & request again | P2 | DONE | Closed 2026-11-19: POST applications/:code/clone prefills a new draft (answers, personal details, library docs map); history "Request again" uses it. (was PARTIAL) |
 | F-CLP-14 | Consent centre | P1 | DONE | Per-channel marketing (email/SMS/WhatsApp), profile reuse, AI history (opt-out purges assistant sessions after 1 day), each change in `consent_ledger`; `GET me/consents/history` + history view in privacy settings. |
-| F-CLP-15 | Data export & deletion | P1 | PARTIAL | see IAM-19/20 (JSON only, no PDF, immediate deletion) |
+| F-CLP-15 | Data export & deletion | P1 | DONE | IAM-19 ZIP export now JSON + summary.pdf (account.service requestExport, emailed 24 h link, audited); IAM-20 `DELETE /api/auth/account` 14-day cooling-off, blocked with open cases, finance PII pseudonymised |
 | F-CLP-16 | Company switcher | P2 | DONE | Closed 2026-11-19: active company files requests (wizard), company cases listed for reps; company page scoped to the org. (was PARTIAL) |
 | F-CLP-17 | Notification preferences | P1 | DONE | W client/settings-channels.tsx, `notification_preferences` table |
 | F-CLP-18 | Security page | P2 | DONE | W (client)/settings/security, settings-security.tsx (sessions + sign out others) |
