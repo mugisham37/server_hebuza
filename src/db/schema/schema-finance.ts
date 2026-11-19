@@ -2,6 +2,7 @@
 // shortcut: finance aggregates (quotes, invoices, payments, refunds, allocations, batches, settings…) are typed JSONB
 // documents keyed by (kind, id) with a status/ref index, ported 1:1 from the mock worlds so the contract holds; split the
 // hot kinds (invoice, payment, statement_line) into column tables when any kind passes ~100k rows or needs SQL reporting.
+import { payments } from "./schema";
 import {
   pgTable,
   varchar,
@@ -23,6 +24,8 @@ export const financeRecords = pgTable(
     ref: varchar({ length: 96 }),
     data: jsonb().notNull(),
     rev: integer().notNull().default(1),
+    /** Finance payment ↔ gateway transaction (payments.payment_id); null for other kinds and manual entries. */
+    gatewayPaymentId: varchar("gateway_payment_id", { length: 64 }).references(() => payments.paymentId, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
       .notNull()
       .defaultNow(),
@@ -34,6 +37,7 @@ export const financeRecords = pgTable(
     primaryKey({ name: "pk_finance_records", columns: [t.kind, t.id] }),
     index("ix_finance_records_kind_status").on(t.kind, t.status),
     index("ix_finance_records_kind_ref").on(t.kind, t.ref),
+    index("ix_finance_records_gateway_payment").on(t.gatewayPaymentId),
   ],
 );
 

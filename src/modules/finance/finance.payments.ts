@@ -746,15 +746,23 @@ export async function rejectPayment(
 }
 
 /**
- * Verify-now on a pending/expired provider payment.
- * shortcut: finance payments are not yet linked to the P4 gateway transaction, so "verify" accepts the provider's
- * success only when a statement line carries the payment's reference; otherwise it is unchanged. Upgrade: call
- * payments.service reconcile(transactionId) once finance payments carry the P4 transaction id.
+ * Verify-now on a pending/expired provider payment: a linked gateway transaction (finance_records.gateway_payment_id
+ * → payments) that succeeded settles it at the gateway amount; otherwise a statement line carrying the payment's
+ * reference does; otherwise it is unchanged.
  */
 export async function verifyPayment(f: Fin, id: string) {
   const p = await payOr404(f.db, id);
   if (p.state !== "pending_provider" && p.state !== "expired")
     return { result: "unchanged" as const, payment: await detailOf(f, p) };
+  if (p.gatewayPaymentId) {
+    const [g] = await f.db.select({ status: payments.status, amount: payments.amountRwf }).from(payments).where(eq(payments.paymentId, p.gatewayPaymentId));
+    if (g?.status === "succeeded") {
+      const late = p.state === "expired";
+      const before = await settle(f, p, g.amount, "poll", late);
+      f.rec(late ? "payment.status.overridden" : "payment.confirmed", "payment", p.id, before, { state: p.state }, late ? "late_success" : "verify_now");
+      return { result: p.state, payment: await detailOf(f, p) };
+    }
+  }
   const lines = await all<Line>(f.db, "line");
   const ref = refOfP(p);
   const proof = lines.find(

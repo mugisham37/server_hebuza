@@ -158,12 +158,13 @@ export async function put(
 ) {
   const status = statusOf(data as Doc);
   const rev = (data as Doc).rev ?? 1;
+  const gatewayPaymentId = kind === "payment" ? ((data as { gatewayPaymentId?: string }).gatewayPaymentId ?? null) : null;
   await db
     .insert(financeRecords)
-    .values({ kind, id, status, ref: ref ?? null, data, rev })
+    .values({ kind, id, status, ref: ref ?? null, data, rev, gatewayPaymentId })
     .onConflictDoUpdate({
       target: [financeRecords.kind, financeRecords.id],
-      set: { status, ref: ref ?? null, data, rev, updatedAt: nowIso() },
+      set: { status, ref: ref ?? null, data, rev, gatewayPaymentId, updatedAt: nowIso() },
     });
 }
 export const remove = (db: Exec, kind: Kind, id: string) =>
