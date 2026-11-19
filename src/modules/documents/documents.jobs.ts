@@ -42,6 +42,7 @@ export class DocumentsJobs {
     private readonly storage: StorageService,
     private readonly queue: QueueService,
     private readonly notifications: NotificationsService,
+    private readonly cfg: ConfigService<Env, true>,
   ) {}
 
   @Job("documents.finalize")
