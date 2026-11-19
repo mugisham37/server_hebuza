@@ -1102,7 +1102,7 @@ export function openIncident(
   c: Caller,
   b: Partial<
     Pick<IncidentVM, "title" | "sev" | "components" | "startedAt" | "impact">
-  >,
+  > & { personalData?: boolean },
 ) {
   guard(c.session);
   if (
