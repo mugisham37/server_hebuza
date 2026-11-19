@@ -154,7 +154,8 @@ export class WeekQueryDto extends dto(
 ) {}
 export class CapDto extends dto(
   z.object({
-    daily_case_cap: z.number().int().optional(),
+    daily_case_cap: z.number().int().optional(), // max concurrent open cases (historic name)
+    new_per_day: z.number().int().min(1).max(100).nullable().optional(), // F-WRK-09 daily intake limit; null clears it
     reason: z.string().max(500).optional(),
   }),
 ) {}

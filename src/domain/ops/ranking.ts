@@ -16,6 +16,9 @@ export type Agent = {
   languages: string[];
   conflictWith?: string[]; // client ids
   cost?: number; // agreed price for externals
+  duty?: string; // "away" blocks new work (F-WRK-09)
+  dailyCap?: number | null;
+  assignedToday?: number;
 };
 export type CaseForRanking = {
   service: string;
@@ -27,7 +30,7 @@ export type CaseForRanking = {
 
 export type Ineligible = {
   agent: Agent;
-  reason: "notAuthorised" | "onLeave" | "atCap" | "conflict" | "notCleared" | "contractExpired";
+  reason: "notAuthorised" | "onLeave" | "atCap" | "dailyCap" | "offDuty" | "conflict" | "notCleared" | "contractExpired";
 };
 
 /** ASN-05/09, WRK-06/12: the same eligibility for ranked suggestions and manual assignment. */
@@ -44,8 +47,12 @@ export function ineligibleReason(
         ? "onLeave"
         : a.contractUntil && a.contractUntil.slice(0, 10) < today
           ? "contractExpired"
+          : a.duty === "away"
+            ? "offDuty"
           : a.load >= a.cap
             ? "atCap"
+          : a.dailyCap != null && (a.assignedToday ?? 0) >= a.dailyCap
+            ? "dailyCap"
             : a.conflictWith?.includes(c.clientId)
               ? "conflict"
               : null;

@@ -125,6 +125,8 @@ export async function workloadOf(db: Exec, id: string) {
   ]);
   return {
     ...row(a, rows),
+    dailyCap: a.dailyCap ?? null,
+    assignedToday: a.assignedToday ?? 0,
     skills: Object.entries(a.skills).map(([slug, level]) => ({
       name: svcs.get(slug)?.name ?? slug,
       level,
@@ -157,19 +159,22 @@ export const CAP_MAX = 20;
 export async function setCap(
   ctx: Ctx,
   id: string,
-  b: { daily_case_cap?: number; reason?: string },
+  b: { daily_case_cap?: number; new_per_day?: number | null; reason?: string },
 ) {
   const reason =
     b.reason ?? decodeURIComponent(ctx.req.headers.get("x-audit-reason") ?? "");
   const a = await agentOr404(ctx.db, id);
-  if (!b.daily_case_cap || b.daily_case_cap < 1 || b.daily_case_cap > CAP_MAX)
+  if (b.daily_case_cap === undefined && b.new_per_day === undefined)
+    throw new AppError(422, "validation", `Cap must be 1–${CAP_MAX}.`);
+  if (b.daily_case_cap !== undefined && (b.daily_case_cap < 1 || b.daily_case_cap > CAP_MAX))
     throw new AppError(422, "validation", `Cap must be 1–${CAP_MAX}.`);
   if (!reason.trim())
     throw new AppError(422, "reason_required", "Give a reason.");
   await ctx.db
     .update(agentProfiles)
     .set({
-      cap: b.daily_case_cap,
+      ...(b.daily_case_cap !== undefined ? { cap: b.daily_case_cap } : {}),
+      ...(b.new_per_day !== undefined ? { dailyCap: b.new_per_day } : {}),
       version: sql`${agentProfiles.version} + 1`,
       updatedAt: iso(),
     })
@@ -178,7 +183,7 @@ export async function setCap(
     resourceId: id,
     details: {
       before: { cap: a.cap },
-      after: { cap: b.daily_case_cap },
+      after: { cap: b.daily_case_cap ?? a.cap, newPerDay: b.new_per_day },
       reason,
     },
   };

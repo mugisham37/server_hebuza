@@ -108,6 +108,8 @@ export const agentProfiles = pgTable("agent_profiles", {
   onTimeBps: integer("on_time_bps").notNull().default(9000),
   ratingX10: integer("rating_x10").notNull().default(45),
   duty: varchar({ length: 8 }).notNull().default("on"),
+  /** F-WRK-09: new assignments per day (null = no daily limit); `cap` is the max concurrent open cases. */
+  dailyCap: integer("daily_cap"),
   awayUntil: ts("away_until"),
   /** new | in_progress | submitted | changes_requested | cleared */
   clearance: varchar({ length: 24 }).notNull().default("new"),

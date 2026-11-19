@@ -497,6 +497,12 @@ export async function agentsAll(db: Exec, ids?: string[]): Promise<AgentRow[]> {
     where a.status not in ('completed_delivered','rejected','cancelled','refunded') group by 1`);
   const load = new Map<string, number>();
   for (const r of loads) load.set(r.id, (load.get(r.id) ?? 0) + Number(r.n));
+  // F-WRK-09: assignments taken today (Kigali day) for the daily cap.
+  const todays = await db.execute<{ id: string; n: number }>(sql`
+    select assigned_agent_id id, count(*)::int n from applications
+    where assigned_agent_id is not null and (assigned_at at time zone 'Africa/Kigali')::date = (now() at time zone 'Africa/Kigali')::date
+    group by 1`);
+  const today_n = new Map(todays.map((r) => [r.id, Number(r.n)]));
   // ASN-09: restrictions feed ranking/assign eligibility as `conflictWith`.
   const blocks = new Map<string, string[]>();
   for (const b of await db.select({ a: assignmentBlocks.agentId, c: assignmentBlocks.clientId }).from(assignmentBlocks).where(inArray(assignmentBlocks.agentId, rows.map((r) => r.u.userId))))
@@ -527,6 +533,8 @@ export async function agentsAll(db: Exec, ids?: string[]): Promise<AgentRow[]> {
     shareBps: p.shareBps,
     managerId: p.managerId,
     duty: p.duty,
+    dailyCap: p.dailyCap,
+    assignedToday: today_n.get(u.userId) ?? 0,
     awayUntil: p.awayUntil,
     clearance: p.clearance,
     ws: p.ws as Record<string, unknown>,
