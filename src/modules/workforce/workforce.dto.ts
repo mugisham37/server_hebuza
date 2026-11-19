@@ -34,3 +34,8 @@ export class StatusDto extends dto(
 export class ReviewDto extends dto(
   z.object({ period: z.string().max(20), rating: z.number(), goals: z.string().max(4000).optional(), comments: z.string().max(8000), ackRequired: z.boolean().optional() }),
 ) {}
+export class ContractDto extends dto(z.object({
+  kind: z.enum(["service_agreement", "sla", "nda", "licence"]),
+  start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  noticeDays: z.number().int().min(0).max(365), terms: z.array(z.string().trim().min(1).max(500)).max(30).optional(),
+})) {}

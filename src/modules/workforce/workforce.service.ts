@@ -1,4 +1,5 @@
 import { onExternalCreated, onExternalStatus } from "../work/work.service";
+import { contractTemplate, loadExt, saveExt, type ContractDoc } from "../work/work.store";
 // Port of .ref workforce.service: /ops/workforce directory of every worker (internal, external, field) with status
 // lifecycle, audited private-field reveal, reviews, history, offboarding with case reassignment. Per-worker admin facts
 // live in an ops_records "wf_worker" row (private fields encrypted with CryptoService); external-worker state is read from
@@ -334,6 +335,32 @@ export class WorkforceService {
       .map((o) => ({ ref: o.id, title: `${o.ref} — offer` }));
   }
 
+  /** F-WRK-04: issue a new engagement contract version to an external worker; they sign it in /work/contract. */
+  issueContract(me: SessionUser, id: string, b: { kind: ContractDoc["kind"]; start: string; end: string | null; noticeDays: number; terms?: string[] }) {
+    return this.tx.run(async (tx) => {
+      const r = await this.one(tx, id);
+      if (r.row.type !== "external") throw fail(422, "validation", "Contracts here are for external agents; staff contracts are HR's.");
+      const e = await loadExt(tx, id, true);
+      const same = (e.contract ?? []).filter((d) => d.kind === b.kind);
+      const base = contractTemplate(b.kind, b.start);
+      const doc: ContractDoc = {
+        ...base,
+        id: `${base.id}-v${same.length + 1}`,
+        version: Math.max(0, ...same.map((d) => d.version)) + 1,
+        status: "pending_signature",
+        start: b.start,
+        end: b.end,
+        noticeDays: b.noticeDays,
+        terms: b.terms?.length ? b.terms : base.terms,
+      };
+      e.contract = [...(e.contract ?? []), doc];
+      await saveExt(tx, id, e);
+      await this.notifications.notify(tx, { userId: id, kind: "contract", title: `New ${doc.title} v${doc.version} to sign`, link: "/work/contract" });
+      await this.audit.record(tx, { action: "workforce.contract_issued", entity: "worker", entityId: id, after: { kind: doc.kind, version: doc.version, by: me.id } });
+      return doc;
+    });
+  }
+
   /** F-WRK-11: 90-day first-pass approval, reassignment rate and allocated revenue share. */
   private async outcomes(tx: Tx, id: string) {
     const [r] = await tx.execute<{ done: number; first_pass: number; reassigned: number; total: number }>(sql`
@@ -407,6 +434,7 @@ export class WorkforceService {
       ],
       // F-WRK-02 structured CV (from onboarding), F-WRK-11 outcome KPIs.
       cv: r.cv,
+      contracts: (r.x?.contract ?? []).map((d) => ({ id: d.id, kind: d.kind, title: d.title, version: d.version, status: d.status, start: d.start, end: d.end, signedAt: d.signedAt ?? null })),
       outcomes: await this.outcomes(tx, id),
       openCases: await this.openCases(tx, id),
       pendingOffers: await this.pendingOffers(tx, id),
