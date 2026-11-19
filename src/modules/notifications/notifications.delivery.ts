@@ -10,6 +10,7 @@ import {
   eq,
   gte,
   inArray,
+  ne,
   notInArray,
   sql,
 } from "drizzle-orm";
@@ -18,6 +19,7 @@ import {
   consentLedger,
   notificationDeliveries,
   notificationSuppressions,
+  supportTickets,
   users,
 } from "@/db/schema";
 import {
@@ -32,12 +34,16 @@ import {
   type ExtChannel,
   type Prefs,
 } from "@/domain/notify/delivery";
-import { activeVersion, capDecision, extractVars } from "@/domain/system/templates";
+import { activeVersion, capDecision, extractVars, smsSegments } from "@/domain/system/templates";
 import type { BudgetVM, EventRuleVM, TemplateVM } from "@/domain/system/types";
 import type { Env } from "../../core/config/env";
 import { DB, type Db } from "../../core/db/db";
 import { MailService } from "../../core/notify/mail.service";
 import { SmsService, maskTo } from "../../core/notify/sms.service";
+import { TxService } from "../../core/db/tx";
+import { normalizeRoles } from "@/domain/auth/roles";
+import type { SessionUser } from "../../core/http/context";
+import { addMessage as addTicketMessage, createTicket } from "../applications/support.service";
 import { QueueService } from "../../core/queue/queues";
 import { settingOf, systemDocs } from "../../core/db/system-records";
 import { WhatsappService } from "../../core/notify/whatsapp.service";
@@ -67,6 +73,7 @@ export class DeliveryService {
     private readonly mail: MailService,
     private readonly sms: SmsService,
     private readonly wa: WhatsappService,
+    private readonly tx: TxService,
     private readonly queues: QueueService,
     private readonly cfg: ConfigService<Env, true>,
   ) {}
@@ -426,8 +433,8 @@ export class DeliveryService {
           : d.channel === "whatsapp" && this.wa.configured
             ? await this.wa.send({ to: address, text: p.text, template: p.wa })
             : await this.sms.send({ to: address, text: p.text }); // WhatsApp without Cloud API keys relays through SMS
-      const segments =
-        d.channel === "email" ? 1 : Math.max(1, Math.ceil(p.text.length / 153));
+      // F-NTF-05: GSM-7 vs UCS-2 segmenting (Kinyarwanda/French accents switch encoding) drives SMS cost.
+      const segments = d.channel === "sms" || (d.channel === "whatsapp" && !this.wa.configured) ? Math.max(1, smsSegments(p.text).segments) : 1;
       await this.db
         .update(notificationDeliveries)
         .set({
@@ -563,12 +570,12 @@ export class DeliveryService {
     const phone = from.trim();
     const stop = isStopKeyword(text),
       start = !stop && isStartKeyword(text);
-    if (!stop && !start) return { action: "none" as const };
     const [u] = await this.db
-      .select({ id: users.userId })
+      .select({ id: users.userId, role: users.role })
       .from(users)
       .where(eq(users.phoneE164, phone))
       .limit(1);
+    if (!stop && !start) return this.thread(u, phone, text);
     if (stop)
       for (const ch of ["sms", "whatsapp"])
         await this.suppress(ch, phone, "stop", "inbound");
@@ -591,6 +598,24 @@ export class DeliveryService {
         ip,
       });
     return { action: stop ? ("stopped" as const) : ("started" as const) };
+  }
+
+  /** F-NTF-13 / F-MSG-12: any other inbound SMS/WhatsApp from a known client threads into their open support ticket
+   *  (or opens one), so the support queue answers it like a web enquiry. Unknown numbers are only logged. */
+  private async thread(u: { id: string; role: string } | undefined, phone: string, text: string) {
+    if (!u) {
+      this.log.log({ event: "notify.inbound_unknown", from: maskTo(phone) });
+      return { action: "none" as const };
+    }
+    const s: SessionUser = { id: u.id, roles: normalizeRoles({ role: u.role }), scopes: {}, sid: "" };
+    const body = text.trim().slice(0, 4000);
+    return this.tx.runAsSystem(async (db) => {
+      const [open] = await db.select({ ref: supportTickets.ref }).from(supportTickets)
+        .where(and(eq(supportTickets.userId, u.id), ne(supportTickets.status, "resolved"))).orderBy(desc(supportTickets.updatedAt)).limit(1);
+      if (open) await addTicketMessage(db, s, open.ref, body);
+      else await createTicket(db, s, `Message from ${maskTo(phone)}`, body, { type: "inbound_sms", contact: phone });
+      return { action: "threaded" as const };
+    });
   }
 
   recordConsent(c: {

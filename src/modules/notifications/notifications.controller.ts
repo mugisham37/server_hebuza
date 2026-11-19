@@ -11,9 +11,12 @@ import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
 import {
-  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WaEventDto, WebhookOut,
+  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WaEventDto, WebhookOut, ManualDto, ManualOut,
 } from "./notifications.dto";
 import { DeliveryService } from "./notifications.delivery";
+import { TxService } from "../../core/db/tx";
+import { eq } from "drizzle-orm";
+import { users } from "@/db/schema";
 import { NotificationsService } from "./notifications.service";
 
 @Controller()
@@ -22,6 +25,7 @@ export class NotificationsController {
     private readonly svc: NotificationsService,
     private readonly delivery: DeliveryService,
     private readonly cfg: ConfigService<Env, true>,
+    private readonly tx: TxService,
   ) {}
 
   /** Webhook URLs carry NOTIFY_WEBHOOK_TOKEN; unset or wrong → 404 so the endpoints are invisible. */
@@ -96,6 +100,18 @@ export class NotificationsController {
     this.gate(token);
     await this.delivery.inbound(b.from, b.text, ip);
     return { ok: true };
+  }
+
+  /** F-NTF-17: manual message to one client from the client profile (service managers). */
+  @Post("staff/clients/:id/notify")
+  @Route({ auth: ["staff:service_manager", "staff:executive"], limit: "write", audit: "notifications.manual_sent", out: ManualOut })
+  async manual(@Param("id") id: string, @Body() b: ManualDto, @CurrentUser() me: SessionUser) {
+    await this.tx.run(async (tx) => {
+      const [u] = await tx.select({ role: users.role }).from(users).where(eq(users.userId, id));
+      if (!u || u.role !== "client") throw new AppError(404, "not_found", "Client not found.");
+      await this.svc.notify(tx, { userId: id, kind: "manual.message", title: b.title, body: b.body, link: b.link ?? "/notifications", channels: b.channels, data: { type: "manual.message", vars: { ref: `${me.id}:${Date.now()}` } } });
+    });
+    return { queued: true };
   }
 
   /** Cookie banner + marketing toggles: one ledger row per purpose (F-CMS-15, F-NTF-09). */

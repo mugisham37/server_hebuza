@@ -46,3 +46,11 @@ const ConsentIn = z.object({
 });
 export const ConsentOut = z.object({ recorded: z.number().int() });
 export class ConsentDto extends dto(ConsentIn) {}
+
+// F-NTF-17: staff send a one-off message to a client (goes through the normal delivery rules/preferences/consent).
+const ManualIn = z.object({
+  title: z.string().trim().min(3).max(120), body: z.string().trim().min(1).max(1000),
+  channels: z.array(z.enum(["email", "sms", "whatsapp"])).max(3).default([]), link: z.string().max(300).regex(/^\/[\w/?=&.-]*$/).optional(),
+});
+export class ManualDto extends dto(ManualIn) {}
+export const ManualOut = z.object({ queued: z.boolean() });
