@@ -30,6 +30,7 @@ import { AuditService } from "../db/audit";
 import { OutboxService } from "../db/outbox";
 import { TxService } from "../db/tx";
 import { AppError } from "./errors";
+import { AUDIT_BEFORE } from "./audit-before";
 import { toOpenApi } from "./dto";
 import type { RequestStore, SessionUser } from "./context";
 import { ClsService, ClsServiceManager } from "nestjs-cls";
@@ -117,12 +118,17 @@ export class RouteInterceptor implements NestInterceptor {
       throw new AppError(403, "forbidden", "Forbidden");
     if (o.ifMatch && !req.headers["if-match"])
       throw new AppError(428, "precondition_required", "Reload and try again.");
-    return next
-      .handle()
-      .pipe(concatMap((res) => from(this.after(o, req, res))));
+    // F-AUD-03: snapshot the record before the handler changes it (see audit-before.ts).
+    const load = o.audit && req.method !== "GET" ? AUDIT_BEFORE[o.audit.split(".")[0]] : undefined;
+    const before = load && (req.params?.code || req.params?.id)
+      ? from(this.tx.run((t) => load(t, req.params)).catch(() => undefined))
+      : from(Promise.resolve(undefined));
+    return before.pipe(
+      concatMap((b) => next.handle().pipe(concatMap((res) => from(this.after(o, req, res, b))))),
+    );
   }
 
-  private async after(o: RouteOpts, req: Req, res: unknown) {
+  private async after(o: RouteOpts, req: Req, res: unknown, loaded?: unknown) {
     const out = o.out ? o.out.parse(res) : res;
     if (o.audit || o.emit) {
       const id =
@@ -138,7 +144,7 @@ export class RouteInterceptor implements NestInterceptor {
             action: o.audit,
             entity: o.audit.split(".")[0],
             entityId: String(id),
-            before: this.cls.isActive() ? this.cls.get("auditBefore") : undefined,
+            before: (this.cls.isActive() ? this.cls.get("auditBefore") : undefined) ?? loaded,
             after: out,
           });
       });
