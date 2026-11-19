@@ -107,7 +107,7 @@ export const authErr = {
   unauth: (m = "Not signed in.") => new AppError(401, "unauthenticated", m),
 };
 
-export function sessionModel(u: User, expiresAt: Date | null, p?: Pick<SessionUser, "roles" | "activeRole">) {
+export function sessionModel(u: User, expiresAt: Date | null, p?: Pick<SessionUser, "roles" | "activeRole"> & { orgIds?: string[] }) {
   return {
     userId: u.userId,
     name: u.name,
@@ -116,6 +116,7 @@ export function sessionModel(u: User, expiresAt: Date | null, p?: Pick<SessionUs
     role: u.role,
     roles: p?.roles ?? normalizeRoles({ role: u.role }),
     ...(p?.activeRole ? { activeRole: p.activeRole } : {}),
+    orgIds: p?.orgIds ?? [],
     isEmailVerified: u.isEmailVerified,
     language: u.language,
     customerNo: u.customerNo ?? null,
@@ -885,12 +886,20 @@ export class AuthService {
     throw new AppError(500, "internal", "Internal server error");
   }
 
+  /** Companies the user is an active member of (ORG); drives the web company switcher and org-scoped screens. */
+  private async orgIdsOf(tx: Tx, userId: string) {
+    const rows = (await tx.execute(sql`select organization_id as id from organization_members where user_id = ${userId} and status = 'active'`)) as unknown as { id: string }[]; // cast: execute() rows are untyped
+    return rows.map((r) => r.id);
+  }
+
   /** GET /api/auth/session: valid access → session; otherwise rotate the refresh cookie. */
   async currentSession(h: Http, me: SessionUser | null) {
     if (me) {
-      const { u, ends } = await this.txs.run(async (tx) => ({ u: await this.getUser(tx, me.id), ends: await this.tokens.sessionEndsAt(tx, me.sid) }));
+      const { u, ends, orgIds } = await this.txs.run(async (tx) => ({
+        u: await this.getUser(tx, me.id), ends: await this.tokens.sessionEndsAt(tx, me.sid), orgIds: await this.orgIdsOf(tx, me.id),
+      }));
       if (!u || !u.isActive) throw authErr.unauth();
-      return { session: sessionModel(u, ends, me) };
+      return { session: sessionModel(u, ends, { ...me, orgIds }) };
     }
     const raw = h.req.cookies?.[REFRESH_COOKIE];
     if (!raw) throw authErr.unauth();
@@ -906,7 +915,7 @@ export class AuthService {
         const u = target && target.isActive ? target : actor;
         const a = await this.access(tx, u, r.sid, u === actor ? undefined : { act: actor.userId, until: new Date(imp!.until) });
         this.cookies.set(h.reply, await a.token, r.refresh);
-        return { session: sessionModel(u, r.endsAt, a.su) };
+        return { session: sessionModel(u, r.endsAt, { ...a.su, orgIds: await this.orgIdsOf(tx, u.userId) }) };
       });
     } catch (e) {
       this.cookies.clear(h.reply);

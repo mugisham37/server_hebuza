@@ -16,7 +16,7 @@ export const SessionModel = z.object({
   createdAt: z.string(),
   expiresAt: z.string().nullable(),
 });
-const SessionWithRoles = SessionModel.extend({ roles: z.array(z.string()), activeRole: z.string().optional() });
+const SessionWithRoles = SessionModel.extend({ roles: z.array(z.string()), activeRole: z.string().optional(), orgIds: z.array(z.string()) });
 export const AuthFlowData = z
   .object({
     session: SessionModel,
