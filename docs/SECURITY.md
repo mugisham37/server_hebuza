@@ -9,7 +9,7 @@
 | Money (payments, payouts, ledger) | forged gateway callbacks, double submission, tampering    | HMAC-verified webhooks (fail closed; prod boot refuses the stub), Idempotency-Key on money/chat writes (same key+body → same response, different body → 409), balanced-ledger DB trigger, audit log                                |
 | Staff impersonation               | abuse of view-as                                          | sysadmin only + step-up, time-boxed, audited, **read-only** (every non-GET → 403 `impersonation_read_only`)                                                                                                                        |
 | Uploads                           | malware, oversized payloads                               | presigned uploads, ClamAV quarantine, 1 MB JSON body limit (413 envelope; 40 MB only on field routes), multipart limits                                                                                                            |
-| Platform                          | XSS/clickjacking, supply chain, leaked secrets            | helmet, HSTS/XFO/CSP (report-only → enforce), `pnpm audit` in CI, no secrets in git (`.env*` ignored), distroless non-root images                                                                                                  |
+| Platform                          | XSS/clickjacking, supply chain, leaked secrets            | helmet, HSTS/XFO/CSP (enforced, see below), `pnpm audit` in CI, no secrets in git (`.env*` ignored), distroless non-root images                                                                                                  |
 
 Trust boundaries: browser → web (Next proxy) → api; gateways → api webhooks; api/worker → Postgres/Redis/S3/providers.
 `TRUST_PROXY` must equal the real proxy hop count or client IPs (and thus rate limits) become spoofable.
@@ -18,7 +18,7 @@ Trust boundaries: browser → web (Next proxy) → api; gateways → api webhook
 
 - [x] Authz matrix: every route × every persona (automated, below). - [x] IDOR on every single-`:id` GET with real ids.
 - [x] Rate limit, OTP cap, idempotency, webhook signature, body limit, CSRF, view-as (automated, below).
-- [x] Dependency audit, secret scan (below). - [ ] OWASP ZAP baseline against staging. - [ ] Enforce CSP.
+- [x] Dependency audit, secret scan (below). - [x] OWASP ZAP baseline workflow (`web/.github/workflows/zap-baseline.yml`, run it against staging). - [x] Enforce CSP.
 - [ ] External pen test before GA. - [ ] Restore drill (RUNBOOK §Backups).
 
 ## Results — Phase 8.5 (2026-11-18, local stack)
@@ -60,3 +60,20 @@ refuses `NODE_ENV=production`.
 CPU-bound on a 120 KB unpaginated payload — cache at the edge); `GET /services/:slug` p95 77 ms; client case list p95
 52 ms; SM case list p95 115 ms; chat send p95 1.17 s at 20 concurrent writers on **one** conversation (row
 serialisation; 45 ms serial). 0 errors. No sequential-scan hot spots on non-trivial tables, so no index migration needed.
+
+## Content-Security-Policy (F-SEC-04)
+
+Enforced in `web/next.config.ts`. `script-src` keeps `'unsafe-inline'` on purpose:
+
+- **Nonces don't fit this app.** Next only stamps nonces on per-request renders; the web app uses `cacheComponents` +
+  partial prerendering, so the prerendered shell's inline scripts would carry no nonce and be blocked site-wide. Moving
+  every page to dynamic rendering costs TTFB/CPU on low-bandwidth users for little gain.
+- **Hashes aren't trivially safe either.** Next's inline bootstrap/flight scripts change per build and per route
+  (streamed RSC payloads), and the Meta pixel/GTM snippets carry the pixel id; a hash list would need regenerating on
+  every deploy and any miss blanks a page.
+- **What limits the risk instead:** no `eval` in production, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'none'`, an explicit host allowlist for scripts/frames/connect, React escaping everywhere,
+  JSON-LD is serialised with `JSON.stringify` (data blocks are not executed), and no `dangerouslySetInnerHTML` with user
+  content.
+- **Upgrade path:** when the public pages no longer need prerendering, or Next ships nonces for prerendered output,
+  switch `script-src` to `'nonce-…' 'strict-dynamic'` in `web/proxy.ts` and drop `'unsafe-inline'`.
