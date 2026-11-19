@@ -6,6 +6,7 @@ import { inMaintenance, platformGate, type Window } from "@/domain/system/platfo
 import { FLAG_KEYS, type FlagKey } from "@/domain/system/settings-registry";
 import { DB, type Db } from "../db/db";
 import { settingOf } from "../db/system-records";
+import { ipAllowed } from "../http/ip-allow";
 import { AppError } from "../http/errors";
 import type { SessionUser } from "../http/context";
 
@@ -29,6 +30,12 @@ export class PlatformGuard implements CanActivate {
       flags: (k: FlagKey) => flagOn.get(k) ?? false,
     });
     if (block) throw new AppError(block.status, block.code, block.code === "maintenance" ? "The platform is in maintenance. Try again shortly." : "Not found.");
+    // F-IAM-12: sysadmin / finance sessions only from the allowlisted networks (empty list = no restriction).
+    for (const [role, key] of [["staff:sysadmin", "security.ip_allowlist.sysadmin"], ["staff:finance", "security.ip_allowlist.finance"]] as const) {
+      if (!req.user?.roles.includes(role)) continue;
+      const cidrs = (await settingOf<string[]>(this.db, key)) ?? [];
+      if (cidrs.length && !ipAllowed(req.ip, cidrs)) throw new AppError(403, "ip_not_allowed", "This role can only be used from the office network.");
+    }
     return true;
   }
 }
