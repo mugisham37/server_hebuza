@@ -6,6 +6,8 @@ import { platformSettings } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { PublicCache } from "../catalogue/cache";
+import { settingOf } from "../../core/db/system-records";
+import { enabledLocales } from "@/domain/system/settings-registry";
 
 export const PLATFORM_SETTINGS_ID = "global";
 
@@ -60,6 +62,7 @@ export class PlatformService {
           guestApps: r?.guestApps ?? true,
           acceptNewApps: r?.acceptNewApps ?? true,
           maintenanceMode: r?.maintenanceMode ?? false,
+          enabledLocales: enabledLocales(await settingOf(db, "i18n.enabled_locales")) as ("rw" | "en" | "fr")[],
         };
       }),
     );

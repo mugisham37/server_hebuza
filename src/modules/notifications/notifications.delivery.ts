@@ -34,6 +34,7 @@ import {
   type ExtChannel,
   type Prefs,
 } from "@/domain/notify/delivery";
+import { enabledLocales } from "@/domain/system/settings-registry";
 import { activeVersion, capDecision, extractVars, smsSegments } from "@/domain/system/templates";
 import type { BudgetVM, EventRuleVM, TemplateVM } from "@/domain/system/types";
 import type { Env } from "../../core/config/env";
@@ -58,7 +59,6 @@ type Recipient = {
 };
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const LANGS = ["rw", "en", "fr"] as const;
 /** Statuses that count as "already sent" for the dedupe window. */
 const LIVE = ["queued", "deferred", "sent", "delivered", "read"];
 export const POLICY_VERSION = "2026-01"; // PLACEHOLDER(privacy-policy-version) bump with the published policy
@@ -121,11 +121,12 @@ export class DeliveryService {
       plan.parallel = plan.parallel.filter((c) => c !== "whatsapp");
       plan.chain = plan.chain.filter((c) => c !== "whatsapp");
     }
+    const enabled = enabledLocales(await settingOf(this.db, "i18n.enabled_locales")); // F-SET-10
     const to: Recipient = {
       userId: n.userId,
       email: u.email,
       phone: u.phone,
-      lang: LANGS.includes(u.lang as never) ? u.lang : "en",
+      lang: enabled.includes(u.lang) ? u.lang : enabled.includes("en") ? "en" : "rw",
     };
     for (const ch of plan.muted)
       await this.record(n, to, ch, notificationId, {

@@ -18,6 +18,7 @@ export const PublicSettingsOut = z.object({
   guestApps: z.boolean(),
   acceptNewApps: z.boolean(),
   maintenanceMode: z.boolean(),
+  enabledLocales: z.array(z.enum(["rw", "en", "fr"])), // F-SET-10
 }).meta({ id: "PublicSettingsResponse" });
 
 const State = z.enum(["operational", "degraded", "outage"]);
