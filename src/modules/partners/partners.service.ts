@@ -14,6 +14,11 @@ import {
   partnerReferrals,
   partners,
   users,
+  partnerObjectives,
+  partnerOpportunities,
+  partnerObligations,
+  partnerAgreementFiles,
+  deadlineNotifications,
 } from "@/db/schema";
 import {
   agreementState,
@@ -31,6 +36,9 @@ import { Cron } from "../../core/queue/queues";
 import { NotificationsService } from "../notifications/notifications.service";
 import { money, paidRows } from "../applications/applications.service";
 import { upsertPayable } from "../finance/finance.cases";
+import { textPdf } from "../chat/chat.service";
+import { StorageService } from "../../core/storage/storage.service";
+import { OutboxService } from "../../core/db/outbox";
 
 /** Child record kinds served by the generic CRUD routes (`/staff/partners/:id/:kind`). */
 export const CHILDREN = {
@@ -40,6 +48,9 @@ export const CHILDREN = {
   meetings: partnerMeetings,
   correspondence: partnerCorrespondence,
   referrals: partnerReferrals,
+  objectives: partnerObjectives,
+  opportunities: partnerOpportunities,
+  obligations: partnerObligations,
 } as const;
 export type ChildKind = keyof typeof CHILDREN;
 type Cols = { id: never; partnerId: never; createdAt: never };
@@ -55,6 +66,8 @@ export class PartnersService {
     private readonly txs: TxService,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly storage: StorageService,
+    private readonly outbox: OutboxService,
   ) {}
 
   private async partnerOr404(tx: Tx, id: string) {
@@ -272,9 +285,18 @@ export class PartnersService {
           .orderBy(desc(partnerCommissions.createdAt)),
         this.scorecard(tx, [id]),
       ]);
+      const [objectives, opportunities, obligations, files] = await Promise.all([
+        tx.select().from(partnerObjectives).where(eq(partnerObjectives.partnerId, id)).orderBy(desc(partnerObjectives.createdAt)),
+        tx.select().from(partnerOpportunities).where(eq(partnerOpportunities.partnerId, id)).orderBy(desc(partnerOpportunities.createdAt)),
+        tx.select().from(partnerObligations).where(eq(partnerObligations.partnerId, id)).orderBy(asc(partnerObligations.dueOn)),
+        agreements.length ? tx.select().from(partnerAgreementFiles).where(inArray(partnerAgreementFiles.agreementId, agreements.map((a) => a.id))).orderBy(desc(partnerAgreementFiles.version)) : [],
+      ]);
       const t = today();
       return {
         ...p,
+        objectives,
+        opportunities,
+        obligations,
         scorecard: sc.get(id)!,
         contacts,
         actions,
@@ -285,7 +307,7 @@ export class PartnersService {
         // PRT §13: confidential agreements only for partner_manager / executive.
         agreements: agreements
           .filter((a) => !a.isConfidential || CONFIDENTIAL_OK(me))
-          .map((a) => ({ ...a, state: agreementState(a, t) })),
+          .map((a) => ({ ...a, state: agreementState(a, t), files: files.filter((f) => f.agreementId === a.id) })),
       };
     });
   }
@@ -515,8 +537,59 @@ export class PartnersService {
         union all ${q("correspondence", "partner_correspondence", "date", "direction || ': ' || subject")}${id}
         union all ${q("referral", "partner_referrals", "created_at", "name || ' (' || status || ')'")}${id}
         union all ${q("commission", "partner_commissions", "created_at", "amount::text || ' RWF (' || status || ')'")}${id}
+        union all ${q("opportunity", "partner_opportunities", "coalesce(closed_on::timestamptz, created_at)", "title || ' (' || stage || ')'")}${id}
+        union all ${q("objective", "partner_objectives", "created_at", "title")}${id}
         order by at desc limit 500`);
       return { items: [...rows] };
+    });
+  }
+
+  /** PRT-12: the history as a printable PDF. */
+  async historyPdf(id: string) {
+    const [p, h] = await Promise.all([this.txs.run((tx) => this.partnerOr404(tx, id)), this.history(id)]);
+    return textPdf(`Partner history: ${p.name}`, [`Generated ${now().slice(0, 16).replace("T", " ")} UTC`, "", ...h.items.map((x) => `${String(x.at).slice(0, 10)}  [${x.kind}]  ${x.title}`)]);
+  }
+
+  /** PRT-03: a new agreement file version (presigned PUT; bytes go straight to storage, scanned like other uploads). */
+  addAgreementFile(me: SessionUser, id: string, agreementId: string, b: { filename: string; contentType: string; size: number }) {
+    return this.txs.run(async (tx) => {
+      const [a] = await tx.select({ id: partnerAgreements.id }).from(partnerAgreements).where(and(eq(partnerAgreements.id, agreementId), eq(partnerAgreements.partnerId, id))).for("update");
+      if (!a) throw notFound("Agreement");
+      const [{ v }] = await tx.select({ v: sql<number>`coalesce(max(${partnerAgreementFiles.version}), 0)::int` }).from(partnerAgreementFiles).where(eq(partnerAgreementFiles.agreementId, agreementId));
+      const key = `partners/${id}/agreements/${agreementId}/v${v + 1}-${b.filename.replace(/[^\w.-]+/g, "_")}`;
+      const [f] = await tx.insert(partnerAgreementFiles).values({ id: generateId("paf"), agreementId, version: v + 1, fileKey: key, filename: b.filename.slice(0, 255), uploadedBy: me.id, uploadedAt: now() }).returning();
+      await tx.update(partnerAgreements).set({ fileKey: key }).where(eq(partnerAgreements.id, agreementId));
+      await this.outbox.add(tx, { type: "storage.scan", payload: { key, kind: "partner" } });
+      await this.audit.record(tx, { action: "partner.agreement.file_added", entity: "partner", entityId: id, after: { agreementId, version: f.version } });
+      return { ...f, upload: await this.storage.presignPut({ key, contentType: b.contentType, size: b.size, purpose: "partner_agreement", filename: b.filename }) };
+    });
+  }
+
+  agreementFileUrl(me: SessionUser, id: string, agreementId: string, fileId: string) {
+    return this.txs.run(async (tx) => {
+      const [r] = await tx.select({ f: partnerAgreementFiles, conf: partnerAgreements.isConfidential }).from(partnerAgreementFiles)
+        .innerJoin(partnerAgreements, eq(partnerAgreements.id, partnerAgreementFiles.agreementId))
+        .where(and(eq(partnerAgreementFiles.id, fileId), eq(partnerAgreements.id, agreementId), eq(partnerAgreements.partnerId, id)));
+      if (!r || (r.conf && !CONFIDENTIAL_OK(me))) throw notFound("File");
+      return { url: await this.storage.presignGet(r.f.fileKey, r.f.filename) };
+    });
+  }
+
+  /** PRT-10: 1-hour meeting reminder (claimed once per meeting in deadline_notifications). */
+  @Cron("partners.meeting_soon", "*/10 * * * *")
+  async meetingSoon() {
+    return this.txs.runAsSystem(async (tx) => {
+      const soon = await tx.select({ m: partnerMeetings, owner: partners.ownerUserId, p: partners.name }).from(partnerMeetings).innerJoin(partners, eq(partners.id, partnerMeetings.partnerId))
+        .where(and(eq(partnerMeetings.status, "scheduled"), sql`${partnerMeetings.startsAt} between now() and now() + interval '60 minutes'`));
+      let n = 0;
+      for (const { m, owner, p } of soon) {
+        if (!owner) continue;
+        const [c] = await tx.insert(deadlineNotifications).values({ id: generateId("dln"), targetType: "prt_meeting", targetId: m.id, offsetDays: 0, sentAt: now() }).onConflictDoNothing().returning({ id: deadlineNotifications.id });
+        if (!c) continue;
+        await this.notifications.notify(tx, { userId: owner, kind: "prt.meeting.reminder", title: `In 1 hour: ${m.title} with ${p}`, link: `/partners/${m.partnerId}?tab=meetings` });
+        n++;
+      }
+      return { sent: n };
     });
   }
 
@@ -785,6 +858,10 @@ export class PartnersService {
           });
           sent++;
         }
+      // Obligations due today → owner (prt.obligation.due).
+      const obl = await tx.select({ o: partnerObligations, p: partners.name }).from(partnerObligations).innerJoin(partners, eq(partners.id, partnerObligations.partnerId))
+        .where(and(eq(partnerObligations.status, "open"), sql`${partnerObligations.dueOn} = current_date`));
+      for (const { o, p } of obl) if (o.ownerUserId) { await this.notifications.notify(tx, { userId: o.ownerUserId, kind: "prt.obligation.due", title: `${p}: obligation due today`, body: o.description, link: `/partners/${o.partnerId}?tab=agreements` }); sent++; }
       // Dormant after 180 days without contact.
       await tx
         .update(partners)

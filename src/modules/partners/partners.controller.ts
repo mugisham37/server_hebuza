@@ -54,6 +54,18 @@ export class PartnersController {
   @Get(`${B}/:id/history`) @Route({ auth: READ })
   history(@Param("id") id: string) { return this.svc.history(id); }
 
+  @Get(`${B}/:id/history.pdf`) @Route({ auth: READ }) @RawResponse()
+  async historyPdf(@Param("id") id: string, @Res() reply: FastifyReply) {
+    const pdf = await this.svc.historyPdf(id);
+    return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="partner-${id}-history.pdf"`).send(pdf);
+  }
+
+  @Post(`${B}/:id/agreements/:aid/files`) @Route({ auth: PM, limit: "write" })
+  addFile(@Param("id") id: string, @Param("aid") aid: string, @Body() b: D.AgreementFileDto, @CurrentUser() me: SessionUser) { return this.svc.addAgreementFile(me, id, aid, b); }
+
+  @Get(`${B}/:id/agreements/:aid/files/:fid`) @Route({ auth: READ })
+  fileUrl(@Param("id") id: string, @Param("aid") aid: string, @Param("fid") fid: string, @CurrentUser() me: SessionUser) { return this.svc.agreementFileUrl(me, id, aid, fid); }
+
   @Get(`${B}/:id/meetings/:mid/event.ics`) @Route({ auth: READ }) @RawResponse()
   async ics(@Param("id") id: string, @Param("mid") mid: string, @Res() reply: FastifyReply) {
     const body = await this.svc.ics(id, mid);

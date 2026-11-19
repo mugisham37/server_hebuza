@@ -54,7 +54,7 @@ export const partnerAgreements = pgTable("partner_agreements", {
 ]);
 
 export const partnerActions = pgTable("partner_actions", {
-  id: id(), partnerId: partnerId(), meetingId: varchar("meeting_id", { length: 64 }),
+  id: id(), partnerId: partnerId(), meetingId: varchar("meeting_id", { length: 64 }), objectiveId: varchar("objective_id", { length: 64 }),
   title: varchar({ length: 255 }).notNull(), deliverable: varchar({ length: 500 }), ownerUserId: varchar("owner_user_id", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
   dueOn: date("due_on"), status: varchar({ length: 16 }).default("open").notNull(), progress: integer().default(0).notNull(),
   createdAt: ts("created_at").notNull(), doneAt: ts("done_at"),
@@ -93,3 +93,30 @@ export const partnerCommissions = pgTable("partner_commissions", {
   index("ix_partner_commissions_partner").on(t.partnerId),
   check("ck_partner_commissions_status", sql`status IN ('computed','approved','paid','rejected')`),
 ]);
+
+export const partnerObjectives = pgTable("partner_objectives", {
+  id: id(), partnerId: partnerId(),
+  title: varchar({ length: 255 }).notNull(), description: text(), period: varchar({ length: 32 }), createdAt: ts("created_at").notNull(),
+}, (t) => [index("ix_partner_objectives_partner").on(t.partnerId)]);
+
+export const partnerOpportunities = pgTable("partner_opportunities", {
+  id: id(), partnerId: partnerId(),
+  title: varchar({ length: 255 }).notNull(), stage: varchar({ length: 16 }).default("idea").notNull(), value: bigint({ mode: "number" }),
+  ownerUserId: varchar("owner_user_id", { length: 64 }).references(() => users.userId, { onDelete: "set null" }), closedOn: date("closed_on"), createdAt: ts("created_at").notNull(),
+}, (t) => [
+  index("ix_partner_opportunities_partner").on(t.partnerId),
+  check("ck_partner_opportunities_stage", sql`stage IN ('idea','proposal','active','won','lost')`),
+]);
+
+export const partnerObligations = pgTable("partner_obligations", {
+  id: id(), partnerId: partnerId(),
+  agreementId: varchar("agreement_id", { length: 64 }).notNull().references(() => partnerAgreements.id, { onDelete: "cascade" }),
+  description: varchar({ length: 1000 }).notNull(), ownerUserId: varchar("owner_user_id", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
+  dueOn: date("due_on"), status: varchar({ length: 16 }).default("open").notNull(), createdAt: ts("created_at").notNull(),
+}, (t) => [index("ix_partner_obligations_agreement").on(t.agreementId)]);
+
+export const partnerAgreementFiles = pgTable("partner_agreement_files", {
+  id: id(), agreementId: varchar("agreement_id", { length: 64 }).notNull().references(() => partnerAgreements.id, { onDelete: "cascade" }),
+  version: integer().notNull(), fileKey: varchar("file_key", { length: 1024 }).notNull(), filename: varchar({ length: 255 }).notNull(),
+  uploadedBy: varchar("uploaded_by", { length: 64 }), uploadedAt: ts("uploaded_at").notNull(),
+}, (t) => [index("ix_partner_agreement_files_agreement").on(t.agreementId)]);
