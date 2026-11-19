@@ -40,7 +40,6 @@ import {
   subscriptionPlans,
   users,
 } from "@/db/schema";
-import { can } from "@/domain/auth/permissions";
 import {
   CASE_STATUS_META,
   normalizeStatus,

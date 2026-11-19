@@ -21,7 +21,7 @@ import {
   normalizeStatus,
 } from "@/domain/domain/case-status";
 import type { SessionUser } from "../../core/http/context";
-import { AppError, forbidden, notFound } from "../../core/http/errors";
+import { AppError, notFound } from "../../core/http/errors";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { AuditService } from "../../core/db/audit";
@@ -52,9 +52,9 @@ type Export = {
   status: "none" | "pending" | "ready";
   requestedAt: string | null;
   key?: string | null;
+  expiresAt?: string | null;
 };
 type Upload = {
-  expiresAt?: string | null;
   owner: string;
   key: string;
   name: string;
@@ -325,6 +325,7 @@ export class AccountService {
         && (!d.expiresAt || Date.parse(d.expiresAt) > Date.now())
         ? await this.storage.presignGet(d.key, "hebuza-data-export.zip")
         : null,
+      expiresAt: d.expiresAt ?? null,
     };
   }
   /** F-IAM-19: ZIP (profile, requests, messages, invoices, document list, consents) kept 24 h; the user gets an email
@@ -361,8 +362,17 @@ export class AccountService {
         })
         .from(notifications)
         .where(eq(notifications.userId, me.id));
+      const appIds = (await tx.select({ id: applications.applicationId }).from(applications).where(eq(applications.clientId, me.id))).map((a) => a.id);
+      const msgs = appIds.length
+        ? await tx.select({ applicationId: applicationMessages.applicationId, from: applicationMessages.senderRole, content: applicationMessages.content, at: applicationMessages.createdAt })
+            .from(applicationMessages)
+            .where(and(inArray(applicationMessages.applicationId, appIds), eq(applicationMessages.isInternal, false)))
+        : [];
+      const docs = await tx.select({ name: clientDocuments.originalFilename, at: clientDocuments.createdAt }).from(clientDocuments).where(eq(clientDocuments.clientId, me.id));
+      const invs = (await clientInvoices(tx, me.id)).map((i) => ({ no: i.no, status: i.status, total: i.totals.total, balanceDue: i.balanceDue, issuedAt: i.issuedAt, lines: i.lines }));
       const requestedAt = new Date().toISOString();
       const key = StorageService.key(me.id, "export");
+      const j = (x: unknown) => JSON.stringify(x, null, 2);
       await this.storage.putObject(
         key,
         zip([
@@ -377,12 +387,23 @@ export class AccountService {
         ]),
         "application/zip",
       );
+      const expiresAt = new Date(Date.now() + 24 * 3_600_000).toISOString();
       await this.putDoc(tx, `${me.id}:export`, {
         status: "ready",
         requestedAt,
         key,
-      expiresAt: d.expiresAt ?? null,
+        expiresAt,
       });
+      if (u?.email)
+        await this.outbox.add(tx, {
+          type: "auth.mail",
+          queue: "critical",
+          payload: this.crypto.seal({
+            to: u.email,
+            subject: "Your HEBUZA data export is ready",
+            text: `Your data export is ready for 24 hours. Download it from your privacy settings: ${(process.env.WEB_ORIGIN ?? "").split(",")[0].trim()}/settings/privacy`,
+          }, ["text"]),
+        });
       await this.audit.record(tx, {
         action: "data_export.client_data.exported",
         entity: "user",
@@ -417,17 +438,8 @@ export class AccountService {
           type: "auth.sms",
           queue: "critical",
           payload: this.crypto.seal({ to: phone, text: `HEBUZA code to claim ${code}: ${o.code}. Valid 10 minutes.` }, ["text"]),
-      const appIds = (await tx.select({ id: applications.applicationId }).from(applications).where(eq(applications.clientId, me.id))).map((a) => a.id);
-      const msgs = appIds.length
-        ? await tx.select({ applicationId: applicationMessages.applicationId, from: applicationMessages.senderRole, content: applicationMessages.content, at: applicationMessages.createdAt })
-            .from(applicationMessages)
-            .where(and(inArray(applicationMessages.applicationId, appIds), eq(applicationMessages.isInternal, false)))
-        : [];
-      const docs = await tx.select({ name: clientDocuments.originalFilename, at: clientDocuments.createdAt }).from(clientDocuments).where(eq(clientDocuments.clientId, me.id));
-      const invs = (await clientInvoices(tx, me.id)).map((i) => ({ no: i.no, status: i.status, total: i.totals.total, balanceDue: i.balanceDue, issuedAt: i.issuedAt, lines: i.lines }));
         });
         return { claimed: false, otpSent: true };
-      const j = (x: unknown) => JSON.stringify(x, null, 2);
       }
       const [own] = await tx.select({ u: applicationClaimOtps.userId }).from(applicationClaimOtps).where(eq(applicationClaimOtps.applicationId, a.id));
       const res = own?.u === me.id ? await checkOtp(tx, applicationClaimOtps, applicationClaimOtps.applicationId, a.id, b.otp) : "dead";
@@ -443,23 +455,11 @@ export class AccountService {
       });
       return { claimed: true, otpSent: false };
     });
-      const expiresAt = new Date(Date.now() + 24 * 3_600_000).toISOString();
   }
 
   // ── generic uploads ──
   /** Anonymous uploads only for the public /join application (qualification files). Returns a presigned PUT + a stable href. */
-        expiresAt,
   upload(
-      if (u?.email)
-        await this.outbox.add(tx, {
-          type: "auth.mail",
-          queue: "critical",
-          payload: this.crypto.seal({
-            to: u.email,
-            subject: "Your HEBUZA data export is ready",
-            text: `Your data export is ready for 24 hours. Download it from your privacy settings: ${(process.env.WEB_ORIGIN ?? "").split(",")[0].trim()}/settings/privacy`,
-          }, ["text"]),
-        });
     me: SessionUser | null,
     ip: string,
     b: { purpose?: string; name: string; contentType: string; size: number },

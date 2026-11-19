@@ -120,6 +120,13 @@
       "when": 1795400000000,
       "tag": "0016_marketing_paid_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795115297698,
+      "tag": "0017_wave_finish",
+      "breakpoints": true
     }
   ]
 }

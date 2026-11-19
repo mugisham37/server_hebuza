@@ -55,7 +55,7 @@ const run = async () => {
           try {
             const r = await tx.unsafe(`delete from ${t} where ${cond}`);
             await tx.unsafe("release savepoint p");
-            if (r.count) (add(t, r.count), (progress = true));
+            if (r.count) { add(t, r.count); progress = true; }
           } catch (e) {
             await tx.unsafe("rollback to savepoint p");
             if ((e as { code?: string }).code !== "23503") throw e; // only FK ordering is retried

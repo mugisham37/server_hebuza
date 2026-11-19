@@ -42,7 +42,6 @@ import {
   outbox,
   users,
 } from "@/db/schema";
-import { can } from "@/domain/auth/permissions";
 import { normalizeStatus } from "@/domain/domain/case-status";
 import type { Tx } from "../../core/db/db";
 import { AuditService } from "../../core/db/audit";
