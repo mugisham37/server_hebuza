@@ -260,7 +260,7 @@ export class WorkforceService {
           (!f.available || (!w.availableFrom && w.load.open < w.load.cap && w.status === "cleared")) &&
           (f.minRating == null || w.rating >= f.minRating) &&
           (!f.type || w.type === f.type) &&
-          (!q || [w.name, ...w.expertise].some((x) => x.toLowerCase().includes(q))),
+          (!q || [w.name, w.email, ...w.expertise, ...w.services].some((x) => x.toLowerCase().includes(q))),
         ),
     }));
   }
