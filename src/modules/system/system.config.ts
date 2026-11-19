@@ -1,6 +1,7 @@
 // P10 settings + feature flags + languages (U12), integrations registry (U12b) and notifications — rules, templates
 // with lint + Meta review, deliveries, channel budgets (U14). Port of handlers-system-d and the U14 half of -e.
 // Credentials are write-only: Fernet-encrypted in the system store, only last4 ever leaves the server.
+import { extractVars } from "@/domain/system/templates";
 import { parseSettingsImport } from "@/domain/system/settings-registry";
 import type { DeliveryService } from "../notifications/notifications.delivery";
 import type { DeliveryVM } from "@/domain/system/types";
@@ -697,26 +698,62 @@ export async function putTemplate(
     return tplRes(w, t);
   });
 }
-/** WhatsApp templates wait for Meta. With no WhatsApp key in this deployment nothing is sent: the review job approves
- *  locally after the delay (dev/staging parity) and logs it. */
-export const providerReview = (
+/** F-NTF-10: WhatsApp templates wait for Meta. With WHATSAPP_ACCESS_TOKEN + WHATSAPP_WABA_ID the job submits the
+ *  template to the Graph API once, then re-polls its status every 10 min until APPROVED / REJECTED. Without them the
+ *  review job approves locally after the delay (dev/staging parity) and logs it. */
+const META_CATEGORY = { utility: "UTILITY", marketing: "MARKETING", authentication: "AUTHENTICATION" } as const;
+const META_LANG: Record<string, string> = { en: "en", fr: "fr", rw: "rw_RW" }; // PLACEHOLDER(wa-rw-code) verify in Meta's list
+export const providerReview = async (
   deps: SystemDeps,
-  d: { key: string; v: number },
-) =>
-  systemWrite(deps, (w) => {
+  d: { key: string; v: number; submitted?: boolean },
+) => {
+  const token = deps.config.get("WHATSAPP_ACCESS_TOKEN", { infer: true }), waba = deps.config.get("WHATSAPP_WABA_ID", { infer: true });
+  const graph = (path: string, init?: RequestInit) =>
+    fetch(`https://graph.facebook.com/v21.0/${path}`, { ...init, headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, signal: AbortSignal.timeout(15_000) })
+      .then(async (r) => ({ ok: r.ok, j: (await r.json().catch(() => ({}))) as { data?: { status?: string; rejected_reason?: string }[]; error?: { message?: string } } }));
+  let verdict: { status: "approved" | "rejected" | "pending"; reason?: string } = { status: "approved" };
+  if (token && waba) {
+    const snap = await systemWrite(deps, (w) => {
+      const t = w.templates.find((x) => x.key === d.key);
+      const cur = t && currentVersion(t);
+      return t && cur && cur.v === d.v && cur.status === "pending_provider_approval" ? { t: structuredClone(t), cur: structuredClone(cur) } : null;
+    });
+    if (!snap) return;
+    if (!d.submitted) {
+      for (const [lang, body] of Object.entries(snap.cur.languages)) {
+        if (!body?.body) continue;
+        // Same positional order the delivery job sends params in (extractVars = first use).
+        const order = extractVars(body.body);
+        const text = body.body.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, v: string) => `{{${order.indexOf(v) + 1}}}`);
+        const r = await graph(`${waba}/message_templates`, { method: "POST", body: JSON.stringify({ name: snap.t.key, language: META_LANG[lang] ?? lang, category: META_CATEGORY[snap.t.category], components: [{ type: "BODY", text }] }) });
+        if (!r.ok) verdict = { status: "rejected", reason: r.j.error?.message ?? "Meta rejected the submission" };
+      }
+      if (verdict.status !== "rejected") verdict = { status: "pending" };
+    } else {
+      const r = await graph(`${waba}/message_templates?name=${encodeURIComponent(snap.t.key)}`);
+      const st = r.j.data?.map((x) => x.status) ?? [];
+      verdict = st.length && st.every((x) => x === "APPROVED") ? { status: "approved" }
+        : st.some((x) => x === "REJECTED") ? { status: "rejected", reason: r.j.data?.find((x) => x.status === "REJECTED")?.rejected_reason ?? "Rejected by Meta" }
+        : { status: "pending" };
+    }
+    if (verdict.status === "pending") {
+      await deps.queues.add("default", "system.template.provider_review", { key: d.key, v: d.v, submitted: true }, { delay: 10 * 60_000 });
+      return;
+    }
+  }
+  return systemWrite(deps, (w) => {
     const t = w.templates.find((x) => x.key === d.key);
     const cur = t && currentVersion(t);
-    if (
-      !t ||
-      !cur ||
-      cur.v !== d.v ||
-      cur.status !== "pending_provider_approval"
-    )
+    if (!t || !cur || cur.v !== d.v || cur.status !== "pending_provider_approval") return;
+    if (verdict.status === "rejected") {
+      Object.assign(cur, { status: "rejected", rejectedReason: verdict.reason, providerStatus: "Rejected by Meta" });
+      bumpRev(w, t.key);
       return;
-    // shortcut: no Meta Graph API client yet; with WHATSAPP_TOKEN set this should submit and poll the real review.
-    log.log(`template_provider_review_local ${d.key} v${d.v}`);
+    }
+    if (!token || !waba) log.log(`template_provider_review_local ${d.key} v${d.v}`);
     activate(w, t, SYSTEM_ACTOR);
   });
+};
 export async function templateOp(
   c: Caller,
   key: string,

@@ -2,7 +2,7 @@
 // console on a broken link), quarterly access-review campaign, nightly retention due counts, impersonation expiry.
 import { and, isNull, lte, sql } from "drizzle-orm";
 import { Injectable, Logger } from "@nestjs/common";
-import { authImpersonations, users } from "@/db/schema";
+import { authImpersonations } from "@/db/schema";
 import { Cron, Job } from "../../core/queue/queues";
 import { SystemStore } from "./system.store";
 import { providerReview } from "./system.config";
@@ -131,7 +131,7 @@ export class SystemJobs {
   }
 
   @Job("system.template.provider_review")
-  providerReview(d: { key: string; v: number }) {
+  providerReview(d: { key: string; v: number; submitted?: boolean }) {
     return providerReview(this.deps, d);
   }
 }

@@ -37,6 +37,7 @@ export const envSchema = z.object({
   AUDIT_S3_ACCESS_KEY: z.string().optional(),
   AUDIT_S3_SECRET_KEY: z.string().optional(),
   // Provider delivery webhooks + inbound SMS (STOP) are accepted only on /api/webhooks/notify/<token>/...; unset → 404.
+  WHATSAPP_WABA_ID: z.string().optional(), // F-NTF-10: business account id for template submission/review
   WHATSAPP_APP_SECRET: z.string().optional(), // Meta app secret: X-Hub-Signature-256 on the WhatsApp webhook
   WHATSAPP_VERIFY_TOKEN: z.string().optional(), // hub.verify_token for the webhook subscription handshake
   RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the Resend webhook; set → svix signature required
@@ -52,6 +53,11 @@ export const envSchema = z.object({
   META_PAGE_TOKEN: z.string().optional(),
   LINKEDIN_ORG_ID: z.string().optional(),
   LINKEDIN_TOKEN: z.string().optional(),
+  // F-BKG-10 adviser calendar sync (dormant per provider until both are set).
+  GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
+  GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  MS_OAUTH_CLIENT_ID: z.string().optional(),
+  MS_OAUTH_CLIENT_SECRET: z.string().optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
   BACKUP_STATUS_ENDPOINT: z.string().url().optional(),
   BACKUP_STATUS_BUCKET: z.string().optional(),
