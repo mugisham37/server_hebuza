@@ -2,6 +2,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -15,6 +16,8 @@ import { SM, SMR } from "./ops.roles";
 import {
   AllocationDto,
   ApprovalDecisionDto,
+  AssignmentBlockDto,
+  AssignmentBlockQueryDto,
   CapDto,
   DueDto,
   EscalateDto,
@@ -57,6 +60,21 @@ export class OpsOversightController {
   })
   rebalance(@Req() r: OpsReq, @Body() b: RebalanceDto) {
     return this.o.run(r, (c) => m.rebalance(c, b));
+  }
+  @Get("admin/ops/assignment-blocks")
+  @Route({ auth: SMR })
+  blocks(@Query() q: AssignmentBlockQueryDto) {
+    return this.o.read((db) => m.listBlocks(db, q));
+  }
+  @Post("admin/ops/assignment-blocks")
+  @Route({ auth: SM, audit: "assignment.block_added" })
+  addBlock(@Req() r: OpsReq, @Body() b: AssignmentBlockDto) {
+    return this.o.run(r, (c) => m.addBlock(c, b));
+  }
+  @Delete("admin/ops/assignment-blocks/:id")
+  @Route({ auth: SM, audit: "assignment.block_removed" })
+  removeBlock(@Req() r: OpsReq, @Param("id") id: string) {
+    return this.o.run(r, (c) => m.removeBlock(c, id));
   }
   @Get("admin/ops/approvals")
   @Route({ auth: SMR })

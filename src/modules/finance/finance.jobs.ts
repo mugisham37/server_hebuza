@@ -13,6 +13,9 @@ import { StorageService } from "../../core/storage/storage.service";
 import type { Tx } from "../../core/db/db";
 import { open, where, type Fin } from "./finance.store";
 import { finDeps } from "./finance.runner";
+import { lineAction, momoLines, setMomoRef } from "./finance.revenue";
+import { users } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { planAllocations, openCaseRefund, type CaseRefundRequest, caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
 import { expirePending, returnStaleVerifications } from "./finance.payments";
 import { bookingRefund, claimDisbursement, failStaleClaims, settleDisbursement, type BookingRefund, type R } from "./finance.refunds";
@@ -72,6 +75,33 @@ export class FinanceJobs {
         auto: "dispute",
       }),
     );
+  }
+
+  /** F-REV-07: MoMo payout lines of executing batches → MTN disbursement, then poll; dormant without disbursement keys. */
+  @Cron("finance.payouts.momo", "*/5 * * * *")
+  async momoPayouts() {
+    const lines = await this.txs.runAsSystem((db) => momoLines(db));
+    for (const l of lines) {
+      try {
+        if (!l.momoRef) {
+          const phone = await this.txs.runAsSystem(async (db) =>
+            (await db.select({ p: users.phoneE164 }).from(users).where(eq(users.userId, l.workerId)))[0]?.p,
+          );
+          if (!phone) continue; // finance pays it manually
+          const ref = await this.payments.payoutTransfer({ phone, amountRwf: l.net, ref: l.lineId });
+          if (ref === "unsupported") return; // dormant: every line stays manual
+          await this.txs.runAsSystem((db) => setMomoRef(db, l.batchNo, l.lineId, ref));
+          continue;
+        }
+        const st = await this.payments.payoutStatus(l.momoRef);
+        if (st === "succeeded" || st === "failed")
+          await this.sys((f) =>
+            lineAction(f, l.lineId, st === "succeeded" ? "paid" : "failed", st === "succeeded" ? { ref: l.momoRef } : { reason: "MTN rejected the transfer" }),
+          );
+      } catch (e) {
+        this.log.error(`payout_momo_failed ${l.lineId}: ${String(e)}`);
+      }
+    }
   }
 
   @Cron("finance.cases.sync", "*/10 * * * *")

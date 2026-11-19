@@ -17,6 +17,15 @@ import { prorate } from "@/domain/finance/money";
 type Exec = Tx;
 const err = { notFound: (m: string) => new AppError(404, "not_found", m) };
 export const PERIOD_MS = 30 * 86_400_000;
+/** F-SUB-11: one billing period after `from` — calendar months in Africa/Kigali, clamped at month end (Jan 31 → Feb 28). */
+export function addPeriod(from: string | Date, interval: string): string {
+  const k = new Date(new Date(from).getTime() + 2 * 3_600_000); // Kigali wall clock (UTC+2, no DST)
+  const months = interval === "year" ? 12 : 1;
+  const y = k.getUTCFullYear(), m = k.getUTCMonth() + months;
+  const last = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const out = Date.UTC(y, m, Math.min(k.getUTCDate(), last), k.getUTCHours(), k.getUTCMinutes(), k.getUTCSeconds(), k.getUTCMilliseconds());
+  return new Date(out - 2 * 3_600_000).toISOString();
+}
 export const TRIAL_PLAN_ID = "pln_trial_default";
 /** past_due keeps coverage through the grace window (F-SUB-06). */
 const LIVE = new Set(["active", "trial", "past_due"]);
@@ -212,7 +221,7 @@ export async function activateFromPayment(
   if (plan.kind === "trial")
     throw new AppError(422, "validation", "Trial plans cannot be purchased.");
   const now = new Date();
-  let end = new Date(now.getTime() + PERIOD_MS).toISOString();
+  let end = addPeriod(now, plan.interval);
   const [existing] = await db
     .select()
     .from(clientSubscriptions)
@@ -256,7 +265,7 @@ export async function activateFromPayment(
       (existing.planId === plan.planId || existing.scheduledPlanId === plan.planId) &&
       (existing.status === "active" || existing.status === "past_due") &&
       covers(existing, now.getTime());
-    if (renewal) end = new Date(Date.parse(existing.currentPeriodEnd) + PERIOD_MS).toISOString();
+    if (renewal) end = addPeriod(existing.currentPeriodEnd, plan.interval);
     else if (upgrade) end = existing.currentPeriodEnd;
     await db
       .update(clientSubscriptions)
@@ -346,7 +355,7 @@ export async function checkoutAmount(db: Exec, clientId: string, plan: Plan, now
   const prev = await getPlan(db, s.planId);
   if (!prev || prev.amountRwf <= 0 || plan.amountRwf <= prev.amountRwf) return plan.amountRwf;
   const left = Math.max(0, Math.ceil((Date.parse(s.currentPeriodEnd) - now) / DAY_MS));
-  return Math.max(1, prorate(prev.amountRwf, plan.amountRwf, left, PERIOD_MS / DAY_MS));
+  return Math.max(1, prorate(prev.amountRwf, plan.amountRwf, left, prev.interval === "year" ? 365 : 30));
 }
 
 /** F-SUB-08: downgrade → scheduled for period end; upgrade → the client pays the prorated amount at checkout. */

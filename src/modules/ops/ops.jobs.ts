@@ -1,7 +1,8 @@
 // Ops crons (reference ops.jobs.ts): offer expiry → back to the queue, SLA breach stamping, intake auto-assign.
 import { Injectable } from "@nestjs/common";
 import { and, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
-import { applications, deadlineNotifications } from "@/db/schema";
+import { agentProfiles, applicationFeedback, applications, deadlineNotifications } from "@/db/schema";
+import { openTicket, type Ticket } from "./ops.manage";
 import { slaStepsReached, slaUsedPct } from "@/domain/ops/rules";
 import { TxService } from "../../core/db/tx";
 import { Cron } from "../../core/queue/queues";
@@ -83,6 +84,111 @@ export class OpsJobs {
         }
       }
       return { escalations: sent };
+    });
+  }
+
+  /** F-FBK-10: agent quality from real outcomes (90 days) → ranking inputs. rating = CSAT avg − 0.5 per complaint per 10 cases. */
+  @Cron("ops.quality_scores", "20 1 * * *")
+  qualityScores() {
+    return this.tx.runAsSystem(async (tx) => {
+      const rows = await tx.execute<{ id: string; n: number; on_time: number; csat: number | null; complaints: number }>(sql`
+        select a.assigned_agent_id id, count(*)::int n,
+          avg(case when a.due_at is null or a.completed_at <= a.due_at then 1 else 0 end)::float on_time,
+          avg(f.rating)::float csat,
+          (select count(*)::int from ops_records r where r.kind = 'ticket' and r.data->>'kind' = 'complaint'
+             and r.data->'owner'->>'id' = a.assigned_agent_id and r.updated_at > now() - interval '90 days') complaints
+        from applications a left join application_feedback f on f.application_id = a.application_id
+        where a.status = 'completed_delivered' and a.assigned_agent_id is not null and a.completed_at > now() - interval '90 days'
+        group by a.assigned_agent_id`);
+      for (const r of rows) {
+        const csat = r.csat == null ? null : Math.max(0, Math.min(5, r.csat - 0.5 * ((r.complaints * 10) / Math.max(1, r.n))));
+        await tx.update(agentProfiles)
+          .set({ onTimeBps: Math.round(r.on_time * 10_000), ...(csat == null ? {} : { ratingX10: Math.round(csat * 10) }) })
+          .where(eq(agentProfiles.userId, r.id));
+      }
+      return { updated: rows.length };
+    });
+  }
+
+  /** F-FBK-06: a ticket past its response target escalates to service managers; still unanswered 24 h later, to executives. */
+  @Cron("ops.ticket_escalation", "*/15 * * * *")
+  ticketEscalation() {
+    return this.tx.runAsSystem(async (tx) => {
+      const open = (await recList<Ticket>(tx, "ticket")).filter((t) => !["resolved", "confirming"].includes(t.data.status) && !t.data.responded);
+      let sent = 0;
+      for (const rec of open) {
+        const t = rec.data;
+        const late = Date.now() - Date.parse(t.responseDueAt);
+        for (const [level, role, after] of [[1, "staff:service_manager", 0], [2, "staff:executive", 24 * 3_600_000]] as const) {
+          if (late < after) continue;
+          const [claimed] = await tx.insert(deadlineNotifications)
+            .values({ id: generateId("dln"), targetType: "ticket_escalation", targetId: t.ref, offsetDays: level, sentAt: iso() })
+            .onConflictDoNothing().returning({ id: deadlineNotifications.id });
+          if (!claimed) continue;
+          if (level === 1 && t.status !== "escalated") {
+            t.status = "escalated";
+            t.escalatedAt = iso();
+            t.activity.unshift({ at: iso(), text: "Escalated automatically: response target missed" });
+            await recPut(tx, "ticket", { ...rec, state: t.status, data: t });
+          }
+          const to = await tx.execute<{ id: string }>(sql`select user_id id from users where role = ${role} and is_active`);
+          for (const u of to) await notify(tx, { userId: u.id, kind: "ticket", title: `${t.ref} unanswered past its target`, href: `/ops/tickets/${t.ref}` });
+          sent++;
+        }
+      }
+      return { escalations: sent };
+    });
+  }
+
+  /** F-FBK-01: rating reminders D+2 and D+7 after the first release, only while the case is unrated. */
+  @Cron("ops.rating_reminders", "0 8 * * *")
+  ratingReminders() {
+    return this.tx.runAsSystem(async (tx) => {
+      const due = await tx.execute<{ id: string; code: string; client: string; d: number }>(sql`
+        select a.application_id id, a.code, a.client_id client, floor(extract(epoch from now() - min(dl.released_at)) / 86400)::int d
+        from applications a join deliverables dl on dl.application_id = a.application_id and dl.released_at is not null
+        left join application_feedback f on f.application_id = a.application_id
+        where a.client_id is not null and f.rating is null
+        group by a.application_id, a.code, a.client_id
+        having floor(extract(epoch from now() - min(dl.released_at)) / 86400) in (2, 7)`);
+      let sent = 0;
+      for (const r of due) {
+        const [claimed] = await tx.insert(deadlineNotifications)
+          .values({ id: generateId("dln"), targetType: "rating_reminder", targetId: r.id, offsetDays: r.d, sentAt: iso() })
+          .onConflictDoNothing().returning({ id: deadlineNotifications.id });
+        if (!claimed) continue;
+        await notify(tx, { userId: r.client, kind: "rating", title: `How did we do on ${r.code}?`, href: `/requests/${r.code}` });
+        sent++;
+      }
+      return { sent };
+    });
+  }
+
+  /** F-FBK-08: a rating of 2 or less opens a high-priority complaint and alerts service managers (once per case). */
+  @Cron("ops.low_rating", "*/10 * * * *")
+  lowRatings() {
+    return this.tx.runAsSystem(async (tx) => {
+      const low = await tx
+        .select({ id: applications.applicationId, code: applications.code, rating: applicationFeedback.rating, comment: applicationFeedback.ratingComment })
+        .from(applicationFeedback)
+        .innerJoin(applications, eq(applications.applicationId, applicationFeedback.applicationId))
+        .where(and(lt(applicationFeedback.rating, 3), sql`${applicationFeedback.ratedAt} > now() - interval '7 days'`));
+      let opened = 0;
+      for (const a of low) {
+        const [claimed] = await tx.insert(deadlineNotifications)
+          .values({ id: generateId("dln"), targetType: "low_rating", targetId: a.id, offsetDays: 0, sentAt: iso() })
+          .onConflictDoNothing().returning({ id: deadlineNotifications.id });
+        if (!claimed) continue;
+        const t = await openTicket(tx, SYSTEM, {
+          kind: "complaint", category: "low_rating", caseRef: a.code, priority: "high", byClient: true,
+          note: `Rated ${a.rating}/5${a.comment ? `: ${a.comment}` : ""}`,
+        });
+        const sms = await tx.execute<{ id: string }>(sql`select user_id id from users where role = 'staff:service_manager' and is_active`);
+        for (const r of sms)
+          await notify(tx, { userId: r.id, kind: "ticket", title: `Low rating (${a.rating}/5) on ${a.code}`, href: `/ops/tickets/${t.ref}` });
+        opened++;
+      }
+      return { opened };
     });
   }
 

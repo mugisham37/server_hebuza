@@ -5,15 +5,17 @@ import { and, eq, gt, or } from "drizzle-orm";
 import type { RefundReason } from "@/domain/finance/types";
 import { requestRefund, saveRefund, type R } from "./finance.refunds";
 import type { Tx as Exec } from "../../core/db/db";
-import { applications, clientSubscriptions, servicePricingTiers, services } from "@/db/schema";
+import { applications, clientSubscriptions, procurementRecords, servicePricingTiers, services } from "@/db/schema";
 import { priceLines } from "@/domain/finance/price";
 import { splitVat } from "@/domain/money";
 import type { DocLine } from "@/domain/finance/types";
 import { allocationDue } from "@/domain/finance/states";
-import { addDays, all, DAY, nowIso, one, today, type Fin } from "./finance.store";
+import { addDays, all, DAY, need, nowIso, one, put, rid, today, where, type Fin } from "./finance.store";
+import { docTotals } from "@/domain/finance/money";
 import { dueForRenewal } from "../subscriptions/subscriptions.service";
 import {
   addClientCredit,
+  createInvoice,
   invOr404,
   issueCaseInvoice,
   issuePlanInvoice,
@@ -345,3 +347,42 @@ export async function planAllocations(f: Fin) {
   }
   return made;
 }
+
+// ---------------------------------------------------------------- F-SUP-17 case disbursements
+export type Disbursement = {
+  id: string; caseRef: string; vendorId: string; vendorName: string; label: string; amount: number;
+  billNo?: string; invoiceKey: string; at: string; by: { id: string; name: string };
+};
+/** A third-party cost paid for a client case: vendor + case + a pass-through line on a draft invoice to rebill it. */
+export async function addDisbursement(f: Fin, caseRef: string, b: { vendorId: string; label: string; amount: number; billNo?: string }) {
+  const c = f.D.caseOf(caseRef);
+  need(c, 404, "not_found");
+  need(Number.isInteger(b.amount) && b.amount > 0 && b.label.trim(), 422, "validation");
+  const [v] = await f.db
+    .select({ data: procurementRecords.data })
+    .from(procurementRecords)
+    .where(and(eq(procurementRecords.kind, "vendor"), eq(procurementRecords.id, b.vendorId)));
+  need(v, 422, "validation");
+  const vendorName = (v.data as { legalName: string }).legalName;
+  const line: DocLine = { kind: "third_party_cost", label: `${vendorName}: ${b.label.trim()}`, qty: 1, unit: b.amount };
+  // Rebill on the case's open draft, else a new draft for finance to review and issue.
+  const draft = (await caseInvoicesAll(f, caseRef)).find((i) => i.status === "draft");
+  let key: string;
+  if (draft) {
+    draft.lines.push(line);
+    draft.totals = docTotals(draft.lines, f.S.vat_bps);
+    draft.balanceDue = draft.totals.total - draft.amountPaid;
+    draft.rev++;
+    await saveInv(f.db, draft);
+    key = keyOf(draft);
+  } else key = (await createInvoice(f, { clientId: c!.clientId, caseRef, lines: [line], dueAt: addDays(today(), f.S.invoice_terms_days) })).key;
+  const d: Disbursement = {
+    id: rid("DSB"), caseRef, vendorId: b.vendorId, vendorName, label: b.label.trim(), amount: b.amount,
+    billNo: b.billNo?.trim() || undefined, invoiceKey: key, at: nowIso(), by: { id: f.me.id, name: f.me.name },
+  };
+  await put(f.db, "disbursement", d.id, d, caseRef);
+  f.rec("disbursement.recorded", "disbursement", d.id, null, { caseRef, vendorId: b.vendorId, amount: b.amount, invoice: key });
+  return d;
+}
+export const caseDisbursements = (f: Fin, caseRef: string) => where<Disbursement>(f.db, "disbursement", { ref: caseRef });
+const caseInvoicesAll = async (f: Fin, code: string) => (await all<Inv>(f.db, "invoice")).filter((i) => i.caseRef === code);

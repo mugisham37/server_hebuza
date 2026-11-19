@@ -7,9 +7,9 @@ import type { Session } from "./lib/ctx";
 import { generateId } from "./lib/ctx";
 import { AppError, err } from "./lib/ctx";
 import { publish } from "./lib/ctx";
-import { agentProfiles } from "@/db/schema";
+import { agentProfiles, assignmentBlocks, users } from "@/db/schema";
 import { applications } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import type { CaseStatus } from "@/domain/domain/case-status";
 import { notify } from "./lib/ctx";
 import {
@@ -1299,3 +1299,28 @@ export async function resolveDispute(
 
 export const ticketsOpen = async (db: Exec) =>
   (await recList<Ticket>(db, "ticket")).map((t) => t.data);
+
+// ── ASN-09 assignment restrictions ("never assign agent X to client Y") ─────────────────────────────
+export async function listBlocks(db: Exec, q: { agentId?: string; clientId?: string }) {
+  const rows = await db.select().from(assignmentBlocks)
+    .where(and(q.agentId ? eq(assignmentBlocks.agentId, q.agentId) : undefined, q.clientId ? eq(assignmentBlocks.clientId, q.clientId) : undefined))
+    .orderBy(desc(assignmentBlocks.createdAt));
+  const names = await namesOf(db, [...new Set(rows.flatMap((r) => [r.agentId, r.clientId]))]);
+  return { blocks: rows.map((r) => ({ ...r, agentName: names.get(r.agentId) ?? r.agentId, clientName: names.get(r.clientId) ?? r.clientId })) };
+}
+export async function addBlock(ctx: Ctx, b: { agentId: string; clientId: string; reason: string }) {
+  // The SM may type the client's customer ID (HBC-…) or user id.
+  const [cl] = await ctx.db.select({ id: users.userId }).from(users)
+    .where(and(eq(users.role, "client"), sql`(${users.userId} = ${b.clientId} or ${users.customerNo} = ${b.clientId.trim().toUpperCase()})`));
+  if (!cl) throw new AppError(422, "unknown_client", "No client with that customer ID.");
+  const id = generateId("blk");
+  await ctx.db.insert(assignmentBlocks).values({ id, ...b, clientId: cl.id, createdBy: ctx.session!.id, createdAt: iso() });
+  ctx.audit = { resourceId: id, details: b };
+  return listBlocks(ctx.db, { agentId: b.agentId });
+}
+export async function removeBlock(ctx: Ctx, id: string) {
+  const [r] = await ctx.db.delete(assignmentBlocks).where(eq(assignmentBlocks.id, id)).returning();
+  if (!r) throw err.notFound("Restriction not found.");
+  ctx.audit = { resourceId: id, details: { agentId: r.agentId, clientId: r.clientId } };
+  return { removed: true };
+}

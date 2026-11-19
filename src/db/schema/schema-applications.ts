@@ -85,3 +85,13 @@ export const applicationClaimOtps = pgTable("application_claim_otps", {
   expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
   sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }).notNull(),
 });
+
+/** ASN-09: "never assign this agent to this client" (conflict declarations and SM restrictions). */
+export const assignmentBlocks = pgTable("assignment_blocks", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  agentId: varchar("agent_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  clientId: varchar("client_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  reason: varchar({ length: 500 }).notNull(),
+  createdBy: varchar("created_by", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_assignment_blocks_agent").on(t.agentId), index("ix_assignment_blocks_client").on(t.clientId)]);

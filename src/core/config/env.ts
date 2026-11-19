@@ -61,6 +61,10 @@ export const envSchema = z.object({
   MTN_MOMO_API_USER: z.string().optional(),
   MTN_MOMO_API_KEY: z.string().optional(),
   MTN_MOMO_TARGET_ENVIRONMENT: z.string().optional(), // "sandbox" (default) or the MTN production target
+  // F-REV-07 agent payouts through MTN MoMo Disbursement (separate MTN product and keys); unset → lines are paid manually.
+  MTN_MOMO_DISBURSEMENT_SUBSCRIPTION_KEY: z.string().optional(),
+  MTN_MOMO_DISBURSEMENT_API_USER: z.string().optional(),
+  MTN_MOMO_DISBURSEMENT_API_KEY: z.string().optional(),
   AIRTEL_CLIENT_ID: z.string().optional(),
   AIRTEL_CLIENT_SECRET: z.string().optional(),
   AIRTEL_BASE_URL: z.string().url().optional(),

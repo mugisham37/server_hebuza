@@ -190,6 +190,50 @@ export class PaymentsProvider {
     return "refunded";
   }
 
+  // ── MTN MoMo disbursement (F-REV-07 agent payouts); dormant until its keys are set ──
+  private disbursementBase = () =>
+    (this.env("MTN_MOMO_TARGET_ENVIRONMENT") ?? "sandbox").toLowerCase() === "sandbox"
+      ? "https://sandbox.momodeveloper.mtn.com"
+      : "https://proxy.momoapi.mtn.com";
+  payoutsLive = () =>
+    !!(this.env("MTN_MOMO_DISBURSEMENT_SUBSCRIPTION_KEY") && this.env("MTN_MOMO_DISBURSEMENT_API_USER") && this.env("MTN_MOMO_DISBURSEMENT_API_KEY"));
+  private async disbursementHeaders() {
+    const sub = this.env("MTN_MOMO_DISBURSEMENT_SUBSCRIPTION_KEY")!;
+    const basic = Buffer.from(`${this.env("MTN_MOMO_DISBURSEMENT_API_USER")}:${this.env("MTN_MOMO_DISBURSEMENT_API_KEY")}`).toString("base64");
+    const res = await call(`${this.disbursementBase()}/disbursement/token/`, {
+      method: "POST",
+      headers: { authorization: `Basic ${basic}`, "ocp-apim-subscription-key": sub },
+    });
+    const token = String(((await res!.json()) as { access_token: string }).access_token);
+    return {
+      authorization: `Bearer ${token}`,
+      "x-target-environment": this.env("MTN_MOMO_TARGET_ENVIRONMENT") ?? "sandbox",
+      "ocp-apim-subscription-key": sub,
+    };
+  }
+  /** Starts a transfer; returns the MTN reference to poll, or "unsupported" without keys. */
+  async payoutTransfer(a: { phone: string; amountRwf: number; ref: string }): Promise<string | "unsupported"> {
+    if (!this.payoutsLive()) return "unsupported";
+    const id = randomUUID();
+    await call(`${this.disbursementBase()}/disbursement/v1_0/transfer`, {
+      method: "POST",
+      headers: { ...(await this.disbursementHeaders()), "x-reference-id": id, "content-type": "application/json" },
+      body: JSON.stringify({
+        amount: String(a.amountRwf), currency: "RWF", externalId: a.ref,
+        payee: { partyIdType: "MSISDN", partyId: a.phone.replace(/\D/g, "") },
+        payerMessage: "HEBUZA payout", payeeNote: a.ref,
+      }),
+    });
+    return id;
+  }
+  async payoutStatus(id: string): Promise<"succeeded" | "failed" | "pending" | null> {
+    if (!this.payoutsLive()) return null;
+    const res = await call(`${this.disbursementBase()}/disbursement/v1_0/transfer/${encodeURIComponent(id)}`, { headers: await this.disbursementHeaders() });
+    if (!res) return null;
+    const st = String(((await res.json()) as { status?: string }).status ?? "").toUpperCase();
+    return st === "SUCCESSFUL" ? "succeeded" : st === "FAILED" || st === "REJECTED" ? "failed" : "pending";
+  }
+
   // ── MTN MoMo collection ──
   private momo(): PaymentDriver {
     const base = () =>

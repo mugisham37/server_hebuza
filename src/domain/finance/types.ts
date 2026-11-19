@@ -52,7 +52,7 @@ export type Invoice = {
   no: string | null; series: Series; caseRef?: string; subscriptionId?: string; clientId: string;
   billTo: { name: string; tin?: string; address?: string; email?: string }; status: InvoiceStatus; overdue: boolean;
   lines: DocLine[]; totals: DocTotals; amountPaid: Rwf; amountCredited: Rwf; balanceDue: Rwf; issuedAt?: string;
-  dueAt?: string; ebmReceiptNo?: string; voidReason?: string; currency: string; fx?: { rate: number; at: string }; rev: number;
+  dueAt?: string; ebmReceiptNo?: string; voidReason?: string; currency: string; fx?: { currency: string; rate: number; at: string }; rev: number;
 };
 export type Payment = {
   id: string; invoiceNo: string; caseRef?: string; clientId: string; method: Method; state: PaymentState;

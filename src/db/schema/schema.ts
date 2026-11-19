@@ -688,7 +688,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
 	archivedAt: timestamp("archived_at", { withTimezone: true, mode: 'string' }),
 }, () => [
 	check("ck_subscription_plans_ck_subscription_plans_amount", sql`amount_rwf >= 0`),
-	check("ck_subscription_plans_ck_subscription_plans_interval", sql`("interval")::text = 'month'::text`),
+	check("ck_subscription_plans_ck_subscription_plans_interval", sql`("interval")::text = ANY ((ARRAY['month'::character varying, 'year'::character varying])::text[])`),
 	check("ck_subscription_plans_ck_subscription_plans_kind", sql`(kind)::text = ANY ((ARRAY['trial'::character varying, 'paid'::character varying, 'retainer'::character varying])::text[])`),
 ]);
 

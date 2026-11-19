@@ -527,11 +527,16 @@ export async function rateCase(
     );
   if (!n)
     throw new AppError(409, "conflict", "Nothing has been delivered yet.");
+  // F-FBK-01: a rating can be changed for 7 days after it was first given.
+  const [prev] = await db.select({ at: applicationFeedback.ratedAt, rating: applicationFeedback.rating })
+    .from(applicationFeedback).where(eq(applicationFeedback.applicationId, a.applicationId));
+  if (prev?.rating && prev.at && Date.now() - Date.parse(prev.at) > 7 * 86_400_000)
+    throw new AppError(409, "rating_locked", "Ratings can be changed for 7 days only.");
   await recordFeedback(db, a.applicationId, {
     rating: stars,
     ratingTags: extra.tags ?? null,
     ratingComment: extra.comment || null,
-    ratedAt: new Date().toISOString(),
+    ratedAt: (prev?.rating && prev.at) || new Date().toISOString(), // the edit window runs from the first rating
   });
   return { recorded: true };
 }

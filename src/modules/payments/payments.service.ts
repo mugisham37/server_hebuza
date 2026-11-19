@@ -1233,6 +1233,14 @@ export class PaymentsService {
     return { status: "refunded", transactionId: p.t, kind: p.kind };
   }
 
+  /** F-REV-07 payout leg (no tx): MoMo disbursement transfer + status poll; "unsupported" while dormant. */
+  payoutTransfer(a: { phone: string; amountRwf: number; ref: string }) {
+    return this.provider.payoutTransfer(a);
+  }
+  payoutStatus(id: string) {
+    return this.provider.payoutStatus(id);
+  }
+
   // ── receipts and client billing reads (owner RLS via TxService.run) ────────────────────────────
   receipt(me: SessionUser, rawCode: string) {
     return this.txs.run(async (tx) => {

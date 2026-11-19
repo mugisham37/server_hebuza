@@ -175,6 +175,8 @@ export class NewInvoiceDto extends dto(
     lines: Lines,
     dueAt: Day,
     lang: Locale.optional(),
+    // F-FIN-20: optional display currency; amounts stay RWF, the rate (RWF per unit) is frozen on the invoice.
+    fx: z.object({ currency: z.enum(["USD", "EUR", "KES", "UGX", "TZS"]), rate: z.number().positive().max(1_000_000) }).optional(),
   }),
 ) {}
 export class InvoicePatchDto extends dto(
@@ -449,4 +451,7 @@ export class ClientRefundDto extends dto(
     method: z.string().max(16).optional(),
     idempotencyKey: z.string().max(128).optional(),
   }),
+) {}
+export class DisbursementDto extends dto(
+  z.object({ vendorId: Str.min(1).max(64), label: Str.min(1).max(200), amount: z.number().int().positive().max(1_000_000_000), billNo: Str.max(64).optional() }),
 ) {}

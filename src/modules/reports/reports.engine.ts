@@ -423,14 +423,27 @@ const DEFS: Record<ReportKey, Def> = {
       ["inflows", "money", true],
       ["outflows", "money", true],
       ["net", "money"],
+      // F-FIN-19 projection: open receivables on their due date (pick a future period to see the forecast).
+      ["expected", "money", true],
     ],
     recs: (c) => [
+      ...c.data.invs
+        .filter((i) => i.no && i.dueAt && i.balanceDue > 0 && !["void", "draft", "paid_by_plan"].includes(i.status))
+        .map((i) => ({
+          date: i.dueAt!,
+          dims: timeDims(i.dueAt!),
+          values: { inflows: 0, outflows: 0, expected: i.balanceDue },
+          ref: i.no!,
+          href: invHref(i.no!),
+          party: i.billTo.name,
+          state: i.status,
+        })),
       ...c.data.pays
         .filter((p) => CONFIRMED.has(p.state))
         .map((p) => ({
           date: p.at,
           dims: timeDims(p.at),
-          values: { inflows: p.amountReceived ?? 0, outflows: 0 },
+          values: { inflows: p.amountReceived ?? 0, outflows: 0, expected: 0 },
           ref: p.receiptNo ?? p.id,
           href: `/finance/payments?id=${p.id}`,
           party: c.D.clientName(p.clientId),
@@ -444,7 +457,7 @@ const DEFS: Record<ReportKey, Def> = {
             return {
               date: d,
               dims: timeDims(d),
-              values: { inflows: 0, outflows: l.net },
+              values: { inflows: 0, outflows: l.net, expected: 0 },
               ref: b.no,
               href: `/finance/payouts/${b.no}?line=${l.id}`,
               party: c.D.workerName(l.workerId),

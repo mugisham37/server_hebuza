@@ -53,6 +53,7 @@ import {
   today,
   type Actor,
   type Fin,
+  where,
 } from "./finance.store";
 import type { Inv } from "./finance.billing";
 import { postAllocation, postPayoutLine } from "../ledger/ledger.postings";
@@ -78,6 +79,8 @@ type LineMeta = {
   consumed?: boolean;
 };
 export type Batch = PayoutBatch & {
+  /** F-REV-07: MTN disbursement reference while the transfer is in flight. */
+  momoRef?: string;
   chain: Step[];
   rev: number;
   last?: { by: string; at: string };
@@ -1448,4 +1451,19 @@ export async function exportBatch(f: Fin, no: string, format: string) {
     "data",
   );
   return { ...file, content, rows: rows.length };
+}
+
+// ---------------------------------------------------------------- F-REV-07 MoMo disbursement (FinanceJobs drives it)
+/** Pending MoMo lines of executing batches, with whether a transfer is already in flight. */
+export async function momoLines(db: Exec) {
+  return (await where<Batch>(db, "batch", { status: ["executing"] })).flatMap((b) =>
+    b.lines
+      .filter((l) => l.status === "pending" && l.method === "mtn_momo" && l.net > 0)
+      .map((l) => ({ batchNo: b.no, lineId: l.id, workerId: l.workerId, net: l.net, momoRef: b.meta[l.id]?.momoRef })),
+  );
+}
+export async function setMomoRef(db: Exec, batchNo: string, lineId: string, ref: string) {
+  const b = await batchOr404(db, batchNo);
+  (b.meta[lineId] ??= { parts: [], carriedIn: 0, taxable: 0, carriedFrom: [] } as unknown as LineMeta).momoRef = ref;
+  await saveBatch(db, b);
 }

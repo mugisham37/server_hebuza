@@ -14,6 +14,7 @@ import type { FastifyReply } from "fastify";
 import { RawResponse } from "../../core/http/envelope.interceptor";
 import { Route } from "../../core/http/route";
 import * as bill from "./finance.billing";
+import * as cases from "./finance.cases";
 import { AcceptedInterceptor, FinRunner } from "./finance.runner";
 import * as D from "./finance.dto";
 
@@ -37,6 +38,17 @@ export class FinanceBillingController {
   @Route({ auth: D.FIN })
   quote(@Param("no") no: string) {
     return this.r.read((f) => bill.getQuote(f, no));
+  }
+  // ---- F-SUP-17 case disbursements (third-party costs rebilled as pass-through lines)
+  @Get("cases/:ref/disbursements")
+  @Route({ auth: D.FIN })
+  disbursements(@Param("ref") ref: string) {
+    return this.r.read(async (f) => ({ items: await cases.caseDisbursements(f, ref) }));
+  }
+  @Post("cases/:ref/disbursements")
+  @Route({ auth: D.FIN, ...D.W })
+  addDisbursement(@Param("ref") ref: string, @Body() b: D.DisbursementDto) {
+    return this.r.write((f) => cases.addDisbursement(f, ref, b));
   }
   @Get("quotations/:no/pdf")
   @Route({ auth: D.FIN })

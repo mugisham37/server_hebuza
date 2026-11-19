@@ -16,3 +16,11 @@ describe("lapseTo (F-SUB-06/07)", () => {
     expect(lapseTo(s("trial"), t + 1)).toBe("expired");
   });
 });
+
+import { addPeriod } from "./subscriptions.service";
+describe("addPeriod (F-SUB-11)", () => {
+  it("clamps month end in Kigali time and adds a year", () => {
+    expect(addPeriod("2027-01-30T22:00:00.000Z", "month")).toBe("2027-02-27T22:00:00.000Z"); // Jan 31 00:00 Kigali → Feb 28
+    expect(addPeriod("2027-03-15T10:00:00.000Z", "year")).toBe("2028-03-15T10:00:00.000Z");
+  });
+});

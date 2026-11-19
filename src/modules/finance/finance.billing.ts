@@ -1,7 +1,7 @@
 // Finance billing (U5–U7, U11, U15): quotations, invoices, client credit, EBM, reminders, receivables ageing, credit notes.
 // Port of src/mocks/handlers-finance-b.ts + the receivables half of handlers-finance-d.ts onto finance_records.
 import type { Tx as Exec } from "../../core/db/db";
-import { applyPayment, depositSplit, docTotals } from "@/domain/finance/money";
+import { applyPayment, depositSplit, docTotals, fx } from "@/domain/finance/money";
 import { canMove, isOverdue } from "@/domain/finance/states";
 import {
   BUCKETS,
@@ -801,6 +801,7 @@ export async function createInvoice(
     lines: DocLine[];
     dueAt: string;
     lang?: Locale;
+    fx?: { currency: string; rate: number };
   },
 ) {
   need(f.D.client(b.clientId), 422, "validation");
@@ -816,6 +817,7 @@ export async function createInvoice(
     dueAt: b.dueAt.slice(0, 10),
     lang: b.lang,
   });
+  if (b.fx) inv.fx = { ...b.fx, at: nowIso() };
   await saveInv(f.db, inv);
   f.rec("invoice.draft.created", "invoice", inv.id, null, {
     total: inv.totals.total,
@@ -1216,7 +1218,7 @@ export async function clientInvoices(db: Exec, clientId: string) {
 export function invoiceDocPdf(
   title: string,
   no: string,
-  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string }; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number },
+  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string }; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number; fx?: { currency: string; rate: number; at: string } },
 ) {
   const rwf = (n: number) => `${n.toLocaleString("en-US")} RWF`;
   return textPdf(`${title} ${no}`, [
@@ -1232,6 +1234,7 @@ export function invoiceDocPdf(
     `Pass-through (government / third party): ${rwf(d.totals.passThrough)}`,
     `Total: ${rwf(d.totals.total)}`,
     ...(d.balanceDue != null ? [`Balance due: ${rwf(d.balanceDue)}`] : []),
+    ...(d.fx ? [`Indicative: ${fx(d.totals.total, 1 / d.fx.rate).rwf.toLocaleString("en-US")} ${d.fx.currency} at ${d.fx.rate} RWF/${d.fx.currency} (${d.fx.at.slice(0, 10)}); RWF is the amount due.`] : []),
   ]);
 }
 export async function quotePdf(f: Fin, no: string) {

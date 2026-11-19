@@ -17146,6 +17146,162 @@
         ]
       }
     },
+    "/api/admin/ops/assignment-blocks": {
+      "get": {
+        "operationId": "OpsOversightController_blocks",
+        "parameters": [
+          {
+            "name": "agentId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpsOversight"
+        ]
+      },
+      "post": {
+        "operationId": "OpsOversightController_addBlock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignmentBlockDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpsOversight"
+        ]
+      }
+    },
+    "/api/admin/ops/assignment-blocks/{id}": {
+      "delete": {
+        "operationId": "OpsOversightController_removeBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "OpsOversight"
+        ]
+      }
+    },
     "/api/admin/ops/approvals": {
       "get": {
         "operationId": "OpsOversightController_approvals",
@@ -27819,6 +27975,65 @@
         ]
       }
     },
+    "/api/admin/cms/entries/{id}/credential": {
+      "post": {
+        "operationId": "CmsController_credential",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialDto3"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Cms"
+        ]
+      }
+    },
     "/api/admin/cms/entries/{id}/versions": {
       "get": {
         "operationId": "CmsController_versions",
@@ -29207,6 +29422,183 @@
                     "data": {
                       "$ref": "#/components/schemas/ExecSummaryResponse"
                     }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/definitions": {
+      "get": {
+        "operationId": "ReportsController_definitions",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/subscriptions": {
+      "get": {
+        "operationId": "ReportsController_subscriptions",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      },
+      "post": {
+        "operationId": "ReportsController_subscribe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Reports"
+        ]
+      }
+    },
+    "/api/reports/subscriptions/{id}": {
+      "delete": {
+        "operationId": "ReportsController_unsubscribe",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -54570,6 +54962,29 @@
           "refs"
         ]
       },
+      "AssignmentBlockDto": {
+        "type": "object",
+        "properties": {
+          "agentId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "clientId": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "agentId",
+          "clientId",
+          "reason"
+        ]
+      },
       "ApprovalDecisionDto": {
         "type": "object",
         "properties": {
@@ -57627,6 +58042,33 @@
           }
         }
       },
+      "CredentialDto3": {
+        "type": "object",
+        "properties": {
+          "verified": {
+            "type": "boolean"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "issuer": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "documentId": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "verified",
+          "title",
+          "issuer"
+        ]
+      },
       "CommentDto": {
         "type": "object",
         "properties": {
@@ -57695,7 +58137,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1471_0"
+              "$ref": "#/components/schemas/__s1486_0"
             }
           }
         },
@@ -57893,6 +58335,34 @@
           "contact",
           "topic",
           "message"
+        ]
+      },
+      "SubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "report": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "xlsx"
+            ]
+          },
+          "freq": {
+            "type": "string",
+            "enum": [
+              "weekly",
+              "monthly"
+            ]
+          }
+        },
+        "required": [
+          "report",
+          "format",
+          "freq"
         ]
       },
       "ExportDto": {
@@ -59499,7 +59969,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1862_0"
+            "$ref": "#/components/schemas/__s1882_0"
           },
           "channel": {
             "type": "string",
@@ -59524,7 +59994,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1866_0"
+            "$ref": "#/components/schemas/__s1886_0"
           }
         },
         "required": [
@@ -59542,7 +60012,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1870_0"
+                "$ref": "#/components/schemas/__s1890_0"
               }
             ]
           }
@@ -59786,7 +60256,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1922_0"
+                "$ref": "#/components/schemas/__s1942_0"
               }
             ]
           },
@@ -66572,7 +67042,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1471_0": {
+      "__s1486_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -66594,7 +67064,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1471_0"
+              "$ref": "#/components/schemas/__s1486_0"
             }
           }
         },
@@ -66604,7 +67074,7 @@
           "label"
         ]
       },
-      "__s1472_0": {
+      "__s1487_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -66626,7 +67096,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1472_0"
+              "$ref": "#/components/schemas/__s1487_0"
             }
           }
         },
@@ -66636,7 +67106,7 @@
           "label"
         ]
       },
-      "__s1473_0": {
+      "__s1488_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -66658,7 +67128,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1473_0"
+              "$ref": "#/components/schemas/__s1488_0"
             }
           }
         },
@@ -66668,7 +67138,7 @@
           "label"
         ]
       },
-      "__s1862_0": {
+      "__s1882_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66729,7 +67199,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1862_0"
+                  "$ref": "#/components/schemas/__s1882_0"
                 }
               ]
             }
@@ -66740,7 +67210,7 @@
           "rules"
         ]
       },
-      "__s1863_0": {
+      "__s1883_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66801,7 +67271,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1863_0"
+                  "$ref": "#/components/schemas/__s1883_0"
                 }
               ]
             }
@@ -66812,7 +67282,7 @@
           "rules"
         ]
       },
-      "__s1864_0": {
+      "__s1884_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66873,7 +67343,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1864_0"
+                  "$ref": "#/components/schemas/__s1884_0"
                 }
               ]
             }
@@ -66884,7 +67354,7 @@
           "rules"
         ]
       },
-      "__s1865_0": {
+      "__s1885_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66945,7 +67415,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1865_0"
+                  "$ref": "#/components/schemas/__s1885_0"
                 }
               ]
             }
@@ -66956,7 +67426,7 @@
           "rules"
         ]
       },
-      "__s1866_0": {
+      "__s1886_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67017,7 +67487,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1866_0"
+                  "$ref": "#/components/schemas/__s1886_0"
                 }
               ]
             }
@@ -67028,7 +67498,7 @@
           "rules"
         ]
       },
-      "__s1867_0": {
+      "__s1887_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67089,7 +67559,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1867_0"
+                  "$ref": "#/components/schemas/__s1887_0"
                 }
               ]
             }
@@ -67100,7 +67570,7 @@
           "rules"
         ]
       },
-      "__s1868_0": {
+      "__s1888_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67161,7 +67631,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1868_0"
+                  "$ref": "#/components/schemas/__s1888_0"
                 }
               ]
             }
@@ -67172,7 +67642,7 @@
           "rules"
         ]
       },
-      "__s1869_0": {
+      "__s1889_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67233,7 +67703,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1869_0"
+                  "$ref": "#/components/schemas/__s1889_0"
                 }
               ]
             }
@@ -67244,7 +67714,7 @@
           "rules"
         ]
       },
-      "__s1870_0": {
+      "__s1890_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67305,7 +67775,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1870_0"
+                  "$ref": "#/components/schemas/__s1890_0"
                 }
               ]
             }
@@ -67316,7 +67786,7 @@
           "rules"
         ]
       },
-      "__s1871_0": {
+      "__s1891_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67377,7 +67847,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1871_0"
+                  "$ref": "#/components/schemas/__s1891_0"
                 }
               ]
             }
@@ -67388,7 +67858,7 @@
           "rules"
         ]
       },
-      "__s1872_0": {
+      "__s1892_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67449,7 +67919,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1872_0"
+                  "$ref": "#/components/schemas/__s1892_0"
                 }
               ]
             }
@@ -67460,7 +67930,7 @@
           "rules"
         ]
       },
-      "__s1873_0": {
+      "__s1893_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67521,7 +67991,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1873_0"
+                  "$ref": "#/components/schemas/__s1893_0"
                 }
               ]
             }
@@ -67532,7 +68002,7 @@
           "rules"
         ]
       },
-      "__s1922_0": {
+      "__s1942_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67593,7 +68063,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1922_0"
+                  "$ref": "#/components/schemas/__s1942_0"
                 }
               ]
             }
@@ -67604,7 +68074,7 @@
           "rules"
         ]
       },
-      "__s1923_0": {
+      "__s1943_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67665,7 +68135,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1923_0"
+                  "$ref": "#/components/schemas/__s1943_0"
                 }
               ]
             }
@@ -67676,7 +68146,7 @@
           "rules"
         ]
       },
-      "__s1924_0": {
+      "__s1944_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67737,7 +68207,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1924_0"
+                  "$ref": "#/components/schemas/__s1944_0"
                 }
               ]
             }
@@ -67748,7 +68218,7 @@
           "rules"
         ]
       },
-      "__s1925_0": {
+      "__s1945_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67809,7 +68279,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1925_0"
+                  "$ref": "#/components/schemas/__s1945_0"
                 }
               ]
             }
@@ -67820,7 +68290,7 @@
           "rules"
         ]
       },
-      "__s1926_0": {
+      "__s1946_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67881,7 +68351,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1926_0"
+                  "$ref": "#/components/schemas/__s1946_0"
                 }
               ]
             }
@@ -67892,7 +68362,7 @@
           "rules"
         ]
       },
-      "__s1927_0": {
+      "__s1947_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67953,7 +68423,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1927_0"
+                  "$ref": "#/components/schemas/__s1947_0"
                 }
               ]
             }
@@ -67964,7 +68434,7 @@
           "rules"
         ]
       },
-      "__s1928_0": {
+      "__s1948_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68025,7 +68495,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1928_0"
+                  "$ref": "#/components/schemas/__s1948_0"
                 }
               ]
             }
@@ -68036,7 +68506,7 @@
           "rules"
         ]
       },
-      "__s1929_0": {
+      "__s1949_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68097,7 +68567,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1929_0"
+                  "$ref": "#/components/schemas/__s1949_0"
                 }
               ]
             }
@@ -68108,7 +68578,7 @@
           "rules"
         ]
       },
-      "__s1930_0": {
+      "__s1950_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68169,7 +68639,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1930_0"
+                  "$ref": "#/components/schemas/__s1950_0"
                 }
               ]
             }
@@ -68180,7 +68650,7 @@
           "rules"
         ]
       },
-      "__s1931_0": {
+      "__s1951_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68241,7 +68711,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1931_0"
+                  "$ref": "#/components/schemas/__s1951_0"
                 }
               ]
             }
@@ -68252,7 +68722,7 @@
           "rules"
         ]
       },
-      "__s1932_0": {
+      "__s1952_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -68313,7 +68783,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1932_0"
+                  "$ref": "#/components/schemas/__s1952_0"
                 }
               ]
             }

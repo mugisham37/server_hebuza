@@ -122,16 +122,16 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 ## feedback-complaints-ratings (FBK)
 | F-ID | title | phase | status | evidence / gap |
 |---|---|---|---|---|
-| F-FBK-01 | Case rating (CSAT) | P2 | PARTIAL | `me/deliverables/:code/rating` with stars, tags and comment (documents.service.ts:810, rateCase ~:513), W deliverables.tsx:372. No D+2/D+7 reminders and no 7-day edit window |
+| F-FBK-01 | Case rating (CSAT) | P2 | DONE | wave 3: D+2/D+7 reminders (`ops.rating_reminders`), 7-day edit window in rateCase. `me/deliverables/:code/rating` with stars, tags and comment (documents.service.ts:810, rateCase ~:513), W deliverables.tsx:372. No D+2/D+7 reminders and no 7-day edit window |
 | F-FBK-02 | NPS survey | P3 | PARTIAL | Marketing feedback/NPS report (S marketing.insights.ts:838). No 90-day/2nd-case survey trigger |
 | F-FBK-03 | Complaints register | P2 | PARTIAL | Ops tickets with complaint/dispute/enquiry kinds, category, priority and responseDueAt (S ops.manage.ts:947-972), W ops/tickets. Severity uses high/medium/low rather than the spec's critical-4h SLA ladder. Client complaints go to a separate `support_tickets` table (support.service.ts) |
 | F-FBK-04 | Dispute unification | P2 | PARTIAL | Ops tickets cover chat disputes (ops.manage.ts:1081-1118), but the chat module keeps its own `chat/.../disputes` (chat.controller.ts:194-210). There are two to three registers |
 | F-FBK-05 | Enquiry inbox | P2 | PARTIAL | `contact_inquiries` (cms.service.ts:1424) and W marketing/inbox. Assign/reply/convert-to-request not verified, and they are not tickets in the register |
-| F-FBK-06 | Escalation ladder | P2 | PARTIAL | Manual `escalate` action (ops.manage.ts ~1210). No SLA-driven job to SM/exec |
+| F-FBK-06 | Escalation ladder | P2 | DONE | wave 3: `ops.ticket_escalation` SM at response target, exec +24 h. Manual `escalate` action (ops.manage.ts ~1210). No SLA-driven job to SM/exec |
 | F-FBK-07 | Resolution & follow-up | P2 | PARTIAL | resolve/confirm/reopen/refund/credit/reassign actions (ops.manage.ts:1140-1240). There is no resolution-kind enum, and the 14-day reopen limit was not verified |
-| F-FBK-08 | Low-rating alert | P2 | MISSING | No rating ≤2 → complaint + SM alert |
+| F-FBK-08 | Low-rating alert | P2 | DONE | wave 3: `ops.low_rating` rating ≤2 → high complaint + SM alert. No rating ≤2 → complaint + SM alert |
 | F-FBK-09 | Testimonials | P3 | DONE | S marketing.insights.ts:701, W marketing/testimonials |
-| F-FBK-10 | Agent quality score | P2 | MISSING | CSAT and complaint rate are not fed into WRK/ASN scoring (nothing found in agent/ops performance) |
+| F-FBK-10 | Agent quality score | P2 | DONE | wave 3: `ops.quality_scores` CSAT/complaints/on-time → agent_profiles rating/onTime used by rankAgents. CSAT and complaint rate are not fed into WRK/ASN scoring (nothing found in agent/ops performance) |
 
 ## Journeys (client-individual, company-rep, visitor, internal-agent, service-manager)
 - Visitor → track → claim: works, but claim has no OTP (REQ-10).

@@ -255,3 +255,8 @@ export class TicketActionDto extends dto(
     preventive: z.string().max(2000).optional(),
   }),
 ) {}
+
+export class AssignmentBlockDto extends dto(
+  z.object({ agentId: Id, clientId: Id, reason: z.string().trim().min(3).max(500) }),
+) {}
+export class AssignmentBlockQueryDto extends dto(z.object({ agentId: Id.optional(), clientId: Id.optional() })) {}

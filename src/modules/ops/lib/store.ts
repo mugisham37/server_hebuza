@@ -16,6 +16,7 @@ import {
   opsClientProfiles,
   opsRecords,
   deliverables,
+  assignmentBlocks,
 } from "@/db/schema";
 import { statusEffects } from "@/modules/applications/status-effects";
 import type { CaseStatus } from "@/domain/domain/case-status";
@@ -496,6 +497,10 @@ export async function agentsAll(db: Exec, ids?: string[]): Promise<AgentRow[]> {
     where a.status not in ('completed_delivered','rejected','cancelled','refunded') group by 1`);
   const load = new Map<string, number>();
   for (const r of loads) load.set(r.id, (load.get(r.id) ?? 0) + Number(r.n));
+  // ASN-09: restrictions feed ranking/assign eligibility as `conflictWith`.
+  const blocks = new Map<string, string[]>();
+  for (const b of await db.select({ a: assignmentBlocks.agentId, c: assignmentBlocks.clientId }).from(assignmentBlocks).where(inArray(assignmentBlocks.agentId, rows.map((r) => r.u.userId))))
+    (blocks.get(b.a) ?? blocks.set(b.a, []).get(b.a)!).push(b.c);
   const today = new Date().toISOString().slice(0, 10);
   return rows.map(({ p, u }) => ({
     id: u.userId,
@@ -514,6 +519,7 @@ export async function agentsAll(db: Exec, ids?: string[]): Promise<AgentRow[]> {
     onTime: p.onTimeBps / 10_000,
     rating: p.ratingX10 / 10,
     languages: p.languages as string[],
+    conflictWith: blocks.get(u.userId) ?? [],
     cost: p.costRwf ?? undefined,
     role: p.title,
     skillsLabel: p.skillsLabel as string[],
