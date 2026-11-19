@@ -27,3 +27,11 @@ export const rulesOverlap = (rules: Rule[], c: Rule) =>
   rules.some((r) => r.id !== c.id && r.status !== "ended" && sameKey(r, c) && r.from <= (c.to ?? "9999-12-31") && c.from <= (r.to ?? "9999-12-31"));
 /** 422 retroactive: rules and settings only take effect from today on. */
 export const isRetroactive = (from: string, today: string) => from.slice(0, 10) < today.slice(0, 10);
+
+/** F-CAT-12: the catalogue's per-service default agent share (bps) ranks like a service rule: below any explicit
+ * contract/agent_service/service rule, above agent/global ones. */
+export function withServiceDefault(rule: Rule, slug: string, serviceBps: number | null | undefined) {
+  return serviceBps != null && (rule.scope === "agent" || rule.scope === "global")
+    ? { agentPct: serviceBps, ruleId: `catalogue:${slug}` }
+    : { agentPct: rule.agentPct, ruleId: rule.id };
+}

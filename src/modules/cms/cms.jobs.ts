@@ -8,7 +8,9 @@ import { OutboxService } from "../../core/db/outbox";
 import { TxService } from "../../core/db/tx";
 import { Cron, Job } from "../../core/queue/queues";
 import { PublicCache } from "../catalogue/cache";
-import { sweepSchedule } from "./cms.service";
+import { getEntry, saveEntry, sweepSchedule } from "./cms.service";
+import { createCampaign } from "../marketing/marketing.campaigns";
+import { applyDuePriceChanges } from "../catalogue/catalogue.service";
 
 @Injectable()
 export class CmsJobs {
@@ -28,6 +30,29 @@ export class CmsJobs {
       return tags;
     });
     if (tags.length) await this.cache.bust("cms");
+  }
+
+  /** F-CMS-10: a published regulatory update gets a draft campaign for marketing to review and send. Idempotent. */
+  @Job("cms.regulatory_published")
+  async regulatoryCampaign(d: { id: string; key: string; title: string }) {
+    await this.txs.runAsSystem(async (tx) => {
+      const e = await getEntry(tx, d.id, true);
+      if (!e.meta.regulatory || e.meta.regulatory.campaignId) return;
+      const cp = await createCampaign({ db: tx, session: null }, { name: `Update: ${d.title}`.slice(0, 160), slug: `update-${d.key}`.slice(0, 80) });
+      e.meta.regulatory.campaignId = cp.id;
+      await saveEntry(tx, e, Date.now());
+    });
+  }
+
+  /** F-CAT-10: approved price changes take effect on their effective date. */
+  @Cron("catalogue.apply-price-changes", "*/5 * * * *")
+  async applyPrices() {
+    const slugs = await this.txs.runAsSystem(async (tx) => {
+      const slugs = await applyDuePriceChanges(tx);
+      if (slugs.length) await this.outbox.add(tx, { type: "cms.revalidate", payload: { tags: ["catalogue", ...slugs.map((s) => `service:${s}`)] } });
+      return slugs;
+    });
+    if (slugs.length) await this.cache.bust("catalogue");
   }
 
   /** Header `x-revalidate-signature: t=<unix ms>,v1=<hex hmac-sha256(secret, "<t>.<body>")>`; web rejects stale t (replay window). */

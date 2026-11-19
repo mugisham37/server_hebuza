@@ -4,6 +4,8 @@
 import { and, desc, gte, or, like } from "drizzle-orm";
 import type { Tx as Exec } from "../../core/db/db";
 import { auditLog } from "@/db/schema";
+import { servicePriceChanges } from "@/db/schema/schema-catalogue";
+import { eq } from "drizzle-orm";
 import { canSign, settingChain, sign } from "@/domain/finance/approvals";
 import { isRetroactive } from "@/domain/finance/rules";
 import type {
@@ -62,6 +64,7 @@ type Q = {
   changes: SettingChange[];
   batches: Batch[];
   lines: { match: string }[];
+  prices: (typeof servicePriceChanges.$inferSelect)[];
 };
 async function queues(db: Exec): Promise<Q> {
   const [pays, refunds, allocs, changes, batches, lines] = await Promise.all([
@@ -74,7 +77,9 @@ async function queues(db: Exec): Promise<Q> {
     where<Batch>(db, "batch", { status: ["submitted"] }),
     all<{ match: string }>(db, "line"),
   ]);
-  return { pays, refunds, allocs, changes, batches, lines };
+  // F-CAT-10 catalogue price changes waiting for finance (decided on the service's pricing step).
+  const prices = await db.select().from(servicePriceChanges).where(eq(servicePriceChanges.status, "pending"));
+  return { pays, refunds, allocs, changes, batches, lines, prices };
 }
 function approvalsOf(f: Fin, w: Q): ApprovalItem[] {
   const a = f.me;
@@ -158,6 +163,18 @@ function approvalsOf(f: Fin, w: Q): ApprovalItem[] {
           : isFinanceUser(a) || isExec(a)
             ? "sign"
             : "blocked",
+    });
+  for (const p of w.prices)
+    items.push({
+      id: p.id,
+      type: "price_change",
+      record: p.slug,
+      href: `/ops/catalogue/${p.slug}?step=pricing`,
+      maker: { id: p.proposedBy, name: p.proposedByName ?? p.proposedBy },
+      amount: typeof p.body.platform_fee === "number" ? p.body.platform_fee : null,
+      reason: p.kind === "tier" ? `tier:${p.tier}` : "pricing",
+      at: p.createdAt,
+      mine: a.id === p.proposedBy ? "waiting" : isFinanceUser(a) ? "sign" : "blocked",
     });
   // Executives see only steps they can act on (U4).
   return isExecOnly(a) ? items.filter((i) => i.mine === "sign") : items;

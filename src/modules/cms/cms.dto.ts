@@ -117,3 +117,15 @@ export const ContactOut = z.object({ submitted: z.boolean(), reference: z.string
 export class PreviewQueryDto extends dto(z.object({ token: z.string().min(1).max(2048) })) {}
 export class RssQueryDto extends dto(z.object({ locale: Lang.default("en") })) {}
 export class NotFoundDto extends dto(z.object({ path: z.string().regex(/^\/(?!\/)/).max(512) })) {}
+export class FeedbackDto extends dto(z.object({
+  type: z.enum(["guide", "regulatory_update", "article", "faq"]),
+  key: z.string().min(1).max(160),
+  locale: Lang,
+  helpful: z.boolean(),
+})) {}
+export class CredentialDto extends dto(z.object({
+  verified: z.boolean(),
+  title: z.string().trim().min(1).max(160),
+  issuer: z.string().trim().min(1).max(160),
+  documentId: z.string().max(64).optional(),
+})) {}

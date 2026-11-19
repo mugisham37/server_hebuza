@@ -8,6 +8,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { and, asc, desc, eq, ne, sql as dsql } from "drizzle-orm";
 import { contactInquiries, users } from "@/db/schema";
+import { complianceRules } from "@/db/schema/schema-ops";
 import { captureFrom } from "../marketing/marketing.crm";
 import {
   cmsComments,
@@ -15,6 +16,7 @@ import {
   cmsLocks,
   cmsNav,
   cmsNotFound,
+  cmsFeedback,
   cmsRedirects,
   cmsSiteSettings,
   cmsVersions,
@@ -107,7 +109,7 @@ export const entryTags = (e: CmsEntry, oldSlugs: string[] = []) => {
 };
 
 // ---------------------------------------------------------------- persistence (pure functions over a Tx)
-async function getEntry(db: Tx, id: string, lock = false) {
+export async function getEntry(db: Tx, id: string, lock = false) {
   const q = db
     .select({ doc: cmsEntries.doc })
     .from(cmsEntries)
@@ -116,7 +118,7 @@ async function getEntry(db: Tx, id: string, lock = false) {
   if (!r) throw fail(404, "not_found", "Not found.");
   return r.doc;
 }
-async function saveEntry(db: Tx, e: CmsEntry, t: number) {
+export async function saveEntry(db: Tx, e: CmsEntry, t: number) {
   await db
     .update(cmsEntries)
     .set({
@@ -910,6 +912,14 @@ export class CmsService {
           throw stageRule();
         for (const l of langs)
           await snapshot(tx, e, l, me.name, "Published", t);
+        // F-CMS-10: link the authority's compliance-calendar rules and ask marketing for a draft campaign.
+        if (e.type === "regulatory_update" && e.meta.regulatory) {
+          const reg = e.meta.regulatory;
+          const rules = await tx.select({ code: complianceRules.code, svc: complianceRules.serviceSlug }).from(complianceRules)
+            .where(and(eq(complianceRules.authority, reg.authority), eq(complianceRules.active, true)));
+          reg.calendarRules = rules.filter((r) => !r.svc || !e.serviceSlugs.length || e.serviceSlugs.includes(r.svc)).map((r) => r.code);
+          if (!reg.campaignId) await this.outbox.add(tx, { type: "cms.regulatory_published", payload: { id: e.id, key: e.key, title: e.variants.en?.title ?? e.key } });
+        }
       }
       await saveEntry(tx, e, t);
       return {
@@ -1330,6 +1340,29 @@ export class CmsService {
           .limit(500)
       ).map((r) => ({ path: r.path, hits: r.hits, lastAt: r.lastAt })),
     }));
+  }
+  /** F-CMS-12: a service manager records (or withdraws) a checked credential; the public badge follows `verified`. */
+  verifyCredential(u: SessionUser, id: string, b: { verified: boolean; title: string; issuer: string; documentId?: string }, t = Date.now()) {
+    return this.write(async (tx, bust) => {
+      const e = await getEntry(tx, id, true);
+      if (e.type !== "team_member" || !e.meta.team) throw fail(422, "validation", "Only team profiles carry credentials.");
+      e.meta.team = { ...e.meta.team, verified: b.verified,
+        credential: { title: b.title, issuer: b.issuer, documentId: b.documentId, ...(b.verified && { verifiedBy: u.id, verifiedAt: iso(t) }) } };
+      await saveEntry(tx, e, t);
+      return { entry: await full(tx, e, t), tags: bust(entryTags(e)) };
+    });
+  }
+  /** F-CMS-08 public vote; only counts for entries that are actually published. */
+  async recordFeedback(b: { type: string; key: string; locale: Locale; helpful: boolean }) {
+    if (!(await this.publicEntries()).some((e) => e.type === b.type && e.key === b.key)) throw fail(404, "not_found", "Unknown page.");
+    await this.db.insert(cmsFeedback).values({ id: generateId("fb"), entryType: b.type, entryKey: b.key, locale: b.locale, helpful: b.helpful, createdAt: iso(Date.now()) });
+    return { ok: true };
+  }
+  /** Helpful / not-helpful totals per entry, for the content list. */
+  async feedbackStats() {
+    const rows = await this.db.select({ type: cmsFeedback.entryType, key: cmsFeedback.entryKey, yes: dsql<number>`count(*) filter (where ${cmsFeedback.helpful})::int`, no: dsql<number>`count(*) filter (where not ${cmsFeedback.helpful})::int` })
+      .from(cmsFeedback).groupBy(cmsFeedback.entryType, cmsFeedback.entryKey);
+    return { items: rows };
   }
   /** Public: the web proxy reports a 404 path (counted for the redirects screen). */
   async recordNotFound(path: string, t = Date.now()) {

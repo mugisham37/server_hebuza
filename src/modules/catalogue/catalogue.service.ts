@@ -20,7 +20,9 @@ import {
   serviceSubcategories,
   services,
 } from "@/db/schema";
-import { serviceSubStatuses } from "@/db/schema/schema-catalogue";
+import { servicePriceChanges, serviceSubStatuses } from "@/db/schema/schema-catalogue";
+import { lte } from "drizzle-orm";
+import type { SessionUser } from "../../core/http/context";
 import {
   bandFee,
   bandsProblem,
@@ -215,6 +217,7 @@ function summary(s: Loaded, volume = 0) {
     related_slugs: s.relatedSlugs as string[],
     fee_explainer: (s.feeExplainer as L3 | null) ?? null,
     markets: s.markets as string[],
+    locale_slugs: s.localeSlugs as Partial<L3>,
   };
 }
 const detail = (s: Loaded, volume = 0) => ({
@@ -321,7 +324,8 @@ export async function searchIds(db: Exec, q: string) {
   return rows.map((r) => r.service_id);
 }
 export async function getPublicService(db: Exec, slug: string) {
-  const [s] = await load(db, eq(services.slug, slug));
+  // F-CAT-07: a per-locale slug resolves to its service; the response carries the canonical slug + locale_slugs.
+  const [s] = await load(db, dsql`${services.slug} = ${slug} or exists (select 1 from jsonb_each_text(${services.localeSlugs}) e where e.value = ${slug})` as unknown as ReturnType<typeof eq>);
   if (!s || (s.status !== "published" && s.status !== "paused"))
     throw err.notFound("Service not found.");
   return detail(s, (await volumes(db)).get(s.serviceId) ?? 0);
@@ -689,7 +693,68 @@ export async function listAdminServices(db: Exec) {
 }
 export async function getAdminService(db: Exec, slug: string) {
   const s = await requireService(db, slug);
-  return detail(s, (await activeCounts(db)).get(s.serviceId) ?? 0);
+  return { ...detail(s, (await activeCounts(db)).get(s.serviceId) ?? 0), revenue_agent_bps: s.revenueAgentBps };
+}
+
+// ---------------------------------------------------------------- F-CAT-10 price change approval
+type PriceChange = typeof servicePriceChanges.$inferSelect;
+export const priceChangeOut = (c: PriceChange) => ({
+  id: c.id, slug: c.slug, kind: c.kind, tier: c.tier, body: c.body, effective_at: c.effectiveAt, status: c.status,
+  proposed_by: c.proposedBy, proposed_by_name: c.proposedByName, decided_by: c.decidedBy, decided_at: c.decidedAt,
+  reason: c.reason, created_at: c.createdAt,
+});
+/** Pricing PUT / tier fee PATCH land here instead of writing prices; nothing changes until a second person approves. */
+export async function proposePriceChange(
+  db: Exec,
+  slug: string,
+  by: { id: string; name?: string | null },
+  kind: "pricing" | "tier",
+  body: Record<string, unknown>,
+  tier: string | null,
+  effectiveAt?: string,
+) {
+  const s = await requireService(db, slug);
+  if (kind === "pricing" && (body as PricingIn).pricing_mode === "range") validateBands(((body as PricingIn).bands ?? []) as BandIn[]);
+  if (kind === "tier" && !s.tiers.some((t) => t.tier === tier)) throw err.notFound("Tier not found.");
+  const at = effectiveAt && Date.parse(effectiveAt) > Date.now() ? new Date(effectiveAt).toISOString() : now();
+  const [c] = await db.insert(servicePriceChanges).values({
+    id: generateId("pc"), serviceId: s.serviceId, slug, kind, tier, body, effectiveAt: at, status: "pending",
+    proposedBy: by.id, proposedByName: by.name ?? null, createdAt: now(),
+  }).returning();
+  return priceChangeOut(c);
+}
+export async function listPriceChanges(db: Exec, slug?: string) {
+  const rows = await db.select().from(servicePriceChanges)
+    .where(slug ? eq(servicePriceChanges.slug, slug) : inArray(servicePriceChanges.status, ["pending", "approved"]))
+    .orderBy(asc(servicePriceChanges.createdAt));
+  return { items: rows.map(priceChangeOut) };
+}
+async function applyChange(db: Exec, c: PriceChange) {
+  if (c.kind === "pricing") await updatePricing(db, c.slug, c.body as unknown as PricingIn);
+  else await updateTier(db, c.slug, c.tier!, c.body as unknown as TierIn);
+  await db.update(servicePriceChanges).set({ status: "applied" }).where(eq(servicePriceChanges.id, c.id));
+}
+/** Four-eyes: the proposer can't decide their own change. Approved + due → applied in the same tx. */
+export async function decidePriceChange(db: Exec, slug: string, id: string, by: string, approve: boolean, reason?: string) {
+  const [c] = await db.select().from(servicePriceChanges).where(and(eq(servicePriceChanges.id, id), eq(servicePriceChanges.slug, slug))).for("update");
+  if (!c) throw err.notFound("Price change not found.");
+  if (c.status !== "pending") throw new AppError(409, "conflict", "This change was already decided.");
+  if (c.proposedBy === by) throw new AppError(403, "forbidden", "You can't approve a change you proposed.");
+  if (!approve && !reason?.trim()) throw bad("Give a reason when rejecting.");
+  const at = now();
+  await db.update(servicePriceChanges).set({ status: approve ? "approved" : "rejected", decidedBy: by, decidedAt: at, reason: reason ?? null })
+    .where(eq(servicePriceChanges.id, id));
+  const fresh = { ...c, status: approve ? "approved" : "rejected" };
+  if (approve && c.effectiveAt <= at) await applyChange(db, fresh);
+  const [out] = await db.select().from(servicePriceChanges).where(eq(servicePriceChanges.id, id));
+  return priceChangeOut(out);
+}
+/** Cron body: apply approved changes whose effective date has come. Returns the slugs touched. */
+export async function applyDuePriceChanges(db: Exec) {
+  const due = await db.select().from(servicePriceChanges)
+    .where(and(eq(servicePriceChanges.status, "approved"), lte(servicePriceChanges.effectiveAt, now()))).for("update", { skipLocked: true });
+  for (const c of due) await applyChange(db, c);
+  return due.map((c) => c.slug);
 }
 
 /** Category by slug or id; hidden categories cannot take services (Python _resolve_category). */
@@ -843,6 +908,8 @@ export type UpdateServiceIn = {
   related_slugs?: string[] | null;
   fee_explainer?: L3 | null;
   markets?: string[] | null;
+  locale_slugs?: Partial<L3> | null;
+  revenue_agent_bps?: number | null;
 };
 export async function updateService(
   db: Exec,
@@ -897,6 +964,16 @@ export async function updateService(
   if (b.seo != null) set.seo = b.seo;
   if (b.related_slugs != null) set.relatedSlugs = [...new Set(b.related_slugs)].filter((x) => x !== slug);
   if (b.fee_explainer !== undefined) set.feeExplainer = b.fee_explainer;
+  if (b.locale_slugs != null) {
+    const ls = Object.fromEntries(Object.entries(b.locale_slugs).filter(([, v]) => v && v !== slug));
+    for (const v of Object.values(ls)) {
+      const [clash] = await db.select({ id: services.serviceId }).from(services)
+        .where(dsql`${services.serviceId} <> ${s.serviceId} and (${services.slug} = ${v} or exists (select 1 from jsonb_each_text(${services.localeSlugs}) e where e.value = ${v}))`);
+      if (clash) throw bad(`The slug "${v}" is already used by another service.`);
+    }
+    set.localeSlugs = ls;
+  }
+  if (b.revenue_agent_bps !== undefined) set.revenueAgentBps = b.revenue_agent_bps;
   if (b.markets != null) set.markets = [...new Set(b.markets.map((m) => m.toUpperCase()))];
   await db.update(services).set(set).where(eq(services.serviceId, s.serviceId));
   // Keep the draft's copy in step so the builder shows what was just saved.
@@ -1544,6 +1621,24 @@ export class CatalogueService {
   async updatePricing(slug: string, b: PricingIn) {
     const r = await this.write((t) => updatePricing(t, slug, b), (r) => ({ action: "service.pricing_mode_updated", entityId: r.audit.service_id, after: r.audit }));
     return r.out;
+  }
+  proposePriceChange(slug: string, me: SessionUser, kind: "pricing" | "tier", b: PricingIn & { effective_at?: string }, tier: string | null) {
+    const { effective_at, ...body } = b;
+    return this.write((t) => proposePriceChange(t, slug, { id: me.id }, kind, body, tier, effective_at),
+      (r) => ({ action: "service.price_change.proposed", entityId: r.id, after: r }));
+  }
+  /** Non-price tier fields apply now; fee/ETA fields become a pending change. */
+  async tierChange(slug: string, tier: string, rest: TierIn, priced: TierIn | null, me: SessionUser, effectiveAt?: string) {
+    if (Object.values(rest).some((v) => v !== undefined)) await this.updateTier(slug, tier, rest);
+    if (priced) await this.write((t) => proposePriceChange(t, slug, { id: me.id }, "tier", priced as Record<string, unknown>, tier, effectiveAt),
+      (r) => ({ action: "service.price_change.proposed", entityId: r.id, after: r }));
+    return this.getAdminService(slug);
+  }
+  listPriceChanges(slug?: string) {
+    return this.read((t) => listPriceChanges(t, slug));
+  }
+  decidePriceChange(slug: string, id: string, by: string, approve: boolean, reason?: string) {
+    return this.write((t) => decidePriceChange(t, slug, id, by, approve, reason));
   }
   async updateTier(slug: string, tier: string, b: TierIn) {
     const r = await this.write((t) => updateTier(t, slug, tier, b), (r) => ({ action: "service.pricing_updated", entityId: r.audit.service_id, after: r.audit }));

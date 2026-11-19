@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { consentLedger } from "@/db/schema/schema-notifications";
+import { POLICY_VERSION } from "../notifications/notifications.delivery";
 // P11 CRM services (port of src/mocks/handlers-marketing-crm.ts): lead capture from every channel, the lead pipeline
 // (stage machine, merge, convert, bulk, import, export), tasks, notes, the unified inbox and the customer 360.
 // Callable from routes, jobs and Server Components (Caller = { db, session }).
@@ -269,6 +272,14 @@ export async function capturePublic(c: Caller, b: PublicLeadIn) {
     businessType: b.businessType,
     landing: b.landing,
   });
+  // F-CMS-08 / NTF-09: opt-ins from public forms (newsletter, regulatory-updates subscribe) go to the consent ledger.
+  const subject = toE164(b.phone) ?? b.email!;
+  const purposes = (["email", "whatsapp", "sms"] as Channel[]).filter((ch) => consent[ch] === "in");
+  if (purposes.length)
+    await c.db.insert(consentLedger).values(purposes.map((ch) => ({
+      id: `cns_${randomUUID()}`, userId: null, subject: (ch === "email" ? b.email ?? subject : subject).slice(0, 255),
+      purpose: `marketing_${ch}`, granted: true, source: "crm", policyVersion: POLICY_VERSION, createdAt: new Date().toISOString(),
+    })));
   return { received: true, ref: lead.id };
 }
 

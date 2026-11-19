@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Headers, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
-import { invalid } from "../../core/http/errors";
+import { forbidden, invalid } from "../../core/http/errors";
 import { Route } from "../../core/http/route";
 import * as D from "./catalogue.dto";
 import { CatalogueService } from "./catalogue.service";
@@ -104,7 +104,9 @@ export class CatalogueController {
   }
   @Patch("admin/services/:slug")
   @Route({ auth: D.EDITORS, permission: "cat.draft.edit", out: D.ServiceDetailOut })
-  updateService(@Param("slug") slug: string, @Body() b: D.UpdateServiceDto) {
+  updateService(@Param("slug") slug: string, @Body() b: D.UpdateServiceDto, @CurrentUser() me: SessionUser | null) {
+    // F-CAT-12 revenue share is a finance/SM decision, not marketing copy.
+    if (b.revenue_agent_bps !== undefined && !me?.roles.some((r) => r === "staff:finance" || r === "staff:service_manager")) throw forbidden();
     return this.svc.updateService(slug, b);
   }
   @Delete("admin/services/:slug")
@@ -119,13 +121,26 @@ export class CatalogueController {
   }
   @Put("admin/services/:slug/pricing")
   @Route({ auth: D.PRICERS, permission: "cat.price.edit", out: D.ServiceDetailOut })
-  pricing(@Param("slug") slug: string, @Body() b: D.PricingDto) {
-    return this.svc.updatePricing(slug, b);
+  pricing(@Param("slug") slug: string, @Body() b: D.PricingDto, @CurrentUser() me: SessionUser | null) {
+    return this.svc.proposePriceChange(slug, me!, "pricing", b, null);
   }
   @Patch("admin/services/:slug/pricing/:tier")
   @Route({ auth: D.PRICERS, permission: "cat.price.edit", out: D.ServiceDetailOut })
-  tier(@Param("slug") slug: string, @Param("tier") tier: string, @Body() b: D.TierDto) {
-    return this.svc.updateTier(slug, tier, b);
+  tier(@Param("slug") slug: string, @Param("tier") tier: string, @Body() b: D.TierDto, @CurrentUser() me: SessionUser | null) {
+    // Fee/ETA changes need finance approval (F-CAT-10); label, features and availability apply now.
+    const { platform_fee, government_fee, eta_business_days, effective_at, ...rest } = b;
+    const priced = platform_fee !== undefined || government_fee !== undefined || eta_business_days !== undefined;
+    return this.svc.tierChange(slug, tier, rest, priced ? { platform_fee, government_fee, eta_business_days } : null, me!, effective_at);
+  }
+  @Get("admin/services/:slug/price-changes")
+  @Route({ auth: D.READERS, out: D.PriceChangeListOut })
+  priceChanges(@Param("slug") slug: string) {
+    return this.svc.listPriceChanges(slug);
+  }
+  @Post("admin/services/:slug/price-changes/:id/decision")
+  @Route({ auth: D.FINANCE_APPROVERS, permission: "cat.price.approve", audit: "service.price_change.decided", out: D.PriceChangeOut })
+  decide(@Param("slug") slug: string, @Param("id") id: string, @Body() b: D.PriceDecisionDto, @CurrentUser() me: SessionUser | null) {
+    return this.svc.decidePriceChange(slug, id, me!.id, b.approve, b.reason);
   }
 
   // ---- structure builder

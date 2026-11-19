@@ -315,6 +315,10 @@ export const services = pgTable("services", {
 	// F-CAT-13 approved indicative-fee explainer {rw,en,fr}; F-CAT-14 markets served (ISO country codes, e.g. ["RW","UG"]).
 	feeExplainer: jsonb("fee_explainer"),
 	markets: jsonb().default(["RW"]).notNull(),
+	// F-CAT-12 default agent share in basis points; finance allocation uses it below explicit service rules.
+	revenueAgentBps: integer("revenue_agent_bps"),
+	// F-CAT-07 per-locale public slugs {rw?,en?,fr?}; the canonical `slug` stays the id and the fallback.
+	localeSlugs: jsonb("locale_slugs").default({}).notNull(),
 	// F-CAT-06 search haystack (needs CREATE EXTENSION pg_trgm in the migration for the GIN index below).
 	searchText: text("search_text").generatedAlwaysAs(sql`lower(coalesce(name, '') || ' ' || coalesce(name_rw, '') || ' ' || coalesce(name_en, '') || ' ' || coalesce(name_fr, '') || ' ' || coalesce(short_description_rw, '') || ' ' || coalesce(short_description_en, '') || ' ' || coalesce(short_description_fr, '') || ' ' || category)`),
 }, (table) => [

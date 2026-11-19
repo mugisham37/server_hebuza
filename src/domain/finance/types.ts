@@ -129,7 +129,7 @@ export type ReportResult<R> = {
 export type ExportJob = { id: string; status: "queued" | "running" | "ready" | "failed" | "expired"; format: string; rowCount?: number; url?: string; expiresAt?: string };
 
 // ---- core read models (handlers-finance.ts)
-export type ApprovalType = "manual_payment" | "refund" | "allocation" | "batch" | "setting" | "rule";
+export type ApprovalType = "manual_payment" | "refund" | "allocation" | "batch" | "setting" | "rule" | "price_change";
 export type ApprovalItem = {
   id: string; type: ApprovalType; record: string; href: string; maker: UserRef; amount: Rwf | null; reason: string;
   at: string; slaAt?: string;

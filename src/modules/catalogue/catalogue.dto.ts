@@ -139,6 +139,8 @@ const summaryShape = {
   delivery_mode: s,
   seo: z.record(z.string(), z.object({ title: z.string().optional(), description: z.string().optional(), og_image: z.string().optional() })),
   related_slugs: z.array(z.string()),
+  locale_slugs: z.record(z.string(), z.string()),
+  revenue_agent_bps: n,
   fee_explainer: L3.nullable(),
   markets: z.array(z.string()),
 };
@@ -277,6 +279,8 @@ export const UpdateServiceIn = CreateServiceIn.omit({ slug: true, is_featured: t
     delivery_mode: z.enum(["online", "in_person", "hybrid"]).nullable().optional(),
     seo: z.partialRecord(z.enum(["rw", "en", "fr"]), SeoL).nullable().optional(),
     related_slugs: z.array(Slug).max(6).nullable().optional(),
+    locale_slugs: z.partialRecord(z.enum(["rw", "en", "fr"]), Slug).nullable().optional(),
+    revenue_agent_bps: z.number().int().min(0).max(10_000).nullable().optional(),
     fee_explainer: L3.nullable().optional(),
     markets: z.array(z.string().regex(/^[A-Za-z]{2}$/)).min(1).max(20).nullable().optional(),
   });
@@ -315,6 +319,7 @@ export const PricingIn = z.object({
     .nullable()
     .optional(),
   bands: z.array(BandIn).max(50).default([]),
+  effective_at: z.iso.datetime({ offset: true }).optional(), // F-CAT-10: applies on approval, not before this
 });
 export const TierIn = z.object({
   display_name: z.string().max(128).nullable().optional(),
@@ -324,7 +329,17 @@ export const TierIn = z.object({
   eta_business_days: z.number().int().min(0).max(365).nullable().optional(),
   features: z.array(z.string().max(200)).max(20).nullable().optional(),
   is_available: z.boolean().nullable().optional(),
+  effective_at: z.iso.datetime({ offset: true }).optional(),
 });
+export const PriceChangeOut = z.object({
+  id: z.string(), slug: z.string(), kind: z.string(), tier: z.string().nullable(), body: z.record(z.string(), z.unknown()),
+  effective_at: z.string(), status: z.string(), proposed_by: z.string(), proposed_by_name: z.string().nullable(),
+  decided_by: z.string().nullable(), decided_at: z.string().nullable(), reason: z.string().nullable(), created_at: z.string(),
+}).meta({ id: "PriceChangeResponse" });
+export const PriceChangeListOut = z.object({ items: z.array(PriceChangeOut) });
+export const PriceDecisionIn = z.object({ approve: z.boolean(), reason: z.string().trim().max(500).optional() });
+export class PriceDecisionDto extends dto(PriceDecisionIn) {}
+export const FINANCE_APPROVERS: Role[] = ["staff:finance"];
 // The builder model (src/lib/ops/e.ts toBody): one step of fields + a meta object. Capped so a draft can't balloon.
 export const StructureIn = z
   .object({

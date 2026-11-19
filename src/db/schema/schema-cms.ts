@@ -133,3 +133,17 @@ export const cmsLocks = pgTable("cms_locks", {
 
 /** TKT-YYYY-NNNNN references for /api/contact (stored as contact_inquiries.id, so that table needs no new column). */
 export const contactRefSeq = pgSequence("contact_ref_seq", { startWith: 142 });
+
+/** F-CMS-08 "Was this helpful?" votes on public knowledge pages (anonymous; one row per vote). */
+export const cmsFeedback = pgTable(
+  "cms_feedback",
+  {
+    id: varchar({ length: 64 }).primaryKey().notNull(),
+    entryType: varchar("entry_type", { length: 32 }).notNull(),
+    entryKey: varchar("entry_key", { length: 160 }).notNull(),
+    locale: varchar({ length: 2 }).notNull(),
+    helpful: boolean().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (t) => [index("ix_cms_feedback_entry").on(t.entryType, t.entryKey)],
+);

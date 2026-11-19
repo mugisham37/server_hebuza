@@ -109,6 +109,11 @@ export class CmsController {
   archive(@CurrentUser() me: SessionUser, @Param("id") id: string, @Body() b: D.ArchiveDto) {
     return this.svc.archive(me, id, b);
   }
+  @Post("admin/cms/entries/:id/credential")
+  @Route({ auth: ["staff:service_manager"], audit: "cms.team.credential_verified" })
+  credential(@Param("id") id: string, @Body() b: D.CredentialDto, @CurrentUser() u: SessionUser) {
+    return this.svc.verifyCredential(u, id, b);
+  }
   @Get("admin/cms/entries/:id/versions")
   @Route({ auth: R })
   versions(@Param("id") id: string) {
@@ -222,6 +227,16 @@ export class CmsController {
   @Route({ auth: "public", limit: "read" })
   preview(@Query() q: D.PreviewQueryDto) {
     return this.svc.preview(q.token);
+  }
+  @Post("content/feedback")
+  @Route({ auth: "public", limit: "write" })
+  feedback(@Body() b: D.FeedbackDto) {
+    return this.svc.recordFeedback(b);
+  }
+  @Get("admin/cms/feedback")
+  @Route({ auth: R })
+  feedbackStats() {
+    return this.svc.feedbackStats();
   }
   @Post("content/not-found")
   @Route({ auth: "public", limit: "write" })

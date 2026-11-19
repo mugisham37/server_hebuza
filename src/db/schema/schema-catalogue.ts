@@ -35,3 +35,25 @@ export const serviceSubStatuses = pgTable(
     index("ix_service_sub_statuses_canonical").on(t.canonical, t.sortOrder),
   ],
 );
+
+/** F-CAT-10: a proposed pricing change. Finance/executive (not the proposer) approves; it applies at effective_at. */
+export const servicePriceChanges = pgTable(
+  "service_price_changes",
+  {
+    id: varchar({ length: 64 }).primaryKey().notNull(),
+    serviceId: varchar("service_id", { length: 64 }).notNull(),
+    slug: varchar({ length: 128 }).notNull(),
+    kind: varchar({ length: 16 }).notNull(), // pricing | tier
+    tier: varchar({ length: 32 }),
+    body: jsonb().$type<Record<string, unknown>>().notNull(),
+    effectiveAt: timestamp("effective_at", { withTimezone: true, mode: "string" }).notNull(),
+    status: varchar({ length: 16 }).notNull(), // pending | approved | rejected | applied | failed
+    proposedBy: varchar("proposed_by", { length: 64 }).notNull(),
+    proposedByName: varchar("proposed_by_name", { length: 255 }),
+    decidedBy: varchar("decided_by", { length: 64 }),
+    decidedAt: timestamp("decided_at", { withTimezone: true, mode: "string" }),
+    reason: varchar({ length: 500 }),
+    createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+  },
+  (t) => [index("ix_service_price_changes_status").on(t.status, t.effectiveAt), index("ix_service_price_changes_slug").on(t.slug)],
+);

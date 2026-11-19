@@ -12,7 +12,9 @@ import {
   sign,
 } from "@/domain/finance/approvals";
 import { canMove } from "@/domain/finance/states";
-import { isRetroactive, resolveRule, rulesOverlap } from "@/domain/finance/rules";
+import { isRetroactive, resolveRule, rulesOverlap, withServiceDefault } from "@/domain/finance/rules";
+import { eq } from "drizzle-orm";
+import { services } from "@/db/schema";
 import { batchNo } from "@/domain/finance/numbering";
 import type {
   AdjReason,
@@ -559,7 +561,9 @@ export async function allocateCase(f: Fin, caseRef: string) {
     serviceSlug: c.service,
     date: c.updatedAt,
   });
-  const { netBase, pool, hebuza } = allocate(eligible, [], rule.agentPct);
+  const [svc] = await f.db.select({ bps: services.revenueAgentBps }).from(services).where(eq(services.slug, c.service));
+  const eff = withServiceDefault(rule, c.service, svc?.bps);
+  const { netBase, pool, hebuza } = allocate(eligible, [], eff.agentPct);
   const split =
     c.assignees.length > 1
       ? c.assignees.map((a) => ({
@@ -575,8 +579,8 @@ export async function allocateCase(f: Fin, caseRef: string) {
     eligible,
     deductions: [],
     netBase,
-    ruleId: rule.id,
-    agentPct: rule.agentPct,
+    ruleId: eff.ruleId,
+    agentPct: eff.agentPct,
     pool,
     hebuza,
     shares: split.map((s, i) => ({
@@ -595,7 +599,7 @@ export async function allocateCase(f: Fin, caseRef: string) {
     "allocation",
     a.id,
     null,
-    { pool, rule: rule.id },
+    { pool, rule: eff.ruleId },
     null,
   );
   return a;
