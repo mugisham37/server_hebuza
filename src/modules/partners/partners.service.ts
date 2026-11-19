@@ -231,6 +231,7 @@ export class PartnersService {
         entityId: p.id,
         after: { name: p.name },
       });
+      if (p.shownOnWebsite) await this.revalidateStrip(tx);
       return p;
     });
   }
@@ -333,8 +334,14 @@ export class PartnersService {
         before: { status: before.status },
         after: b,
       });
+      // PRT-13: the home strip (web cache tag "partners") changes when a shown partner changes or the flag flips.
+      if (before.shownOnWebsite || p.shownOnWebsite) await this.revalidateStrip(tx);
       return p;
     });
+  }
+
+  private revalidateStrip(tx: Tx) {
+    return this.outbox.add(tx, { type: "cms.revalidate", payload: { tags: ["partners"] } });
   }
 
   // ── children (generic CRUD; deletes are archive-style where the spec says so) ──
