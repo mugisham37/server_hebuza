@@ -71,7 +71,7 @@ export type SubmitInput = z.infer<typeof SubmitIn>;
 export const DashboardOut = z.object({ needs: z.array(Need), requests: z.array(Summary), paymentsDue: z.array(PaymentLine), unread: z.number().int() }).meta({ id: "ClientDashboard" });
 export class ActivityQueryDto extends dto(z.object({ year: z.string().regex(/^\d{4}$/).optional() })) {}
 export const ActivityOut = z.object({ items: z.array(z.object({ id: z.string(), at: z.string(), kind: z.string(), title: z.string(), slug: z.string().optional(), ref: z.string().nullable(), amount: z.number().int().nullable() })) });
-export const ListOut = z.object({ applications: z.array(Summary) }).meta({ id: "ApplicationListResponse" });
+export const ListOut = z.object({ applications: z.array(Summary.extend({ group_code: z.string().nullable() })) }).meta({ id: "ApplicationListResponse" });
 export class VerifyTrackDto extends dto(z.object({ contact: z.string().max(255).optional() })) {}
 export const VerifyTrackOut = z.object({ token: z.string(), expires_in: z.number().int(), detail: TrackDetail });
 

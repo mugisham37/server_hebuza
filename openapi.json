@@ -323,6 +323,123 @@
         ]
       }
     },
+    "/api/webhooks/notify/{token}/whatsapp": {
+      "get": {
+        "operationId": "NotificationsController_waVerify",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      },
+      "post": {
+        "operationId": "NotificationsController_wa",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WaEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/webhooks/notify/{token}/africastalking/inbound": {
       "post": {
         "operationId": "NotificationsController_atInbound",
@@ -2186,6 +2303,138 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/ServiceDetailResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Catalogue"
+        ]
+      }
+    },
+    "/api/admin/services/{slug}/price-changes": {
+      "get": {
+        "operationId": "CatalogueController_priceChanges",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/PriceChangeResponse"
+                          }
+                        }
+                      },
+                      "required": [
+                        "items"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Catalogue"
+        ]
+      }
+    },
+    "/api/admin/services/{slug}/price-changes/{id}/decision": {
+      "post": {
+        "operationId": "CatalogueController_decide",
+        "parameters": [
+          {
+            "name": "slug",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceDecisionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PriceChangeResponse"
                     }
                   }
                 }
@@ -28682,6 +28931,96 @@
         ]
       }
     },
+    "/api/content/feedback": {
+      "post": {
+        "operationId": "CmsController_feedback",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Cms"
+        ]
+      }
+    },
+    "/api/admin/cms/feedback": {
+      "get": {
+        "operationId": "CmsController_feedbackStats",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Cms"
+        ]
+      }
+    },
     "/api/content/not-found": {
       "post": {
         "operationId": "CmsController_recordNotFound",
@@ -44512,6 +44851,112 @@
         ]
       }
     },
+    "/api/finance/cases/{ref}/disbursements": {
+      "get": {
+        "operationId": "FinanceBillingController_disbursements",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "FinanceBilling"
+        ]
+      },
+      "post": {
+        "operationId": "FinanceBillingController_addDisbursement",
+        "parameters": [
+          {
+            "name": "ref",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisbursementDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "FinanceBilling"
+        ]
+      }
+    },
     "/api/finance/quotations/{no}/pdf": {
       "get": {
         "operationId": "FinanceBillingController_quotePdf",
@@ -50488,6 +50933,99 @@
         ],
         "additionalProperties": {}
       },
+      "WaEventDto": {
+        "type": "object",
+        "properties": {
+          "entry": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "properties": {
+                "changes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "value": {
+                        "type": "object",
+                        "properties": {
+                          "statuses": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "maxLength": 128
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "maxLength": 16
+                                },
+                                "errors": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "title": {
+                                        "type": "string",
+                                        "maxLength": 256
+                                      }
+                                    },
+                                    "additionalProperties": {}
+                                  }
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "status"
+                              ],
+                              "additionalProperties": {}
+                            }
+                          },
+                          "messages": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "maxLength": 32
+                                },
+                                "text": {
+                                  "type": "object",
+                                  "properties": {
+                                    "body": {
+                                      "type": "string",
+                                      "maxLength": 4096
+                                    }
+                                  },
+                                  "required": [
+                                    "body"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "from"
+                              ],
+                              "additionalProperties": {}
+                            }
+                          }
+                        },
+                        "additionalProperties": {}
+                      }
+                    },
+                    "additionalProperties": {}
+                  }
+                }
+              },
+              "additionalProperties": {}
+            }
+          }
+        },
+        "additionalProperties": {}
+      },
       "AtInboundDto": {
         "type": "object",
         "properties": {
@@ -51117,6 +51655,21 @@
               "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
             }
           },
+          "locale_slugs": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            }
+          },
+          "revenue_agent_bps": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 10000
+          },
           "fee_explainer": {
             "type": "object",
             "nullable": true,
@@ -51251,6 +51804,11 @@
                 "fee_type"
               ]
             }
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         },
         "required": [
@@ -51300,8 +51858,28 @@
           "is_available": {
             "type": "boolean",
             "nullable": true
+          },
+          "effective_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
           }
         }
+      },
+      "PriceDecisionDto": {
+        "type": "object",
+        "properties": {
+          "approve": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "approve"
+        ]
       },
       "StructureDto": {
         "type": "object",
@@ -57117,7 +57695,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1457_0"
+              "$ref": "#/components/schemas/__s1471_0"
             }
           }
         },
@@ -57235,6 +57813,42 @@
         "required": [
           "from",
           "to"
+        ]
+      },
+      "FeedbackDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "guide",
+              "regulatory_update",
+              "article",
+              "faq"
+            ]
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "rw",
+              "en",
+              "fr"
+            ]
+          },
+          "helpful": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "type",
+          "key",
+          "locale",
+          "helpful"
         ]
       },
       "NotFoundDto": {
@@ -58885,7 +59499,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1842_0"
+            "$ref": "#/components/schemas/__s1862_0"
           },
           "channel": {
             "type": "string",
@@ -58910,7 +59524,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1846_0"
+            "$ref": "#/components/schemas/__s1866_0"
           }
         },
         "required": [
@@ -58928,7 +59542,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1850_0"
+                "$ref": "#/components/schemas/__s1870_0"
               }
             ]
           }
@@ -59172,7 +59786,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1902_0"
+                "$ref": "#/components/schemas/__s1922_0"
               }
             ]
           },
@@ -60875,6 +61489,36 @@
           "format"
         ]
       },
+      "DisbursementDto": {
+        "type": "object",
+        "properties": {
+          "vendorId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "amount": {
+            "type": "integer",
+            "minimum": 0,
+            "exclusiveMinimum": true,
+            "maximum": 1000000000
+          },
+          "billNo": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "vendorId",
+          "label",
+          "amount"
+        ]
+      },
       "NewQuoteDto": {
         "type": "object",
         "properties": {
@@ -61125,6 +61769,27 @@
               "en",
               "fr"
             ]
+          },
+          "fx": {
+            "type": "object",
+            "properties": {
+              "currency": {
+                "type": "string",
+                "enum": [
+                  "USD",
+                  "EUR",
+                  "KES",
+                  "UGX",
+                  "TZS"
+                ]
+              },
+              "rate": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "maximum": 1000000
+              }
+            }
           }
         },
         "required": [
@@ -62617,6 +63282,16 @@
               "type": "string"
             }
           },
+          "locale_slugs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "revenue_agent_bps": {
+            "nullable": true,
+            "type": "number"
+          },
           "fee_explainer": {
             "nullable": true,
             "type": "object",
@@ -62671,6 +63346,7 @@
           "deliverables",
           "seo",
           "related_slugs",
+          "locale_slugs",
           "fee_explainer",
           "markets"
         ],
@@ -63138,6 +63814,16 @@
               "type": "string"
             }
           },
+          "locale_slugs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "revenue_agent_bps": {
+            "nullable": true,
+            "type": "number"
+          },
           "fee_explainer": {
             "nullable": true,
             "type": "object",
@@ -63227,6 +63913,7 @@
           "deliverables",
           "seo",
           "related_slugs",
+          "locale_slugs",
           "fee_explainer",
           "markets",
           "created_at",
@@ -63321,6 +64008,72 @@
           "hasUnpublishedChanges",
           "updatedAt",
           "copyTooLong"
+        ],
+        "additionalProperties": false
+      },
+      "PriceChangeResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "tier": {
+            "nullable": true,
+            "type": "string"
+          },
+          "body": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "effective_at": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "proposed_by": {
+            "type": "string"
+          },
+          "proposed_by_name": {
+            "nullable": true,
+            "type": "string"
+          },
+          "decided_by": {
+            "nullable": true,
+            "type": "string"
+          },
+          "decided_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "kind",
+          "tier",
+          "body",
+          "effective_at",
+          "status",
+          "proposed_by",
+          "proposed_by_name",
+          "decided_by",
+          "decided_at",
+          "reason",
+          "created_at"
         ],
         "additionalProperties": false
       },
@@ -64523,6 +65276,10 @@
                 "assigned_agent_name": {
                   "nullable": true,
                   "type": "string"
+                },
+                "group_code": {
+                  "nullable": true,
+                  "type": "string"
                 }
               },
               "required": [
@@ -64537,7 +65294,8 @@
                 "handler",
                 "ending",
                 "retainer",
-                "assigned_agent_name"
+                "assigned_agent_name",
+                "group_code"
               ],
               "additionalProperties": false
             }
@@ -65814,7 +66572,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1457_0": {
+      "__s1471_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -65836,7 +66594,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1457_0"
+              "$ref": "#/components/schemas/__s1471_0"
             }
           }
         },
@@ -65846,7 +66604,7 @@
           "label"
         ]
       },
-      "__s1458_0": {
+      "__s1472_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -65868,7 +66626,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1458_0"
+              "$ref": "#/components/schemas/__s1472_0"
             }
           }
         },
@@ -65878,7 +66636,7 @@
           "label"
         ]
       },
-      "__s1459_0": {
+      "__s1473_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -65900,7 +66658,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1459_0"
+              "$ref": "#/components/schemas/__s1473_0"
             }
           }
         },
@@ -65910,7 +66668,7 @@
           "label"
         ]
       },
-      "__s1842_0": {
+      "__s1862_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -65971,7 +66729,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1842_0"
+                  "$ref": "#/components/schemas/__s1862_0"
                 }
               ]
             }
@@ -65982,7 +66740,7 @@
           "rules"
         ]
       },
-      "__s1843_0": {
+      "__s1863_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66043,7 +66801,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1843_0"
+                  "$ref": "#/components/schemas/__s1863_0"
                 }
               ]
             }
@@ -66054,7 +66812,7 @@
           "rules"
         ]
       },
-      "__s1844_0": {
+      "__s1864_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66115,7 +66873,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1844_0"
+                  "$ref": "#/components/schemas/__s1864_0"
                 }
               ]
             }
@@ -66126,7 +66884,7 @@
           "rules"
         ]
       },
-      "__s1845_0": {
+      "__s1865_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66187,7 +66945,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1845_0"
+                  "$ref": "#/components/schemas/__s1865_0"
                 }
               ]
             }
@@ -66198,7 +66956,7 @@
           "rules"
         ]
       },
-      "__s1846_0": {
+      "__s1866_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66259,7 +67017,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1846_0"
+                  "$ref": "#/components/schemas/__s1866_0"
                 }
               ]
             }
@@ -66270,7 +67028,7 @@
           "rules"
         ]
       },
-      "__s1847_0": {
+      "__s1867_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66331,7 +67089,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1847_0"
+                  "$ref": "#/components/schemas/__s1867_0"
                 }
               ]
             }
@@ -66342,7 +67100,7 @@
           "rules"
         ]
       },
-      "__s1848_0": {
+      "__s1868_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66403,7 +67161,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1848_0"
+                  "$ref": "#/components/schemas/__s1868_0"
                 }
               ]
             }
@@ -66414,7 +67172,7 @@
           "rules"
         ]
       },
-      "__s1849_0": {
+      "__s1869_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66475,7 +67233,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1849_0"
+                  "$ref": "#/components/schemas/__s1869_0"
                 }
               ]
             }
@@ -66486,7 +67244,7 @@
           "rules"
         ]
       },
-      "__s1850_0": {
+      "__s1870_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66547,7 +67305,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1850_0"
+                  "$ref": "#/components/schemas/__s1870_0"
                 }
               ]
             }
@@ -66558,7 +67316,7 @@
           "rules"
         ]
       },
-      "__s1851_0": {
+      "__s1871_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66619,7 +67377,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1851_0"
+                  "$ref": "#/components/schemas/__s1871_0"
                 }
               ]
             }
@@ -66630,7 +67388,7 @@
           "rules"
         ]
       },
-      "__s1852_0": {
+      "__s1872_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66691,7 +67449,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1852_0"
+                  "$ref": "#/components/schemas/__s1872_0"
                 }
               ]
             }
@@ -66702,7 +67460,7 @@
           "rules"
         ]
       },
-      "__s1853_0": {
+      "__s1873_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66763,7 +67521,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1853_0"
+                  "$ref": "#/components/schemas/__s1873_0"
                 }
               ]
             }
@@ -66774,7 +67532,7 @@
           "rules"
         ]
       },
-      "__s1902_0": {
+      "__s1922_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66835,7 +67593,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1902_0"
+                  "$ref": "#/components/schemas/__s1922_0"
                 }
               ]
             }
@@ -66846,7 +67604,7 @@
           "rules"
         ]
       },
-      "__s1903_0": {
+      "__s1923_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66907,7 +67665,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1903_0"
+                  "$ref": "#/components/schemas/__s1923_0"
                 }
               ]
             }
@@ -66918,7 +67676,7 @@
           "rules"
         ]
       },
-      "__s1904_0": {
+      "__s1924_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -66979,7 +67737,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1904_0"
+                  "$ref": "#/components/schemas/__s1924_0"
                 }
               ]
             }
@@ -66990,7 +67748,7 @@
           "rules"
         ]
       },
-      "__s1905_0": {
+      "__s1925_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67051,7 +67809,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1905_0"
+                  "$ref": "#/components/schemas/__s1925_0"
                 }
               ]
             }
@@ -67062,7 +67820,7 @@
           "rules"
         ]
       },
-      "__s1906_0": {
+      "__s1926_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67123,7 +67881,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1906_0"
+                  "$ref": "#/components/schemas/__s1926_0"
                 }
               ]
             }
@@ -67134,7 +67892,7 @@
           "rules"
         ]
       },
-      "__s1907_0": {
+      "__s1927_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67195,7 +67953,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1907_0"
+                  "$ref": "#/components/schemas/__s1927_0"
                 }
               ]
             }
@@ -67206,7 +67964,7 @@
           "rules"
         ]
       },
-      "__s1908_0": {
+      "__s1928_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67267,7 +68025,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1908_0"
+                  "$ref": "#/components/schemas/__s1928_0"
                 }
               ]
             }
@@ -67278,7 +68036,7 @@
           "rules"
         ]
       },
-      "__s1909_0": {
+      "__s1929_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67339,7 +68097,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1909_0"
+                  "$ref": "#/components/schemas/__s1929_0"
                 }
               ]
             }
@@ -67350,7 +68108,7 @@
           "rules"
         ]
       },
-      "__s1910_0": {
+      "__s1930_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67411,7 +68169,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1910_0"
+                  "$ref": "#/components/schemas/__s1930_0"
                 }
               ]
             }
@@ -67422,7 +68180,7 @@
           "rules"
         ]
       },
-      "__s1911_0": {
+      "__s1931_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67483,7 +68241,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1911_0"
+                  "$ref": "#/components/schemas/__s1931_0"
                 }
               ]
             }
@@ -67494,7 +68252,7 @@
           "rules"
         ]
       },
-      "__s1912_0": {
+      "__s1932_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -67555,7 +68313,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1912_0"
+                  "$ref": "#/components/schemas/__s1932_0"
                 }
               ]
             }

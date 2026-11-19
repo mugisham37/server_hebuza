@@ -441,14 +441,17 @@ export async function listClientApplications(db: Tx, s: SessionUser) {
     db,
     apps.map((a) => a.assignedAgentId),
   );
+  const gids = [...new Set(apps.map((a) => a.groupId).filter((g): g is string => !!g))];
+  const groups = new Map(gids.length ? (await db.select({ id: requestGroups.id, code: requestGroups.code }).from(requestGroups).where(inArray(requestGroups.id, gids))).map((g) => [g.id, g.code]) : []);
   return {
-    applications: apps.map((a) =>
-      summary(
+    applications: apps.map((a) => ({
+      ...summary(
         a,
         a.assignedAgentId ? (names.get(a.assignedAgentId) ?? null) : null,
         retainer,
       ),
-    ),
+      group_code: a.groupId ? (groups.get(a.groupId) ?? null) : null, // REQ-02: client list groups basket cases
+    })),
   };
 }
 
@@ -1201,7 +1204,7 @@ export class ApplicationsService {
       await db.insert(requestGroups).values({ id, code, clientId: s.id, createdAt: new Date().toISOString() });
       const items = [];
       for (const [i, it] of b.items.entries()) {
-        const out = await this.submitOne(db, s, { ...it, organization_id: it.organization_id ?? b.organization_id, personal_info: b.personal_info, idempotency_key: key ? `${key}:${i}` : it.idempotency_key }, null, settings);
+        const out = await this.submitOne(db, s, { ...it, organization_id: it.organization_id ?? b.organization_id, personal_info: b.personal_info, idempotency_key: key ? `${key}:${i}` : it.idempotency_key }, null, settings, code);
         await db.update(applications).set({ groupId: id }).where(eq(applications.applicationId, out.application_id));
         items.push(out);
       }
@@ -1221,7 +1224,7 @@ export class ApplicationsService {
     return { group: g, cases };
   }
 
-  private async submitOne(db: Tx, s: SessionUser | null, input: SubmitInput, ip: string | null, settings: Awaited<ReturnType<PlatformService["getPublicSettings"]>>) {
+  private async submitOne(db: Tx, s: SessionUser | null, input: SubmitInput, ip: string | null, settings: Awaited<ReturnType<PlatformService["getPublicSettings"]>>, groupCode: string | null = null) {
     {
       const r = await submitTx(db, s, input, ip, settings);
       if (!r.info || !r.svc) return r.out;
@@ -1235,6 +1238,7 @@ export class ApplicationsService {
           link: `/requests/${code}`,
         });
       const email = r.info.email.includes("@") ? r.info.email : null;
+      const cust = s ? (await db.select({ c: users.customerNo }).from(users).where(eq(users.userId, s.id)))[0]?.c ?? null : null; // CRM-01 in mails
       if (email) {
         // Reuses the auth mail job (sealed text: the tracking code unlocks the case with the contact).
         await this.outbox.add(db, {
@@ -1244,7 +1248,7 @@ export class ApplicationsService {
             {
               to: email,
               subject: `Your Hebuza tracking code: ${code}`,
-              text: `Hello ${r.info.fullName},\n\nYour ${r.svc.name} application is with our team. Keep this tracking code to follow it at any time: ${code}\n\n${this.origin}/track/${code}`,
+              text: `Hello ${r.info.fullName},\n\nYour ${r.svc.name} application is with our team. Keep this tracking code to follow it at any time: ${code}${groupCode ? ` (part of request group ${groupCode})` : ""}${cust ? `\nYour customer ID: ${cust}` : ""}\n\n${this.origin}/track/${code}`,
             },
             ["text"],
           ),
