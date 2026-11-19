@@ -32,6 +32,11 @@ export class ApplicationsController {
   submit(@Body() b: D.SubmitDto, @CurrentUser() me: SessionUser | null) {
     return this.svc.submit(me, b, this.cls.get("ip") ?? null);
   }
+  @Post("applications/submit-basket")
+  @Route({ auth: ["client"], permission: "req.submit", idempotent: true, limit: "write", out: D.BasketOut })
+  submitBasket(@Body() b: D.BasketDto, @CurrentUser() me: SessionUser) {
+    return this.svc.submitBasket(me, b);
+  }
   @Get("applications/:code")
   @Route({ auth: "user", permission: "req.case.read", out: D.Detail })
   detail(@Param("code") code: string, @CurrentUser() me: SessionUser) {

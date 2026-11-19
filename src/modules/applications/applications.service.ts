@@ -25,6 +25,7 @@ import {
   applicationFeedback,
   applicationStatusHistory,
   applications,
+  requestGroups,
   clientSubscriptions,
   conversationParticipants,
   conversations,
@@ -1172,7 +1173,42 @@ export class ApplicationsService {
 
   async submit(s: SessionUser | null, input: SubmitInput, ip: string | null) {
     const settings = await this.platform.getPublicSettings();
+    return this.tx.run((db) => this.submitOne(db, s, input, ip, settings));
+  }
+
+  /** REQ-02/03: one basket = one request group (RG-YYYY-NNNNNN) with one child case per service, in one tx. */
+  async submitBasket(s: SessionUser, b: { personal_info: SubmitInput["personal_info"]; items: Omit<SubmitInput, "personal_info">[]; idempotency_key?: string | null }) {
+    const settings = await this.platform.getPublicSettings();
     return this.tx.run(async (db) => {
+      const key = b.idempotency_key?.trim() || null;
+      const [{ n }] = (await db.execute(sql`select nextval('request_group_ref_seq') as n`)) as unknown as { n: string }[]; // cast: execute() rows are untyped
+      const id = generateId("rg");
+      const code = `RG-${new Date().getUTCFullYear()}-${String(n).padStart(6, "0")}`;
+      await db.insert(requestGroups).values({ id, code, clientId: s.id, createdAt: new Date().toISOString() });
+      const items = [];
+      for (const [i, it] of b.items.entries()) {
+        const out = await this.submitOne(db, s, { ...it, personal_info: b.personal_info, idempotency_key: key ? `${key}:${i}` : it.idempotency_key }, null, settings);
+        await db.update(applications).set({ groupId: id }).where(eq(applications.applicationId, out.application_id));
+        items.push(out);
+      }
+      const [t] = await db.select({ v: sql<number>`coalesce(sum(${applications.paymentAmount}), 0)::int` }).from(applications).where(eq(applications.groupId, id));
+      await db.update(requestGroups).set({ totalAmountRwf: t.v }).where(eq(requestGroups.id, id));
+      await this.audit.record(db, { action: "request_group.submitted", entity: "request_group", entityId: id, after: { code, cases: items.map((x) => x.code) } });
+      return { group_code: code, total_amount_rwf: t.v, items };
+    });
+  }
+
+  /** For finance (combined payment): the group's open cases and their fees. Runs in the caller's tx. */
+  async groupCases(db: Tx, groupCode: string) {
+    const [g] = await db.select().from(requestGroups).where(eq(requestGroups.code, groupCode));
+    if (!g) throw err.notFound("Request group not found");
+    const cases = await db.select({ code: applications.code, applicationId: applications.applicationId, amount: applications.paymentAmount, paymentStatus: applications.paymentStatus })
+      .from(applications).where(eq(applications.groupId, g.id));
+    return { group: g, cases };
+  }
+
+  private async submitOne(db: Tx, s: SessionUser | null, input: SubmitInput, ip: string | null, settings: Awaited<ReturnType<PlatformService["getPublicSettings"]>>) {
+    {
       const r = await submitTx(db, s, input, ip, settings);
       if (!r.info || !r.svc) return r.out;
       const { code } = r.out;
@@ -1203,6 +1239,6 @@ export class ApplicationsService {
       }
       await this.audit.record(db, { action: "application.submitted", entity: "application", entityId: r.out.application_id, after: { code } });
       return r.out;
-    });
+    }
   }
 }

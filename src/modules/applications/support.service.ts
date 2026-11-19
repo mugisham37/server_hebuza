@@ -1,5 +1,7 @@
 // Help desk (port of .ref applications.support): the client's support tickets. Staff answer from the ops workspace,
 // which calls SupportService.reply (side="support" messages + client notification).
+import { OutboxService } from "../../core/db/outbox";
+import { createRefundRequest } from "../finance/finance.cases";
 import { Injectable } from "@nestjs/common";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { supportTicketMessages, supportTickets } from "@/db/schema";
@@ -169,6 +171,8 @@ export async function replyAsSupport(
   ref: string,
   body: string,
   status: "waiting" | "resolved" = "waiting",
+  /** F-RFD-08: resolving a case dispute with outcome "refund" opens a finance refund request in this tx. */
+  outcome?: { kind: "refund"; outbox: OutboxService },
 ) {
   const [t] = await db
     .select()
@@ -198,6 +202,14 @@ export async function replyAsSupport(
     body: body.slice(0, 200),
     link: `/help/${t.ref}`,
   });
+  if (status === "resolved" && outcome?.kind === "refund" && t.caseRef)
+    await createRefundRequest(db, outcome.outbox, {
+      applicationId: t.caseRef,
+      reason: "quality_dispute",
+      note: `Dispute ${t.ref} resolved with a refund.`,
+      auto: "dispute",
+    });
+  return { ref: t.ref, status };
 }
 
 
@@ -212,7 +224,7 @@ type Loose = Record<string, unknown>;
 
 @Injectable()
 export class SupportService {
-  constructor(private readonly tx: TxService, private readonly audit: AuditService, private readonly notifications: NotificationsService) {}
+  constructor(private readonly tx: TxService, private readonly audit: AuditService, private readonly notifications: NotificationsService, private readonly outbox: OutboxService) {}
 
   list(s: SessionUser) {
     return this.tx.run((db) => listTickets(db, s));
@@ -240,7 +252,7 @@ export class SupportService {
     return this.tx.run((db) => rateTicket(db, s, ref, score, String(b.comment ?? "")));
   }
   /** For the ops workspace: staff reply in the caller's tx. */
-  reply(db: Tx, staffId: string, ref: string, body: string, status: "waiting" | "resolved" = "waiting") {
-    return replyAsSupport(db, this.notifications, staffId, ref, body, status);
+  reply(db: Tx, staffId: string, ref: string, body: string, status: "waiting" | "resolved" = "waiting", refund = false) {
+    return replyAsSupport(db, this.notifications, staffId, ref, body, status, refund ? { kind: "refund", outbox: this.outbox } : undefined);
   }
 }

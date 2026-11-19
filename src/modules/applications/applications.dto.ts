@@ -57,6 +57,13 @@ export const TrackDetail = z.object({
 });
 
 export class SubmitDto extends dto(SubmitIn) {}
+export const BasketIn = z.object({
+  personal_info: PersonalInfo,
+  items: z.array(SubmitIn.omit({ personal_info: true })).min(1).max(10),
+  idempotency_key: z.string().min(8).max(100).nullish(),
+});
+export class BasketDto extends dto(BasketIn) {}
+export const BasketOut = z.object({ group_code: z.string(), total_amount_rwf: z.number().int(), items: z.array(SubmitOut) });
 export type SubmitInput = z.infer<typeof SubmitIn>;
 
 export const DashboardOut = z.object({ needs: z.array(Need), requests: z.array(Summary), paymentsDue: z.array(PaymentLine), unread: z.number().int() }).meta({ id: "ClientDashboard" });
