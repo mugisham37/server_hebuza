@@ -1,6 +1,7 @@
 // Port of .ref documents.service (client document library, case uploads, deliverables). Files live in object storage:
 // uploads are presigned PUTs (the API never sees bytes) finalized by the worker (documents.finalize: type sniff, scan,
 // EXIF strip, activation); downloads are 5-minute presigned redirects after a per-document access check.
+import { authorize, ownOr404 } from "../../core/auth/authorize";
 import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import { createTicket } from "../applications/support.service";
@@ -294,7 +295,7 @@ export async function attachToCase(
 ) {
   const d = await ownDoc(db, s, id);
   const a = await appByCode(db, code, { forUpdate: true });
-  if (!a || a.clientId !== s.id) throw new AppError(404, "not_found", "Application not found.");
+  ownOr404(s, a, (x) => x.clientId, "Application");
   if (!OPEN_CASE(a.status))
     throw new AppError(422, "validation", "This application is closed.");
   const key = (requirementKey || d.kind || "other").slice(0, 128);
@@ -495,7 +496,7 @@ export async function deliverableReceipt(
   note?: string | null,
 ) {
   const { a } = await readableDeliverable(db, s, id, { download: false });
-  if (a.clientId !== s.id) throw forbidden();
+  ownOr404(s, a, (x) => x.clientId, "Deliverable");
   await recordFeedback(db, a.applicationId, {
     review: good ? "accepted" : "changes_requested",
     reviewNote: note ?? null,
@@ -530,7 +531,7 @@ export async function rateCase(
   extra: { tags?: string[]; comment?: string } = {},
 ) {
   const a = await appByCode(db, code);
-  if (!a || a.clientId !== s.id) throw new AppError(404, "not_found", "Not found.");
+  ownOr404(s, a, (x) => x.clientId, "Application");
   const [{ n }] = await db
     .select({ n: count() })
     .from(deliverables)
@@ -793,7 +794,7 @@ export class DocumentsService {
   saveDeliverableToLibrary(s: SessionUser, id: string) {
     return this.tx.run(async (db) => {
       const { d, a } = await readableDeliverable(db, s, id, { download: true });
-      if (a.clientId !== s.id) throw forbidden();
+      ownOr404(s, a, (x) => x.clientId, "Deliverable");
       const docId = generateId("vdoc"), ts = new Date().toISOString();
       const key = `u/${s.id}/vault/${docId}-${d.title.replace(/[^\w.-]+/g, "_").slice(0, 80)}`;
       await this.storage.copy(d.storagePath, key);
@@ -837,8 +838,7 @@ export class DocumentsService {
   uploadCase(s: SessionUser, code: string, f: Upload & { need_id?: string | null; requirement_key?: string | null }) {
     return this.tx.run(async (db) => {
       const a = await this.apps.getForActor(db, s, code, { forUpdate: true });
-      if (!can({ id: s.id, roles: s.roles }, "doc.case.upload", { ownerId: a.clientId, assigneeIds: [a.assignedAgentId ?? ""] }))
-        throw forbidden();
+      authorize(s, "doc.case.upload", { ownerId: a.clientId, assigneeIds: [a.assignedAgentId ?? ""] }, "Application");
       if (isTerminal(normalizeStatus(a.status))) throw new AppError(422, "validation", "This application is closed.");
       // REQ-18: no client uploads while held, nor 30 days after delivery (the case is closed for new material).
       if (a.clientId === s.id && normalizeStatus(a.status) === "on_hold")

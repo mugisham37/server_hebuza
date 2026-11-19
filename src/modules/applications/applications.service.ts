@@ -1,7 +1,7 @@
 // Port of .ref applications.service (client side: submit, list, detail, track) plus the client aggregates
 // (/me/dashboard, /me/activity). Query functions take the caller's tx (RLS applies); ApplicationsService runs them.
 // Status changes go through `transition()` → the shared machine in @/domain/ops/transitions.
-import { authorize } from "../../core/auth/authorize";
+import { authorize, ownOr404 } from "../../core/auth/authorize";
 import { statusEffects } from "./status-effects";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
@@ -1153,7 +1153,7 @@ export class ApplicationsService {
   cloneDraft(s: SessionUser, code: string) {
     return this.tx.run(async (db) => {
       const a = await readableApp(db, s, code);
-      if (a.clientId !== s.id) throw err.notFound("Application not found");
+      ownOr404(s, a, (x) => x.clientId, "Application");
       const docs = (await db.execute(sql`select distinct on (ad.requirement_key) ad.requirement_key as key, cd.document_id as id
         from application_documents ad join client_documents cd on cd.storage_path = ad.storage_path and cd.client_id = ${s.id} and cd.is_active
         where ad.application_id = ${a.applicationId} and ad.removed_at is null`)) as unknown as { key: string; id: string }[]; // cast: execute() rows are untyped
@@ -1168,7 +1168,7 @@ export class ApplicationsService {
   cancel(s: SessionUser, code: string, reason: string) {
     return this.tx.run(async (db) => {
       const a = await appByCode(db, code, { forUpdate: true });
-      if (!a || a.clientId !== s.id) throw err.notFound("Application not found");
+      ownOr404(s, a, (x) => x.clientId, "Application");
       const mode = clientCancelMode(normalizeStatus(a.status));
       if (mode === "cancel") {
         await this.transition(db, s, a, "cancelled", "client", { workStarted: false }, reason);

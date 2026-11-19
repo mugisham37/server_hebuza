@@ -3,6 +3,7 @@
 // Scope rule: an agent sees only cases they lead or help on; a case they were moved off is read-only (409
 // reassigned) and anything else does not exist (404 not_assigned). Plain functions over the request tx (OpsRunner);
 // injected services arrive through `Deps` (status moves → ApplicationsService.transition, chat, storage).
+import { ownOr404 } from "../../core/auth/authorize";
 import { CARD_SCHEMAS, parseCard } from "@/domain/chat/rules";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
@@ -1091,7 +1092,7 @@ export async function offers(
 
 async function offerFor(db: Exec, s: Session, id: string) {
   const o = await recGet<OfferData>(db, "offer", id, true);
-  if (!o || o.ownerId !== s.id) throw err.notFound("Offer not found");
+  ownOr404(s, o, (x) => x.ownerId, "Offer");
   return o;
 }
 function assertPending(o: Rec<OfferData>, mgr: string) {
@@ -1779,7 +1780,7 @@ async function ownTpl(db: Exec, s: Session, id: string) {
     .from(chatTemplates)
     .where(eq(chatTemplates.templateId, id))
     .for("update");
-  if (!t || t.createdBy !== s.id) throw err.notFound("Template not found");
+  ownOr404(s, t, (x) => x.createdBy, "Template");
   return t;
 }
 export async function createTemplate(
@@ -3051,7 +3052,7 @@ export async function uploadPaper(
 }
 export async function paperUrl(deps: Deps, db: Exec, s: Session, id: string) {
   const p = await recGet<Paper>(db, "agent_paper", id);
-  if (!p || p.ownerId !== s.id) throw err.notFound("Paper not found.");
+  ownOr404(s, p, (x) => x.ownerId, "Paper");
   return deps.storage.presignGet(p.data.key, p.data.originalFilename);
 }
 

@@ -2,6 +2,7 @@
 // bank transfer, refunds, client billing reads. Provider calls never run inside a DB transaction:
 // reserve (tx) → gateway → settle (tx). Every money write runs in one SERIALIZABLE tx (`money`) that posts the
 // ledger journal, audits and adds the outbox event together; `settle` is the only payment status writer.
+import { ownOr404 } from "../../core/auth/authorize";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import type { Env } from "../../core/config/env";
@@ -1112,7 +1113,7 @@ export class PaymentsService {
         )
         .for("update");
       if (!app) throw notFound("Application");
-      if (app.clientId !== me.id) throw forbidden();
+      ownOr404(me, app, (x) => x.clientId, "Application");
       if (app.paymentStatus === "paid")
         throw conflict("Nothing is due on this invoice.");
       // A second declaration for the same case is the same declaration.
@@ -1268,7 +1269,7 @@ export class PaymentsService {
           .select()
           .from(applications)
           .where(eq(applications.code, key));
-        if (!app || app.clientId !== me.id) throw notFound("Application");
+        ownOr404(me, app, (x) => x.clientId, "Application");
         serviceName = app.serviceName;
       }
       const [p] = await tx

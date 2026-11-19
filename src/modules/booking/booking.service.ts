@@ -3,6 +3,7 @@
 // Port of the reference booking.service.ts: the functions keep their shape and take a `K` (tx + caller + deps); the
 // BookingService class at the bottom runs each in one TxService transaction and records the queued audit rows last.
 // Holds are serialised per Kigali day by `pg_advisory_xact_lock` inside the tx, so two holds can never claim one slot.
+import { ownOr404 } from "../../core/auth/authorize";
 import { agentProfiles } from "@/db/schema/schema-ops";
 import { PaymentsService } from "../payments/payments.service";
 import { LedgerService } from "../ledger/ledger.service";
@@ -1494,7 +1495,8 @@ async function myBookings(
 }
 async function mine(db: Tx, s: SessionUser, id: string, lock = false) {
   const r = await byId(db, id, lock);
-  if (!r || !r.reference || r.clientId !== s.id) throw notFound(); // not own → 404, never 403
+  if (!r?.reference) throw notFound();
+  ownOr404(s, r, (x) => x.clientId, "Booking"); // not own → 404, never 403
   return r;
 }
 
@@ -1504,7 +1506,7 @@ async function staffRow(db: Tx, s: SessionUser, id: string, lock = false) {
   if (!r || !r.reference) throw notFound();
   if (isSM(s)) return r;
   const me = await adviserOfUser(db, s);
-  if (!me || r.adviserId !== me.id) throw notFound();
+  ownOr404(me, r, (x) => x.adviserId, "Booking");
   return r;
 }
 async function adviserBookings(

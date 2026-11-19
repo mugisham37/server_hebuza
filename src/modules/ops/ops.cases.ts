@@ -1,5 +1,6 @@
 // P5 ops workspace: the service manager's case views (list, detail, Today), status/assign/claim, intake triage
 // (lane A) and the case record + assign flow (lane B). Callable from RSC and from ops.routes.ts.
+import { ownOr404 } from "../../core/auth/authorize";
 import { and, asc, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import type { Exec } from "./lib/ctx";
 import type { Ctx } from "./lib/ctx";
@@ -815,7 +816,7 @@ export async function createView(db: Exec, s: Session, b: View) {
 }
 export async function deleteView(db: Exec, s: Session, id: string) {
   const v = await recGet<View>(db, "view", id, true);
-  if (!v || v.ownerId !== s.id) throw err.notFound("No such view.");
+  ownOr404(s, v, (x) => x.ownerId, "View");
   await db.execute(
     sql`delete from ops_records where kind = 'view' and id = ${id}`,
   );
