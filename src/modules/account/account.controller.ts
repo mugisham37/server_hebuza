@@ -43,6 +43,18 @@ export class AccountController {
   @Delete("me/avatar") @Route({ auth: "user", limit: "write" })
   clearAvatar(@CurrentUser() me: SessionUser) { return this.svc.clearAvatar(me); }
 
+  @Get("me/reminders") @Route({ auth: CLIENT })
+  reminders(@CurrentUser() me: SessionUser) { return this.svc.reminders(me); }
+
+  @Put("me/reminders/:id") @Route({ auth: CLIENT, limit: "write" })
+  setReminder(@Param("id") id: string, @Body() b: D.ReminderDto, @CurrentUser() me: SessionUser) { return this.svc.setReminder(me, id.slice(0, 96), b); }
+
+  @Get("me/address") @Route({ auth: CLIENT })
+  address(@CurrentUser() me: SessionUser) { return this.svc.address(me); }
+
+  @Put("me/address") @Route({ auth: CLIENT, limit: "write" })
+  setAddress(@Body() b: D.AddressDto, @CurrentUser() me: SessionUser) { return this.svc.setAddress(me, b); }
+
   @Get("me/prefill") @Route({ auth: CLIENT, limit: "read" })
   prefill(@Query() q: D.PrefillQueryDto, @CurrentUser() me: SessionUser) { return this.svc.prefill(me, q.party); }
 

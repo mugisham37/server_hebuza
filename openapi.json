@@ -4201,6 +4201,9 @@
                       "properties": {
                         "verified": {
                           "type": "boolean"
+                        },
+                        "mfaRequired": {
+                          "type": "boolean"
                         }
                       },
                       "required": [
@@ -4251,6 +4254,9 @@
                       "type": "object",
                       "properties": {
                         "verified": {
+                          "type": "boolean"
+                        },
+                        "mfaRequired": {
                           "type": "boolean"
                         }
                       },
@@ -4373,6 +4379,9 @@
                       "type": "object",
                       "properties": {
                         "verified": {
+                          "type": "boolean"
+                        },
+                        "mfaRequired": {
                           "type": "boolean"
                         }
                       },
@@ -4990,6 +4999,74 @@
                       "required": [
                         "deleted",
                         "scheduledAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Auth"
+        ]
+      }
+    },
+    "/api/auth/active-role": {
+      "post": {
+        "operationId": "AuthController_activeRole",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ActiveRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "activeRole": {
+                          "type": "string"
+                        },
+                        "roles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "required": [
+                        "activeRole",
+                        "roles"
                       ],
                       "additionalProperties": false
                     }
@@ -6537,6 +6614,193 @@
       "delete": {
         "operationId": "AccountController_clearAvatar",
         "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
+    "/api/me/reminders": {
+      "get": {
+        "operationId": "AccountController_reminders",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
+    "/api/me/reminders/{id}": {
+      "put": {
+        "operationId": "AccountController_setReminder",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReminderDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      }
+    },
+    "/api/me/address": {
+      "get": {
+        "operationId": "AccountController_address",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Account"
+        ]
+      },
+      "put": {
+        "operationId": "AccountController_setAddress",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddressDto"
+              }
+            }
+          }
+        },
         "responses": {
           "2XX": {
             "description": "",
@@ -9415,6 +9679,56 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SettingsPatchDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SystemConfig"
+        ]
+      }
+    },
+    "/api/staff/settings/import": {
+      "post": {
+        "operationId": "SystemConfigController_importSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsImportDto"
               }
             }
           }
@@ -13478,6 +13792,165 @@
         ]
       }
     },
+    "/api/d/{token}": {
+      "get": {
+        "operationId": "DocumentsController_redeem",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/me/documents/{id}/versions/{v}/restore": {
+      "post": {
+        "operationId": "DocumentsController_restore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "v",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ClientDocumentItemResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
+    "/api/me/deliverables/{id}/save-to-library": {
+      "post": {
+        "operationId": "DocumentsController_saveToLibrary",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ClientDocumentItemResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Documents"
+        ]
+      }
+    },
     "/api/me/documents/{id}/attach": {
       "post": {
         "operationId": "DocumentsController_attach",
@@ -14586,6 +15059,91 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/ClientApplicationDetail"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
+    "/api/applications/{code}/clone": {
+      "post": {
+        "operationId": "ApplicationsController_clone",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "service_slug": {
+                          "type": "string"
+                        },
+                        "tier": {
+                          "type": "string"
+                        },
+                        "service_data": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "personal_info": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "library_documents": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "from_code": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "service_slug",
+                        "tier",
+                        "service_data",
+                        "personal_info",
+                        "library_documents",
+                        "from_code"
+                      ],
+                      "additionalProperties": false
                     }
                   }
                 }
@@ -21087,6 +21645,160 @@
         ]
       }
     },
+    "/api/me/calendar-sync": {
+      "get": {
+        "operationId": "CalendarSyncController_status",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalendarSync"
+        ]
+      }
+    },
+    "/api/me/calendar-sync/{provider}/start": {
+      "get": {
+        "operationId": "CalendarSyncController_start",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalendarSync"
+        ]
+      }
+    },
+    "/api/calendar-sync/{provider}/callback": {
+      "get": {
+        "operationId": "CalendarSyncController_callback",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalendarSync"
+        ]
+      }
+    },
     "/api/payments/initiate": {
       "post": {
         "operationId": "PaymentsController_initiate",
@@ -23038,6 +23750,65 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CardActionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/api/chat/conversations/{id}/complaint": {
+      "post": {
+        "operationId": "ChatController_complaint",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ComplaintDto"
               }
             }
           }
@@ -37072,6 +37843,251 @@
             }
           }
         ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingCrm"
+        ]
+      }
+    },
+    "/api/admin/mkt/promos": {
+      "get": {
+        "operationId": "MarketingCrmController_promos",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingCrm"
+        ]
+      }
+    },
+    "/api/admin/mkt/promos/{code}": {
+      "put": {
+        "operationId": "MarketingCrmController_savePromo",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingCrm"
+        ]
+      }
+    },
+    "/api/promos/{code}": {
+      "get": {
+        "operationId": "MarketingCrmController_checkPromo",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "service",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingCrm"
+        ]
+      }
+    },
+    "/api/admin/mkt/recommendation-rules": {
+      "get": {
+        "operationId": "MarketingCrmController_recRules",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "MarketingCrm"
+        ]
+      },
+      "put": {
+        "operationId": "MarketingCrmController_saveRecRules",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecRulesDto"
+              }
+            }
+          }
+        },
         "responses": {
           "2XX": {
             "description": "",
@@ -55268,6 +56284,15 @@
             "type": "string",
             "nullable": true,
             "maxLength": 32
+          },
+          "language": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "rw",
+              "en",
+              "fr"
+            ]
           }
         }
       },
@@ -55281,6 +56306,19 @@
         },
         "required": [
           "password"
+        ]
+      },
+      "ActiveRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          }
+        },
+        "required": [
+          "role"
         ]
       },
       "CodeDto": {
@@ -55390,6 +56428,59 @@
         "required": [
           "contentType",
           "size"
+        ]
+      },
+      "ReminderDto": {
+        "type": "object",
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "done",
+              "snoozed",
+              "open"
+            ]
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "AddressDto": {
+        "type": "object",
+        "properties": {
+          "province": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "district": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "sector": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "cell": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "street": {
+            "type": "string",
+            "maxLength": 255
+          }
+        },
+        "required": [
+          "province",
+          "district",
+          "sector",
+          "cell",
+          "street"
         ]
       },
       "OrgDto": {
@@ -55967,6 +57058,23 @@
         },
         "required": [
           "values"
+        ]
+      },
+      "SettingsImportDto": {
+        "type": "object",
+        "properties": {
+          "json": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 200000
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "json"
         ]
       },
       "LanguageDto": {
@@ -57258,6 +58366,11 @@
               "type": "string",
               "maxLength": 64
             }
+          },
+          "reviewer_id": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 64
           }
         },
         "required": [
@@ -59124,6 +60237,19 @@
           "action"
         ]
       },
+      "ComplaintDto": {
+        "type": "object",
+        "properties": {
+          "summary": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "summary"
+        ]
+      },
       "HoldDto2": {
         "type": "object",
         "properties": {
@@ -60854,7 +61980,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1565_0"
+              "$ref": "#/components/schemas/__s1592_0"
             }
           }
         },
@@ -62179,6 +63305,102 @@
           "path"
         ]
       },
+      "PromoDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{3,32}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "amount"
+            ]
+          },
+          "value": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000000
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "maxUses": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "services": {
+            "type": "array",
+            "maxItems": 50,
+            "items": {
+              "type": "string",
+              "maxLength": 128
+            }
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "value",
+          "active"
+        ]
+      },
+      "RecRulesDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9-]{1,40}$"
+                },
+                "ifUsed": {
+                  "type": "string",
+                  "maxLength": 128,
+                  "pattern": "^(\\*|[a-z0-9]+(-[a-z0-9]+)*)$"
+                },
+                "recommend": {
+                  "minItems": 1,
+                  "maxItems": 5,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+                  }
+                },
+                "active": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "ifUsed",
+                "recommend",
+                "active"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "PublicLeadDto": {
         "type": "object",
         "properties": {
@@ -62797,7 +64019,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1985_0"
+            "$ref": "#/components/schemas/__s2028_0"
           },
           "channel": {
             "type": "string",
@@ -62822,7 +64044,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1989_0"
+            "$ref": "#/components/schemas/__s2032_0"
           }
         },
         "required": [
@@ -62840,7 +64062,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1993_0"
+                "$ref": "#/components/schemas/__s2036_0"
               }
             ]
           }
@@ -63084,7 +64306,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2045_0"
+                "$ref": "#/components/schemas/__s2088_0"
               }
             ]
           },
@@ -65088,6 +66310,10 @@
                 "maximum": 1000000
               }
             }
+          },
+          "promoCode": {
+            "type": "string",
+            "pattern": "^[A-Z0-9-]{3,32}$"
           }
         },
         "required": [
@@ -68089,15 +69315,6 @@
           "guestApps": {
             "type": "boolean"
           },
-          "dataRetention": {
-            "type": "string"
-          },
-          "compactTables": {
-            "type": "boolean"
-          },
-          "enforce2FA": {
-            "type": "boolean"
-          },
           "sessionTimeout": {
             "type": "integer",
             "minimum": -9007199254740991,
@@ -68134,9 +69351,6 @@
         "required": [
           "acceptNewApps",
           "guestApps",
-          "dataRetention",
-          "compactTables",
-          "enforce2FA",
           "sessionTimeout",
           "ipAllowlist",
           "maintenanceMode",
@@ -68418,6 +69632,9 @@
                 "items": {
                   "type": "string"
                 }
+              },
+              "activeRole": {
+                "type": "string"
               }
             },
             "required": [
@@ -68765,13 +69982,85 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "openQuotes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "service": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "service"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "releasedDeliverables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "code",
+                "title",
+                "at"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "deadlines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "service": {
+                  "type": "string"
+                },
+                "dueAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "service",
+                "dueAt"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [
           "needs",
           "requests",
           "paymentsDue",
-          "unread"
+          "unread",
+          "openQuotes",
+          "releasedDeliverables",
+          "deadlines"
         ],
         "additionalProperties": false
       },
@@ -70237,7 +71526,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1565_0": {
+      "__s1592_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -70259,7 +71548,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1565_0"
+              "$ref": "#/components/schemas/__s1592_0"
             }
           }
         },
@@ -70269,7 +71558,7 @@
           "label"
         ]
       },
-      "__s1566_0": {
+      "__s1593_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -70291,7 +71580,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1566_0"
+              "$ref": "#/components/schemas/__s1593_0"
             }
           }
         },
@@ -70301,7 +71590,7 @@
           "label"
         ]
       },
-      "__s1567_0": {
+      "__s1594_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -70323,7 +71612,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1567_0"
+              "$ref": "#/components/schemas/__s1594_0"
             }
           }
         },
@@ -70333,7 +71622,7 @@
           "label"
         ]
       },
-      "__s1985_0": {
+      "__s2028_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70394,7 +71683,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1985_0"
+                  "$ref": "#/components/schemas/__s2028_0"
                 }
               ]
             }
@@ -70405,7 +71694,7 @@
           "rules"
         ]
       },
-      "__s1986_0": {
+      "__s2029_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70466,7 +71755,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1986_0"
+                  "$ref": "#/components/schemas/__s2029_0"
                 }
               ]
             }
@@ -70477,7 +71766,7 @@
           "rules"
         ]
       },
-      "__s1987_0": {
+      "__s2030_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70538,7 +71827,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1987_0"
+                  "$ref": "#/components/schemas/__s2030_0"
                 }
               ]
             }
@@ -70549,7 +71838,7 @@
           "rules"
         ]
       },
-      "__s1988_0": {
+      "__s2031_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70610,7 +71899,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1988_0"
+                  "$ref": "#/components/schemas/__s2031_0"
                 }
               ]
             }
@@ -70621,7 +71910,7 @@
           "rules"
         ]
       },
-      "__s1989_0": {
+      "__s2032_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70682,7 +71971,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1989_0"
+                  "$ref": "#/components/schemas/__s2032_0"
                 }
               ]
             }
@@ -70693,7 +71982,7 @@
           "rules"
         ]
       },
-      "__s1990_0": {
+      "__s2033_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70754,7 +72043,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1990_0"
+                  "$ref": "#/components/schemas/__s2033_0"
                 }
               ]
             }
@@ -70765,7 +72054,7 @@
           "rules"
         ]
       },
-      "__s1991_0": {
+      "__s2034_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70826,7 +72115,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1991_0"
+                  "$ref": "#/components/schemas/__s2034_0"
                 }
               ]
             }
@@ -70837,7 +72126,7 @@
           "rules"
         ]
       },
-      "__s1992_0": {
+      "__s2035_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70898,7 +72187,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1992_0"
+                  "$ref": "#/components/schemas/__s2035_0"
                 }
               ]
             }
@@ -70909,7 +72198,7 @@
           "rules"
         ]
       },
-      "__s1993_0": {
+      "__s2036_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -70970,7 +72259,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1993_0"
+                  "$ref": "#/components/schemas/__s2036_0"
                 }
               ]
             }
@@ -70981,7 +72270,7 @@
           "rules"
         ]
       },
-      "__s1994_0": {
+      "__s2037_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71042,7 +72331,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1994_0"
+                  "$ref": "#/components/schemas/__s2037_0"
                 }
               ]
             }
@@ -71053,7 +72342,7 @@
           "rules"
         ]
       },
-      "__s1995_0": {
+      "__s2038_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71114,7 +72403,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1995_0"
+                  "$ref": "#/components/schemas/__s2038_0"
                 }
               ]
             }
@@ -71125,7 +72414,7 @@
           "rules"
         ]
       },
-      "__s1996_0": {
+      "__s2039_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71186,7 +72475,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1996_0"
+                  "$ref": "#/components/schemas/__s2039_0"
                 }
               ]
             }
@@ -71197,7 +72486,7 @@
           "rules"
         ]
       },
-      "__s2045_0": {
+      "__s2088_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71258,7 +72547,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2045_0"
+                  "$ref": "#/components/schemas/__s2088_0"
                 }
               ]
             }
@@ -71269,7 +72558,7 @@
           "rules"
         ]
       },
-      "__s2046_0": {
+      "__s2089_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71330,7 +72619,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2046_0"
+                  "$ref": "#/components/schemas/__s2089_0"
                 }
               ]
             }
@@ -71341,7 +72630,7 @@
           "rules"
         ]
       },
-      "__s2047_0": {
+      "__s2090_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71402,7 +72691,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2047_0"
+                  "$ref": "#/components/schemas/__s2090_0"
                 }
               ]
             }
@@ -71413,7 +72702,7 @@
           "rules"
         ]
       },
-      "__s2048_0": {
+      "__s2091_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71474,7 +72763,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2048_0"
+                  "$ref": "#/components/schemas/__s2091_0"
                 }
               ]
             }
@@ -71485,7 +72774,7 @@
           "rules"
         ]
       },
-      "__s2049_0": {
+      "__s2092_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71546,7 +72835,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2049_0"
+                  "$ref": "#/components/schemas/__s2092_0"
                 }
               ]
             }
@@ -71557,7 +72846,7 @@
           "rules"
         ]
       },
-      "__s2050_0": {
+      "__s2093_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71618,7 +72907,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2050_0"
+                  "$ref": "#/components/schemas/__s2093_0"
                 }
               ]
             }
@@ -71629,7 +72918,7 @@
           "rules"
         ]
       },
-      "__s2051_0": {
+      "__s2094_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71690,7 +72979,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2051_0"
+                  "$ref": "#/components/schemas/__s2094_0"
                 }
               ]
             }
@@ -71701,7 +72990,7 @@
           "rules"
         ]
       },
-      "__s2052_0": {
+      "__s2095_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71762,7 +73051,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2052_0"
+                  "$ref": "#/components/schemas/__s2095_0"
                 }
               ]
             }
@@ -71773,7 +73062,7 @@
           "rules"
         ]
       },
-      "__s2053_0": {
+      "__s2096_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71834,7 +73123,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2053_0"
+                  "$ref": "#/components/schemas/__s2096_0"
                 }
               ]
             }
@@ -71845,7 +73134,7 @@
           "rules"
         ]
       },
-      "__s2054_0": {
+      "__s2097_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71906,7 +73195,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2054_0"
+                  "$ref": "#/components/schemas/__s2097_0"
                 }
               ]
             }
@@ -71917,7 +73206,7 @@
           "rules"
         ]
       },
-      "__s2055_0": {
+      "__s2098_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -71978,7 +73267,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2055_0"
+                  "$ref": "#/components/schemas/__s2098_0"
                 }
               ]
             }

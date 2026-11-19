@@ -17,7 +17,10 @@ import {
   opsRecords,
   deliverables,
   assignmentBlocks,
+  downloadTokens,
 } from "@/db/schema";
+import { createHash, randomBytes } from "node:crypto";
+import { notify } from "./ctx";
 import { statusEffects } from "@/modules/applications/status-effects";
 import type { CaseStatus } from "@/domain/domain/case-status";
 import type { ChecklistItem } from "@/domain/ops/completeness";
@@ -743,6 +746,14 @@ export async function releaseDeliverables(db: Exec, c: CaseRow, by: string | nul
       createdAt: now,
     }];
   });
-  if (rows.length) await db.insert(deliverables).values(rows).onConflictDoNothing({ target: deliverables.id });
+  if (!rows.length) return 0;
+  const added = await db.insert(deliverables).values(rows).onConflictDoNothing({ target: deliverables.id }).returning({ id: deliverables.id, title: deliverables.title });
+  // DLV-06: one single-use 72 h link per newly released file, sent by email/WhatsApp through the notification pipeline.
+  if (c.app.clientId)
+    for (const d of added) {
+      const token = randomBytes(24).toString("base64url");
+      await db.insert(downloadTokens).values({ tokenHash: createHash("sha256").update(token).digest("hex"), deliverableId: d.id, userId: c.app.clientId, expiresAt: new Date(Date.now() + 72 * 3_600_000).toISOString(), createdAt: now });
+      await notify(db, { userId: c.app.clientId, kind: "deliverable", title: `${c.app.code}: ${d.title} is ready`, body: "This download link works once and expires in 72 hours.", href: `/d/${token}`, channels: ["email", "whatsapp"] });
+    }
   return rows.length;
 }

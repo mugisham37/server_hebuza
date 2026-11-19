@@ -22,3 +22,13 @@ export const clientDocumentExpiry = pgTable("client_document_expiry", {
   documentId: varchar("document_id", { length: 64 }).primaryKey().notNull().references(() => clientDocuments.documentId, { onDelete: "cascade" }),
   expiresOn: date("expires_on").notNull(),
 });
+
+/** DLV-06: single-use, 72-hour download links sent with a release (the token is hashed; the holder must also sign in). */
+export const downloadTokens = pgTable("download_tokens", {
+  tokenHash: varchar("token_hash", { length: 64 }).primaryKey().notNull(),
+  deliverableId: varchar("deliverable_id", { length: 64 }).notNull().references(() => deliverables.id, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true, mode: "string" }),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_download_tokens_deliverable").on(t.deliverableId)]);

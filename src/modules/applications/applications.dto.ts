@@ -68,7 +68,10 @@ export class BasketDto extends dto(BasketIn) {}
 export const BasketOut = z.object({ group_code: z.string(), total_amount_rwf: z.number().int(), items: z.array(SubmitOut) });
 export type SubmitInput = z.infer<typeof SubmitIn>;
 
-export const DashboardOut = z.object({ needs: z.array(Need), requests: z.array(Summary), paymentsDue: z.array(PaymentLine), unread: z.number().int() }).meta({ id: "ClientDashboard" });
+export const DashboardOut = z.object({ needs: z.array(Need), requests: z.array(Summary), paymentsDue: z.array(PaymentLine), unread: z.number().int(),
+  openQuotes: z.array(z.object({ code: z.string(), service: z.string() })),
+  releasedDeliverables: z.array(z.object({ id: z.string(), code: z.string(), title: z.string(), at: z.string() })),
+  deadlines: z.array(z.object({ code: z.string(), service: z.string(), dueAt: z.string() })) }).meta({ id: "ClientDashboard" });
 export class ActivityQueryDto extends dto(z.object({ year: z.string().regex(/^\d{4}$/).optional() })) {}
 export const ActivityOut = z.object({ items: z.array(z.object({ id: z.string(), at: z.string(), kind: z.string(), title: z.string(), slug: z.string().optional(), ref: z.string().nullable(), amount: z.number().int().nullable() })) });
 export const ListOut = z.object({ applications: z.array(Summary.extend({ group_code: z.string().nullable() })) }).meta({ id: "ApplicationListResponse" });
@@ -107,3 +110,5 @@ export class LooseDto extends dto(z.record(z.string(), z.unknown())) {}
 export class TicketCreateDto extends dto(z.looseObject({ subject: z.string().optional(), message: z.string().optional(), type: z.string().optional(), contact: z.string().optional(), caseRef: z.string().optional() })) {}
 export class TicketMessageDto extends dto(z.looseObject({ body: z.string().optional() })) {}
 export class TicketRateDto extends dto(z.looseObject({ score: z.number().optional(), comment: z.string().optional() })) {}
+export const CloneOut = z.object({ service_slug: z.string(), tier: z.string(), service_data: z.record(z.string(), z.unknown()), personal_info: z.record(z.string(), z.unknown()),
+  library_documents: z.record(z.string(), z.string()), from_code: z.string() });

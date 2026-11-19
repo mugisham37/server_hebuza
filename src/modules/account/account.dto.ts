@@ -34,3 +34,5 @@ export class OrgPatchDto extends dto(OrgPatchIn) {}
 export class MemberPatchDto extends dto(MemberPatchIn) {}
 export class OrgVerifyDto extends dto(OrgVerifyIn) {}
 export class OrgAdminQueryDto extends dto(OrgAdminQuery) {}
+export class AddressDto extends dto(z.object({ province: z.string().trim().max(64), district: z.string().trim().max(64), sector: z.string().trim().max(64), cell: z.string().trim().max(64), street: z.string().trim().max(255) })) {}
+export class ReminderDto extends dto(z.object({ state: z.enum(["done", "snoozed", "open"]), days: z.number().int().min(1).max(30).optional() })) {}

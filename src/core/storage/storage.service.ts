@@ -72,6 +72,10 @@ export class StorageService {
     return o.Body as Readable;
   }
 
+  async copy(from: string, to: string) {
+    await this.s3.send(new CopyObjectCommand({ Bucket: this.bucket, Key: to, CopySource: `${this.bucket}/${encodeURIComponent(from)}` }));
+  }
+
   async move(from: string, to: string) {
     await this.s3.send(new CopyObjectCommand({ Bucket: this.bucket, Key: to, CopySource: `${this.bucket}/${encodeURIComponent(from)}` }));
     await this.delete(from);

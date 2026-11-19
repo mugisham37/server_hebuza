@@ -3,6 +3,8 @@
 // EXIF strip, activation); downloads are 5-minute presigned redirects after a per-document access check.
 import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
+import { createTicket } from "../applications/support.service";
+import { createHash } from "node:crypto";
 import {
   and,
   asc,
@@ -24,6 +26,8 @@ import {
   clientDocumentExpiry,
   clientDocuments,
   clientDocumentVersions,
+  supportTickets,
+  downloadTokens,
   deliverables,
   documentRequests,
   messageAttachments,
@@ -200,6 +204,7 @@ async function ownDoc(db: Tx, s: SessionUser, id: string, forUpdate = false) {
   return d;
 }
 
+const ownDocForUpdate = (db: Tx, s: SessionUser, id: string) => ownDoc(db, s, id, true);
 export async function oneDoc(db: Tx, s: SessionUser, id: string) {
   return (await project(db, [await ownDoc(db, s, id)]))[0];
 }
@@ -506,6 +511,14 @@ export async function deliverableReceipt(
       body: note ?? null,
       link: `/agent/case/${a.code}`,
     });
+  // DLV-08: a not-OK receipt opens a complaint (FBK) on the case, unless one is already open.
+  if (!good) {
+    const [open] = await db.select({ ref: supportTickets.ref }).from(supportTickets)
+      .where(and(eq(supportTickets.userId, s.id), eq(supportTickets.caseRef, a.code), eq(supportTickets.type, "complaint"), sql`${supportTickets.status} <> 'resolved'`));
+    if (open) return { recorded: true, ticketRef: open.ref };
+    const t = await createTicket(db, s, `Changes requested on ${a.code}`, note?.trim() || "The delivered files need changes.", { type: "complaint", caseRef: a.code });
+    return { recorded: true, ticketRef: t.ref };
+  }
   return { recorded: true };
 }
 
@@ -745,6 +758,53 @@ export class DocumentsService {
     });
   }
 
+  /** DLV-06: redeem a single-use link (the signed-in client it was sent to only); returns the file URL. */
+  redeemToken(s: SessionUser, token: string) {
+    return this.tx.run(async (db) => {
+      const hash = createHash("sha256").update(token).digest("hex");
+      const [t] = await db.update(downloadTokens).set({ usedAt: new Date().toISOString() })
+        .where(and(eq(downloadTokens.tokenHash, hash), eq(downloadTokens.userId, s.id), isNull(downloadTokens.usedAt), sql`${downloadTokens.expiresAt} > now()`))
+        .returning({ id: downloadTokens.deliverableId });
+      if (!t) throw new AppError(410, "expired", "This link was already used or has expired. Open the request to download again.");
+      const { d } = await readableDeliverable(db, s, t.id, { download: true });
+      await this.audit.record(db, { action: "deliverable.downloaded", entity: "deliverable", entityId: t.id, after: { via: "link" } });
+      return { url: await this.storage.presignGet(d.storagePath, d.title) };
+    });
+  }
+
+  /** DOC-05: make an older version current again (a new version pointing at the same stored object). */
+  restoreVersion(s: SessionUser, id: string, version: number) {
+    return this.tx.run(async (db) => {
+      const d = await ownDocForUpdate(db, s, id);
+      const [v] = await db.select().from(clientDocumentVersions).where(and(eq(clientDocumentVersions.documentId, id), eq(clientDocumentVersions.version, version)));
+      if (!v) throw new AppError(404, "not_found", "Not found.");
+      if (v.scanStatus === "infected") throw new AppError(409, "infected", "That version failed the virus scan.");
+      if (version === d.currentVersion) throw new AppError(409, "conflict", "That is already the current version.");
+      const next = d.currentVersion + 1, ts = new Date().toISOString();
+      await db.insert(clientDocumentVersions).values({ ...v, versionId: generateId("cvd"), version: next, uploadedAt: ts, orphanedAt: null });
+      await db.update(clientDocuments).set({ currentVersion: next, storagePath: v.storagePath, originalFilename: v.originalFilename, mimeType: v.mimeType, fileSizeBytes: v.fileSizeBytes, contentSha256: v.contentSha256 || null, updatedAt: ts })
+        .where(eq(clientDocuments.documentId, id));
+      await this.audit.record(db, { action: "document.version_restored", entity: "document", entityId: id, before: { version: d.currentVersion }, after: { version: next, from: version } });
+      return oneDoc(db, s, id);
+    });
+  }
+
+  /** DLV-09: keep a released deliverable in the client's library (its own copy, so library deletes never touch the deliverable). */
+  saveDeliverableToLibrary(s: SessionUser, id: string) {
+    return this.tx.run(async (db) => {
+      const { d, a } = await readableDeliverable(db, s, id, { download: true });
+      if (a.clientId !== s.id) throw forbidden();
+      const docId = generateId("vdoc"), ts = new Date().toISOString();
+      const key = `u/${s.id}/vault/${docId}-${d.title.replace(/[^\w.-]+/g, "_").slice(0, 80)}`;
+      await this.storage.copy(d.storagePath, key);
+      const file = { storagePath: key, originalFilename: d.title, mimeType: d.mimeType, fileSizeBytes: d.fileSizeBytes };
+      await db.insert(clientDocuments).values({ documentId: docId, clientId: s.id, ...file, label: d.title.slice(0, 120), kind: "deliverable", isActive: true, createdAt: ts, updatedAt: ts, currentVersion: 1 });
+      await db.insert(clientDocumentVersions).values({ versionId: generateId("cvd"), documentId: docId, version: 1, ...file, contentSha256: "", scanStatus: "clean", uploadedAt: ts }); // released deliverables were scanned at upload
+      await this.audit.record(db, { action: "deliverable.saved_to_library", entity: "document", entityId: docId, after: { deliverableId: id } });
+      return oneDoc(db, s, docId);
+    });
+  }
+
   delete(s: SessionUser, id: string) {
     return this.tx.run(async (db) => {
       const r = await deleteLibraryDoc(db, s, id);
@@ -780,6 +840,11 @@ export class DocumentsService {
       if (!can({ id: s.id, roles: s.roles }, "doc.case.upload", { ownerId: a.clientId, assigneeIds: [a.assignedAgentId ?? ""] }))
         throw forbidden();
       if (isTerminal(normalizeStatus(a.status))) throw new AppError(422, "validation", "This application is closed.");
+      // REQ-18: no client uploads while held, nor 30 days after delivery (the case is closed for new material).
+      if (a.clientId === s.id && normalizeStatus(a.status) === "on_hold")
+        throw new AppError(409, "on_hold", "This request is on hold. Your agent will tell you when to send documents.");
+      if (a.clientId === s.id && a.completedAt && Date.now() - Date.parse(a.completedAt) > 30 * 864e5)
+        throw new AppError(409, "closed", "This request was completed more than 30 days ago. Start a new request instead.");
       const [need] = f.need_id
         ? await db
             .select()

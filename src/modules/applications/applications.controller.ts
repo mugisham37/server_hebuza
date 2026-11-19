@@ -42,6 +42,11 @@ export class ApplicationsController {
   detail(@Param("code") code: string, @CurrentUser() me: SessionUser) {
     return this.svc.detail(me, code);
   }
+  @Post("applications/:code/clone")
+  @Route({ auth: ["client"], permission: "req.case.read", limit: "write", out: D.CloneOut })
+  clone(@Param("code") code: string, @CurrentUser() me: SessionUser) {
+    return this.svc.cloneDraft(me, code);
+  }
   @Post("applications/:code/cancel")
   @Route({ auth: ["client"], permission: "req.case.read", audit: "application.cancel", limit: "write", out: D.CancelOut })
   cancel(@Param("code") code: string, @Body() b: D.CancelDto, @CurrentUser() me: SessionUser) {

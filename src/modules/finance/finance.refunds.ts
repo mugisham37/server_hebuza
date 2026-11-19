@@ -2,6 +2,7 @@
 // above the limit or on a changed destination), credit note, allocation impact, execution and disbursement.
 // Port of the refund half of src/mocks/handlers-finance-d.ts onto finance_records.
 import { reversePartnerCommission } from "../partners/partners.reversal";
+import { refundCaseStatus } from "../applications/refund-status";
 import { ownUpload } from "../account/account.service";
 import type { Tx as Exec } from "../../core/db/db";
 import { splitVat } from "@/domain/money";
@@ -456,6 +457,7 @@ export async function requestRefund(
     note: b.note.trim(),
   };
   await saveRefund(f.db, r);
+  await refundCaseStatus(f.db, r.caseRef, "requested", r.no);
   f.rec(
     "refund.requested",
     "refund",
@@ -507,6 +509,7 @@ export async function reviewRefund(
   r.status = to;
   touch(f, r);
   await saveRefund(f.db, r);
+  if (to === "rejected") await refundCaseStatus(f.db, r.caseRef, "declined", r.no);
   f.rec(
     `refund.${to}`,
     "refund",
@@ -621,6 +624,8 @@ export async function approveRefund(f: Fin, no: string, b: { rev?: number }) {
   await applyImpact(f, r, inv);
   if (r.method === "credit") {
     r.status = "completed_as_credit";
+    await refundCaseStatus(f.db, r.caseRef, "refunded", r.no);
+    await reversePartnerCommission(f.db, r.caseRef, r.approved ?? 0);
     await addClientCredit(f.db, inv.clientId, r.approved);
     await postRefund(
       f.deps.ledger,
@@ -672,6 +677,7 @@ export async function rejectRefund(
   r.rejectReason = [b.reason, b.note].filter(Boolean).join(" · ");
   touch(f, r);
   await saveRefund(f.db, r);
+  await refundCaseStatus(f.db, r.caseRef, "declined", r.no);
   f.rec(
     "refund.rejected",
     "refund",
@@ -716,6 +722,7 @@ export async function executeRefund(
       f.me.id,
     );
     await reversePartnerCommission(f.db, r.caseRef, amountOf(r));
+    await refundCaseStatus(f.db, r.caseRef, "refunded", r.no);
     f.rec("refund.paid", "refund", r.no, before, {
       status: r.status,
       proof: b.proofName,
@@ -769,6 +776,7 @@ export async function settleDisbursement(db: Exec, ledger: LedgerService, no: st
     r.note = [r.note, `Gateway refund on ${out.transactionId}`].filter(Boolean).join(" · ");
     await postRefund(ledger, db, r.no, { amount: amountOf(r), method: out.kind }, null);
     await reversePartnerCommission(db, r.caseRef, amountOf(r));
+    await refundCaseStatus(db, r.caseRef, "refunded", r.no);
   } else {
     r.status = "execution_failed";
     r.failReason = out.reason;

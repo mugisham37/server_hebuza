@@ -36,6 +36,21 @@ export class DocumentsController {
   remove(@Param("id") id: string, @CurrentUser() me: SessionUser) {
     return this.svc.delete(me, id);
   }
+  @Get("d/:token")
+  @Route({ auth: ["client"], limit: "auth" })
+  redeem(@Param("token") token: string, @CurrentUser() me: SessionUser) {
+    return this.svc.redeemToken(me, token.slice(0, 64));
+  }
+  @Post("me/documents/:id/versions/:v/restore")
+  @Route({ auth: ["client"], permission: "doc.library", limit: "write", out: D.LibDoc })
+  restore(@Param("id") id: string, @Param("v") v: string, @CurrentUser() me: SessionUser) {
+    return this.svc.restoreVersion(me, id, Number.parseInt(v, 10) || 0);
+  }
+  @Post("me/deliverables/:id/save-to-library")
+  @Route({ auth: ["client"], permission: "doc.library", limit: "write", out: D.LibDoc })
+  saveToLibrary(@Param("id") id: string, @CurrentUser() me: SessionUser) {
+    return this.svc.saveDeliverableToLibrary(me, id);
+  }
   @Post("me/documents/:id/attach")
   @Route({ auth: ["client"], permission: "doc.case.upload", out: D.LibDoc })
   attach(@Param("id") id: string, @Body() b: D.AttachDto, @CurrentUser() me: SessionUser) {
