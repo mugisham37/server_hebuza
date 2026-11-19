@@ -32,7 +32,7 @@ import {
   type ExtChannel,
   type Prefs,
 } from "@/domain/notify/delivery";
-import { activeVersion, capDecision } from "@/domain/system/templates";
+import { activeVersion, capDecision, extractVars } from "@/domain/system/templates";
 import type { BudgetVM, EventRuleVM, TemplateVM } from "@/domain/system/types";
 import type { Env } from "../../core/config/env";
 import { DB, type Db } from "../../core/db/db";
@@ -284,7 +284,7 @@ export class DeliveryService {
       (x) => x.event === kind && x.channel === ch,
     );
     const v = t && activeVersion(t);
-    return t && v ? { key: t.key, category: t.category, version: v } : null;
+    return t && v ? { key: t.key, category: t.category, channel: t.channel, version: v } : null;
   }
 
   private render(
@@ -309,10 +309,14 @@ export class DeliveryService {
           .map((s) => renderTemplate(s!, vars))
           .join("\n\n")
       : [n.title, n.body, link].filter(Boolean).join("\n\n");
+    // WhatsApp templates are sent by name with positional body params ({{a}} {{b}} → 1, 2) so Meta can deliver outside the 24 h window.
+    const usedLang = langs?.[lang as "en"] ? lang : langs?.en ? "en" : langs?.rw ? "rw" : "fr";
+    const wa = tpl && b && tpl.channel === "whatsapp" ? { name: tpl.key, lang: usedLang, params: extractVars(b.body).map((v) => (vars as Record<string, string>)[v] ?? "") } : undefined;
     return {
       subject,
       text,
       html: `<p>${esc(text).replace(/\n/g, "<br>")}</p>`,
+      ...(wa && { wa }),
     };
   }
 
@@ -418,7 +422,7 @@ export class DeliveryService {
               tags: { kind: d.kind.replace(/[^\w-]/g, "_"), delivery: id },
             })
           : d.channel === "whatsapp" && this.wa.configured
-            ? await this.wa.send({ to: address, text: p.text })
+            ? await this.wa.send({ to: address, text: p.text, template: p.wa })
             : await this.sms.send({ to: address, text: p.text }); // WhatsApp without Cloud API keys relays through SMS
       const segments =
         d.channel === "email" ? 1 : Math.max(1, Math.ceil(p.text.length / 153));

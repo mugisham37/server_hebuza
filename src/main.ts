@@ -54,8 +54,8 @@ async function bootstrap() {
   // shortcut: one limit for all field routes incl. multi-page scans, move to multipart/presigned uploads if scans outgrow it.
   app.getHttpAdapter().getInstance().addHook("onRoute", (r) => {
     if (/^\/api\/(x_)?field\//.test(r.url)) r.bodyLimit = 40 * 1024 * 1024;
-    // Resend (svix) signs the exact bytes: keep the raw body for that one route (req.rawBody), parse as usual after.
-    if (r.url.endsWith("/webhooks/notify/:token/resend"))
+    // Resend (svix) and Meta (X-Hub-Signature-256) sign the exact bytes: keep the raw body for that one route (req.rawBody), parse as usual after.
+    if (r.url.endsWith("/webhooks/notify/:token/resend") || (r.url.endsWith("/webhooks/notify/:token/whatsapp") && r.method === "POST"))
       r.preParsing = [async (req: { rawBody?: Buffer }, _reply: unknown, payload: AsyncIterable<Buffer>) => {
         const chunks: Buffer[] = [];
         for await (const c of payload) chunks.push(Buffer.from(c));

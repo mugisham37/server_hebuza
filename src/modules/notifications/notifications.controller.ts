@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Headers, Ip, Param, Patch, Post, Put, Query, Req } from "@nestjs/common";
-import { verifySvix } from "@/domain/notify/svix";
+import { Body, Controller, Get, Headers, Ip, Param, Patch, Post, Put, Query, Req, Res } from "@nestjs/common";
+import { verifyHubSignature, verifySvix } from "@/domain/notify/svix";
+import type { FastifyReply } from "fastify";
+import { RawResponse } from "../../core/http/envelope.interceptor";
 import { ConfigService } from "@nestjs/config";
 import type { Env } from "../../core/config/env";
 import { safeEqual } from "../../core/crypto/crypto.service";
@@ -9,7 +11,7 @@ import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
 import {
-  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WebhookOut,
+  AtInboundDto, AtStatusDto, ConsentDto, ConsentOut, ListOut, ListQueryDto, PrefsDto, PrefsOut, ReadDto, ReadOut, ResendEventDto, WaEventDto, WebhookOut,
 } from "./notifications.dto";
 import { DeliveryService } from "./notifications.delivery";
 import { NotificationsService } from "./notifications.service";
@@ -51,6 +53,38 @@ export class NotificationsController {
     this.gate(token);
     if (b.status === "Success") await this.delivery.providerStatus(b.id, "delivered");
     else if (b.status === "Failed" || b.status === "Rejected") await this.delivery.providerStatus(b.id, "failed", b.failureReason ?? b.status);
+    return { ok: true };
+  }
+
+  /** Meta subscription handshake. */
+  @Get("webhooks/notify/:token/whatsapp")
+  @Route({ auth: "public" })
+  @RawResponse()
+  waVerify(@Param("token") token: string, @Query() q: Record<string, string>, @Res() reply: FastifyReply) {
+    this.gate(token);
+    const want = this.cfg.get("WHATSAPP_VERIFY_TOKEN", { infer: true });
+    if (q["hub.mode"] !== "subscribe" || !want || !safeEqual(q["hub.verify_token"] ?? "", want)) throw new AppError(403, "forbidden", "Forbidden");
+    return reply.type("text/plain").send(q["hub.challenge"] ?? "");
+  }
+
+  /** WhatsApp Cloud API: message statuses (sent/delivered/read/failed) and inbound replies (STOP/HAGARIKA). */
+  @Post("webhooks/notify/:token/whatsapp")
+  @Webhook()
+  @Route({ auth: "public", out: WebhookOut })
+  async wa(@Param("token") token: string, @Body() b: WaEventDto, @Req() req: { rawBody?: Buffer; headers: Record<string, string | string[] | undefined> }, @Ip() ip: string) {
+    this.gate(token);
+    const secret = this.cfg.get("WHATSAPP_APP_SECRET", { infer: true });
+    const sig = req.headers["x-hub-signature-256"];
+    if (secret && !verifyHubSignature(secret, typeof sig === "string" ? sig : "", req.rawBody ?? ""))
+      throw new AppError(401, "bad_signature", "Bad signature.");
+    for (const e of b.entry ?? [])
+      for (const ch of e.changes ?? []) {
+        for (const st of ch.value?.statuses ?? [])
+          if (st.status === "delivered" || st.status === "read" || st.status === "failed")
+            await this.delivery.providerStatus(st.id, st.status, st.errors?.[0]?.title);
+        for (const m of ch.value?.messages ?? [])
+          if (m.text?.body) await this.delivery.inbound(`+${m.from.replace(/^\+/, "")}`, m.text.body, ip);
+      }
     return { ok: true };
   }
 

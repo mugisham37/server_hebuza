@@ -25,6 +25,13 @@ export type Prefs = z.infer<typeof PrefsIn>;
 const ResendEvent = z.object({ type: z.string().max(64), data: z.object({ email_id: z.string().max(128) }).loose() }).loose();
 const AtStatus = z.object({ id: z.string().max(128), status: z.string().max(32), failureReason: z.string().max(128).optional() }).loose();
 const AtInbound = z.object({ from: z.string().max(32), text: z.string().max(1600) }).loose();
+const WaEvent = z.object({
+  entry: z.array(z.object({ changes: z.array(z.object({ value: z.object({
+    statuses: z.array(z.object({ id: z.string().max(128), status: z.string().max(16), errors: z.array(z.object({ title: z.string().max(256).optional() }).loose()).optional() }).loose()).optional(),
+    messages: z.array(z.object({ from: z.string().max(32), text: z.object({ body: z.string().max(4096) }).optional() }).loose()).optional(),
+  }).loose().optional() }).loose()).optional() }).loose()).max(50).optional(),
+}).loose();
+export class WaEventDto extends dto(WaEvent) {}
 export const WebhookOut = z.object({ ok: z.boolean() });
 export class ResendEventDto extends dto(ResendEvent) {}
 export class AtStatusDto extends dto(AtStatus) {}

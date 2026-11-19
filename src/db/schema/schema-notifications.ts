@@ -51,7 +51,7 @@ export const notificationDeliveries = pgTable("notification_deliveries", {
   chain: jsonb().$type<string[]>(),
   fallbackFrom: varchar("fallback_from", { length: 64 }),
   dedupeKey: varchar("dedupe_key", { length: 255 }),
-  payload: jsonb().$type<{ subject: string; text: string; html?: string }>(),
+  payload: jsonb().$type<{ subject: string; text: string; html?: string; wa?: { name: string; lang: string; params: string[] } }>(),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true, mode: "string" }),
   sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }),
   deliveredAt: timestamp("delivered_at", { withTimezone: true, mode: "string" }),

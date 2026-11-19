@@ -33,6 +33,8 @@ export const envSchema = z.object({
   AUDIT_S3_ACCESS_KEY: z.string().optional(),
   AUDIT_S3_SECRET_KEY: z.string().optional(),
   // Provider delivery webhooks + inbound SMS (STOP) are accepted only on /api/webhooks/notify/<token>/...; unset → 404.
+  WHATSAPP_APP_SECRET: z.string().optional(), // Meta app secret: X-Hub-Signature-256 on the WhatsApp webhook
+  WHATSAPP_VERIFY_TOKEN: z.string().optional(), // hub.verify_token for the webhook subscription handshake
   RESEND_WEBHOOK_SECRET: z.string().optional(), // whsec_… from the Resend webhook; set → svix signature required
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.

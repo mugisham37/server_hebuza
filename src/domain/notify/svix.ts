@@ -12,3 +12,10 @@ export function verifySvix(secret: string, h: { id?: string; timestamp?: string;
     return !!got && got.length === want.length && timingSafeEqual(got, want);
   });
 }
+
+/** Meta webhooks: `sha256=<hex HMAC-SHA256(app secret, raw body)>`. */
+export function verifyHubSignature(secret: string, header: string, body: Buffer | string): boolean {
+  const got = Buffer.from(header.replace(/^sha256=/, ""), "hex");
+  const want = createHmac("sha256", secret).update(body).digest();
+  return got.length === want.length && timingSafeEqual(got, want);
+}
