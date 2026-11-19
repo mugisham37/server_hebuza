@@ -15,6 +15,7 @@ import {
   payments,
 } from "@/db/schema";
 import { movesFor, type CaseFacts } from "@/domain/ops/transitions";
+import { ineligibleReason } from "@/domain/ops/ranking";
 import { rankAgents } from "@/domain/ops/ranking";
 import { evaluate } from "@/domain/ops/completeness";
 import { quoteTotals, type QuoteLine } from "@/domain/ops/quotation";
@@ -372,7 +373,14 @@ export async function assign(
   const r = await loadCase(ctx.db, code, true);
   const a = await agentsAll(ctx.db, [b.agent_id]).then((x) => x[0]);
   if (!a) throw new AppError(422, "invalid_agent", "Unknown agent.");
-  if (r.app.assignedAgentId !== a.id) assertCapacity(a);
+  if (r.app.assignedAgentId !== a.id) {
+    // Manual assign runs the ranking's eligibility; bypass only through assign-override (reason, audited).
+    const contract = (await recList<{ status: string; until: string }>(ctx.db, "contract")).find((c) => c.ownerId === a.id);
+    const cl = (await bundle(ctx.db, [r])).clients.get(clientKey(r.app));
+    const why = ineligibleReason({ service: r.app.serviceSlug, clientId: cl?.id ?? r.app.clientId ?? "" }, { ...a, contractUntil: contract?.data.until ?? null });
+    if (why === "atCap") assertCapacity(a);
+    if (why) throw new AppError(409, "agent_ineligible", `${a.name} can't take this case (${why}). Use an override with a reason.`);
+  }
   r.x.helpers = (b.helpers ?? []).filter((h) => h !== a.id);
   await setLead(ctx.db, ctx.session!, r, a.id);
   await saveCase(ctx.db, r);
