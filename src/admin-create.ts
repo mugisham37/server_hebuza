@@ -1,4 +1,4 @@
-// One-off: create (or reset the password of) a sysadmin. Never seed production; use this instead.
+// One-off: create the first sysadmin (IAM-17: refuses when one exists and never overwrites a password). Never seed production; use this instead.
 // `ADMIN_EMAIL=… ADMIN_NAME=… ADMIN_PASSWORD=… node dist/admin-create.js` (or `pnpm admin:create` in dev). Needs DATABASE_URL.
 // The user enrols TOTP at first sign-in (twofa off until then).
 import { hash } from "@node-rs/argon2";
@@ -22,10 +22,13 @@ async function main() {
   const t = new Date().toISOString();
   await db.transaction(async (tx) => {
     await tx.execute(sql`select set_config('app.roles', 'system', true)`); // FORCE RLS binds the owner too
+    const [any] = await tx.select({ id: users.userId }).from(users).where(sql`${users.role} = 'staff:sysadmin'`).limit(1);
+    if (any) throw new Error("A sysadmin already exists; reset passwords through the console, not this script");
     const [u] = await tx.insert(users)
       .values({ userId: genId("usr"), name: name!, email: email!.toLowerCase(), passwordHash, role: "staff:sysadmin", isActive: true, isEmailVerified: true, language: "en", createdAt: t, updatedAt: t })
-      .onConflictDoUpdate({ target: [users.email, users.role], set: { passwordHash, isActive: true, updatedAt: t } })
+      .onConflictDoNothing()
       .returning({ userId: users.userId });
+    if (!u) throw new Error("That email already has an account");
     await tx.insert(staffProfiles).values({ userId: u.userId, twofaEnabled: false, createdAt: t }).onConflictDoNothing();
     console.log(`sysadmin ready: ${email} (${u.userId})`);
   });

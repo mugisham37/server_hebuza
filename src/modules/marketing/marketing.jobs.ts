@@ -18,7 +18,7 @@ import { SmsService } from "../../core/notify/sms.service";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import { inQuietHours } from "@/domain/marketing/quiet-hours";
 import { eligibility } from "@/domain/marketing/consent";
-import { get, list, put, year, type Exec } from "./marketing.store";
+import { get, list, put, type Exec } from "./marketing.store";
 import { captureFrom, purgeStale, sweepWon, unsubToken } from "./marketing.crm";
 import { runTick, sendTick } from "./marketing.campaigns";
 import { sweepReferrals } from "./marketing.insights";
@@ -265,6 +265,7 @@ export async function syncContacts(db: Tx) {
       phone: users.phoneE164,
       language: users.language,
       created: users.createdAt,
+      customerNo: users.customerNo,
       last: sql<string | null>`max(${applications.createdAt})`,
     })
     .from(users)
@@ -276,9 +277,10 @@ export async function syncContacts(db: Tx) {
   for (const r of rows) {
     const cur = have.get(r.id);
     const lastActiveAt = r.last ?? r.created;
-    if (cur && cur.lastActiveAt >= lastActiveAt) continue;
+    const customerId = r.customerNo ?? cur?.customerId ?? "";
+    if (cur && cur.lastActiveAt >= lastActiveAt && cur.customerId === customerId) continue;
     const c: Contact = cur
-      ? { ...cur, lastActiveAt }
+      ? { ...cur, lastActiveAt, customerId }
       : {
           id: r.id,
           name: r.name,
@@ -296,7 +298,7 @@ export async function syncContacts(db: Tx) {
           ltv: 0,
           consent: { email: "unknown", whatsapp: "unknown", sms: "unknown" },
           clientId: r.id,
-          customerId: `HBC-${year()}-${r.id.slice(-5).toUpperCase()}`, // PLACEHOLDER(customer-id-format)
+          customerId, // CRM-01: users.customer_no (assigned at signup/claim, backfilled by scripts/backfill-customer-no)
         };
     await put(db, { kind: "contact", id: c.id, data: c, status: "customer", ref: r.id });
     n++;

@@ -137,6 +137,7 @@ export function toVM(r: Row, m: UserMeta | undefined): SystemUserVM {
     ...(m?.createdBy ? { createdBy: m.createdBy } : {}),
     ...(m?.managerName ? { managerName: m.managerName } : {}),
     ...(m?.isBootstrap ? { isBootstrap: true } : {}),
+    ...(r.customerNo ? { customerNo: r.customerNo } : {}),
   };
 }
 const metaOf = (w: World, id: string) => w.userMeta.find((m) => m.id === id);

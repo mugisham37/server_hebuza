@@ -12,6 +12,7 @@ export const SessionModel = z.object({
   role: z.string(),
   isEmailVerified: z.boolean(),
   language: z.string(),
+  customerNo: z.string().nullable(),
   createdAt: z.string(),
   expiresAt: z.string().nullable(),
 });
@@ -34,7 +35,7 @@ export const SignupIn = z
     name: z.string().trim().min(2).max(255),
     identifierType: IdType.optional(),
     identifier: z.string().min(1).max(255),
-    password: z.string().min(8).max(256),
+    password: z.string().min(10).max(256),
     language: Lang.default("rw"),
     terms: z.boolean().optional(),
     audience: Audience.optional(),
@@ -69,7 +70,7 @@ export const ForgotIn = z.object({
 });
 export const ResetIn = z.object({
   token: z.string().min(1).max(256),
-  password: z.string().min(8).max(256),
+  password: z.string().min(10).max(256),
   confirmPassword: z.string().optional(),
 });
 export const SetPasswordIn = z.object({

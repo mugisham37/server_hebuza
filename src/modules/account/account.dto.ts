@@ -13,4 +13,5 @@ export class AvatarDto extends dto(AvatarIn) {}
 export class ActiveOrgDto extends dto(ActiveOrgIn) {}
 export class InviteDto extends dto(InviteIn) {}
 export class ClaimDto extends dto(ClaimIn) {}
+export const ClaimOut = z.object({ claimed: z.boolean(), otpSent: z.boolean() });
 export class UploadDto extends dto(UploadIn) {}

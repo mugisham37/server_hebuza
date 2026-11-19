@@ -53,7 +53,7 @@ export class AccountController {
   @Delete("me/orgs/:id/members/:mid") @Route({ auth: CLIENT, limit: "write", audit: "org.member.removed" })
   removeMember(@Param("id") id: string, @Param("mid") mid: string, @CurrentUser() me: SessionUser) { return this.svc.removeMember(me, id, mid); }
 
-  @Post("applications/claim") @Route({ auth: CLIENT, limit: "auth" })
+  @Post("applications/claim") @Route({ auth: CLIENT, limit: "auth", out: D.ClaimOut })
   claim(@Body() b: D.ClaimDto, @CurrentUser() me: SessionUser) { return this.svc.claim(me, b); }
 
   @Post("uploads") @Route({ auth: "public", limit: "write" })

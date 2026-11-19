@@ -183,6 +183,288 @@
         ]
       }
     },
+    "/api/webhooks/notify/{token}/resend": {
+      "post": {
+        "operationId": "NotificationsController_resend",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendEventDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/webhooks/notify/{token}/africastalking/status": {
+      "post": {
+        "operationId": "NotificationsController_atStatus",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/webhooks/notify/{token}/africastalking/inbound": {
+      "post": {
+        "operationId": "NotificationsController_atInbound",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AtInboundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ok"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
+    "/api/consent": {
+      "post": {
+        "operationId": "NotificationsController_consent",
+        "parameters": [
+          {
+            "name": "user-agent",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConsentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "recorded": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "recorded"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ]
+      }
+    },
     "/api/notifications": {
       "get": {
         "operationId": "NotificationsController_list",
@@ -647,7 +929,71 @@
     "/api/services": {
       "get": {
         "operationId": "CatalogueController_listPublic",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "name": "max_price",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 9007199254740991,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "max_days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 0,
+              "maximum": 365,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "engagement",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "application",
+                "consultation"
+              ]
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "online",
+                "in_person",
+                "hybrid"
+              ]
+            }
+          }
+        ],
         "responses": {
           "2XX": {
             "description": "",
@@ -2737,6 +3083,100 @@
                     },
                     "data": {
                       "$ref": "#/components/schemas/SubscriptionPlanListResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subscriptions"
+        ]
+      }
+    },
+    "/api/me/subscription/cancel": {
+      "post": {
+        "operationId": "SubscriptionsController_cancel",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MySubscriptionResponse"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Subscriptions"
+        ]
+      }
+    },
+    "/api/me/subscription/undo-cancel": {
+      "post": {
+        "operationId": "SubscriptionsController_undoCancel",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/MySubscriptionResponse"
                     }
                   }
                 }
@@ -5685,7 +6125,22 @@
                       "type": "string",
                       "nullable": true
                     },
-                    "data": {}
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "claimed": {
+                          "type": "boolean"
+                        },
+                        "otpSent": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "claimed",
+                        "otpSent"
+                      ],
+                      "additionalProperties": false
+                    }
                   }
                 }
               }
@@ -12528,6 +12983,80 @@
         ]
       }
     },
+    "/api/applications/{code}/cancel": {
+      "post": {
+        "operationId": "ApplicationsController_cancel",
+        "parameters": [
+          {
+            "name": "code",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelDto2"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "cancelled",
+                            "requested"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "state"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Applications"
+        ]
+      }
+    },
     "/api/track/{code}": {
       "get": {
         "operationId": "ApplicationsController_track",
@@ -17105,7 +17634,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelDto"
+                "$ref": "#/components/schemas/CancelDto3"
               }
             }
           }
@@ -17541,7 +18070,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CancelDto"
+                "$ref": "#/components/schemas/CancelDto3"
               }
             }
           }
@@ -19205,6 +19734,104 @@
                       ],
                       "additionalProperties": false
                     }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/me/invoices/{no}/pdf": {
+      "get": {
+        "operationId": "PaymentsController_invoicePdf",
+        "parameters": [
+          {
+            "name": "no",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Payments"
+        ]
+      }
+    },
+    "/api/me/receipts/{no}/pdf": {
+      "get": {
+        "operationId": "PaymentsController_receiptPdf",
+        "parameters": [
+          {
+            "name": "no",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
                   }
                 }
               }
@@ -42853,6 +43480,55 @@
         ]
       }
     },
+    "/api/finance/quotations/{no}/pdf": {
+      "get": {
+        "operationId": "FinanceBillingController_quotePdf",
+        "parameters": [
+          {
+            "name": "no",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "FinanceBilling"
+        ]
+      }
+    },
     "/api/finance/quotations/{no}/send": {
       "post": {
         "operationId": "FinanceBillingController_send",
@@ -45530,6 +46206,55 @@
       "get": {
         "operationId": "FinanceRefundsController_creditNotes",
         "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "FinanceRefunds"
+        ]
+      }
+    },
+    "/api/finance/credit-notes/{no}/pdf": {
+      "get": {
+        "operationId": "FinanceRefundsController_creditNotePdf",
+        "parameters": [
+          {
+            "name": "no",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "2XX": {
             "description": "",
@@ -48685,6 +49410,100 @@
   "servers": [],
   "components": {
     "schemas": {
+      "ResendEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "email_id": {
+                "type": "string",
+                "maxLength": 128
+              }
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "type",
+          "data"
+        ],
+        "additionalProperties": {}
+      },
+      "AtStatusDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "status": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "failureReason": {
+            "type": "string",
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "additionalProperties": {}
+      },
+      "AtInboundDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 1600
+          }
+        },
+        "required": [
+          "from",
+          "text"
+        ],
+        "additionalProperties": {}
+      },
+      "ConsentDto": {
+        "type": "object",
+        "properties": {
+          "anon_id": {
+            "type": "string",
+            "pattern": "^[\\w-]{8,64}$"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "cookie_banner",
+              "settings"
+            ]
+          },
+          "policy_version": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "purposes": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": [
+          "source",
+          "purposes"
+        ]
+      },
       "ReadDto": {
         "type": "object",
         "properties": {
@@ -49151,6 +49970,120 @@
           "is_featured": {
             "type": "boolean",
             "nullable": true
+          },
+          "engagement_type": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "application",
+              "consultation"
+            ]
+          },
+          "eligibility": {
+            "type": "array",
+            "nullable": true,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ]
+            }
+          },
+          "deliverables": {
+            "type": "array",
+            "nullable": true,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ]
+            }
+          },
+          "turnaround_days_min": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 365
+          },
+          "turnaround_days_max": {
+            "type": "integer",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 365
+          },
+          "delivery_mode": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "online",
+              "in_person",
+              "hybrid"
+            ]
+          },
+          "seo": {
+            "type": "object",
+            "nullable": true,
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "maxLength": 70
+                },
+                "description": {
+                  "type": "string",
+                  "maxLength": 170
+                },
+                "og_image": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              }
+            }
+          },
+          "related_slugs": {
+            "type": "array",
+            "nullable": true,
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "maxLength": 128,
+              "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+            }
           }
         }
       },
@@ -49462,6 +50395,27 @@
             "maxLength": 16
           }
         }
+      },
+      "CancelDto": {
+        "type": "object",
+        "properties": {
+          "when": {
+            "type": "string",
+            "default": "period_end",
+            "enum": [
+              "period_end",
+              "now"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
       },
       "SignupDto": {
         "type": "object",
@@ -49884,6 +50838,10 @@
             "type": "string",
             "minLength": 6,
             "maxLength": 32
+          },
+          "otp": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
           }
         },
         "required": [
@@ -50999,6 +51957,19 @@
           "personal_info"
         ]
       },
+      "CancelDto2": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
       "VerifyTrackDto": {
         "type": "object",
         "properties": {
@@ -51951,7 +52922,7 @@
           "method"
         ]
       },
-      "CancelDto": {
+      "CancelDto3": {
         "type": "object",
         "properties": {
           "reason": {
@@ -54671,7 +55642,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1334_0"
+              "$ref": "#/components/schemas/__s1385_0"
             }
           }
         },
@@ -55314,6 +56285,14 @@
             "type": "string",
             "nullable": true,
             "maxLength": 500
+          },
+          "ref": {
+            "type": "string",
+            "maxLength": 128
+          },
+          "institution": {
+            "type": "string",
+            "maxLength": 255
           }
         },
         "required": [
@@ -56422,7 +57401,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s1717_0"
+            "$ref": "#/components/schemas/__s1770_0"
           },
           "channel": {
             "type": "string",
@@ -56447,7 +57426,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s1721_0"
+            "$ref": "#/components/schemas/__s1774_0"
           }
         },
         "required": [
@@ -56465,7 +57444,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1725_0"
+                "$ref": "#/components/schemas/__s1778_0"
               }
             ]
           }
@@ -56709,7 +57688,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s1777_0"
+                "$ref": "#/components/schemas/__s1830_0"
               }
             ]
           },
@@ -59865,6 +60844,59 @@
             "items": {
               "$ref": "#/components/schemas/ServiceSummaryResponse"
             }
+          },
+          "facets": {
+            "type": "object",
+            "properties": {
+              "category": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "engagement_type": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "delivery_mode": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "price": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "turnaround": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "required": [
+              "category",
+              "engagement_type",
+              "delivery_mode",
+              "price",
+              "turnaround"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -60009,6 +61041,97 @@
           },
           "copy_too_long": {
             "type": "boolean"
+          },
+          "engagement_type": {
+            "type": "string"
+          },
+          "eligibility": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "deliverables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "turnaround_days_min": {
+            "nullable": true,
+            "type": "number"
+          },
+          "turnaround_days_max": {
+            "nullable": true,
+            "type": "number"
+          },
+          "delivery_mode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seo": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "og_image": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "related_slugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -60028,7 +61151,12 @@
           "range_basis_label",
           "plan_covered",
           "price_bands",
-          "copy_too_long"
+          "copy_too_long",
+          "engagement_type",
+          "eligibility",
+          "deliverables",
+          "seo",
+          "related_slugs"
         ],
         "additionalProperties": false
       },
@@ -60403,6 +61531,97 @@
           "copy_too_long": {
             "type": "boolean"
           },
+          "engagement_type": {
+            "type": "string"
+          },
+          "eligibility": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "deliverables": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rw": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "en": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "fr": {
+                  "type": "string",
+                  "maxLength": 2000
+                }
+              },
+              "required": [
+                "rw",
+                "en",
+                "fr"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "turnaround_days_min": {
+            "nullable": true,
+            "type": "number"
+          },
+          "turnaround_days_max": {
+            "nullable": true,
+            "type": "number"
+          },
+          "delivery_mode": {
+            "nullable": true,
+            "type": "string"
+          },
+          "seo": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "og_image": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "related_slugs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "description": {
             "nullable": true,
             "type": "string"
@@ -60457,6 +61676,11 @@
           "plan_covered",
           "price_bands",
           "copy_too_long",
+          "engagement_type",
+          "eligibility",
+          "deliverables",
+          "seo",
+          "related_slugs",
           "created_at",
           "updated_at",
           "steps",
@@ -60868,6 +62092,22 @@
             "maximum": 9007199254740991
           },
           "applicationsUsedThisPeriod": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "usageWarning": {
+            "type": "boolean"
+          },
+          "cancelAtPeriodEnd": {
+            "type": "boolean"
+          },
+          "graceEndsAt": {
+            "nullable": true,
+            "type": "string"
+          },
+          "amountRwf": {
+            "nullable": true,
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
@@ -61855,6 +63095,26 @@
               ],
               "additionalProperties": false
             }
+          },
+          "outcome_ref": {
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome_institution": {
+            "nullable": true,
+            "type": "string"
+          },
+          "outcome_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "cancel_mode": {
+            "nullable": true,
+            "type": "string",
+            "enum": [
+              "cancel",
+              "request"
+            ]
           }
         },
         "required": [
@@ -61879,7 +63139,11 @@
           "needs",
           "payments",
           "timeline",
-          "deliverables"
+          "deliverables",
+          "outcome_ref",
+          "outcome_institution",
+          "outcome_at",
+          "cancel_mode"
         ],
         "additionalProperties": false
       },
@@ -62822,7 +64086,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1334_0": {
+      "__s1385_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -62844,7 +64108,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1334_0"
+              "$ref": "#/components/schemas/__s1385_0"
             }
           }
         },
@@ -62854,7 +64118,7 @@
           "label"
         ]
       },
-      "__s1335_0": {
+      "__s1386_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -62876,7 +64140,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1335_0"
+              "$ref": "#/components/schemas/__s1386_0"
             }
           }
         },
@@ -62886,7 +64150,7 @@
           "label"
         ]
       },
-      "__s1336_0": {
+      "__s1387_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -62908,7 +64172,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1336_0"
+              "$ref": "#/components/schemas/__s1387_0"
             }
           }
         },
@@ -62918,7 +64182,7 @@
           "label"
         ]
       },
-      "__s1717_0": {
+      "__s1770_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -62979,7 +64243,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1717_0"
+                  "$ref": "#/components/schemas/__s1770_0"
                 }
               ]
             }
@@ -62990,7 +64254,7 @@
           "rules"
         ]
       },
-      "__s1718_0": {
+      "__s1771_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63051,7 +64315,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1718_0"
+                  "$ref": "#/components/schemas/__s1771_0"
                 }
               ]
             }
@@ -63062,7 +64326,7 @@
           "rules"
         ]
       },
-      "__s1719_0": {
+      "__s1772_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63123,7 +64387,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1719_0"
+                  "$ref": "#/components/schemas/__s1772_0"
                 }
               ]
             }
@@ -63134,7 +64398,7 @@
           "rules"
         ]
       },
-      "__s1720_0": {
+      "__s1773_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63195,7 +64459,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1720_0"
+                  "$ref": "#/components/schemas/__s1773_0"
                 }
               ]
             }
@@ -63206,7 +64470,7 @@
           "rules"
         ]
       },
-      "__s1721_0": {
+      "__s1774_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63267,7 +64531,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1721_0"
+                  "$ref": "#/components/schemas/__s1774_0"
                 }
               ]
             }
@@ -63278,7 +64542,7 @@
           "rules"
         ]
       },
-      "__s1722_0": {
+      "__s1775_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63339,7 +64603,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1722_0"
+                  "$ref": "#/components/schemas/__s1775_0"
                 }
               ]
             }
@@ -63350,7 +64614,7 @@
           "rules"
         ]
       },
-      "__s1723_0": {
+      "__s1776_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -63411,367 +64675,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1723_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s1724_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s1724_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s1725_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s1725_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s1726_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s1726_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s1727_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s1727_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s1728_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s1728_0"
+                  "$ref": "#/components/schemas/__s1776_0"
                 }
               ]
             }
@@ -64142,7 +65046,7 @@
           "rules"
         ]
       },
-      "__s1782_0": {
+      "__s1830_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64203,7 +65107,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1782_0"
+                  "$ref": "#/components/schemas/__s1830_0"
                 }
               ]
             }
@@ -64214,7 +65118,7 @@
           "rules"
         ]
       },
-      "__s1783_0": {
+      "__s1831_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64275,7 +65179,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1783_0"
+                  "$ref": "#/components/schemas/__s1831_0"
                 }
               ]
             }
@@ -64286,7 +65190,7 @@
           "rules"
         ]
       },
-      "__s1784_0": {
+      "__s1832_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64347,7 +65251,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1784_0"
+                  "$ref": "#/components/schemas/__s1832_0"
                 }
               ]
             }
@@ -64358,7 +65262,7 @@
           "rules"
         ]
       },
-      "__s1785_0": {
+      "__s1833_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64419,7 +65323,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1785_0"
+                  "$ref": "#/components/schemas/__s1833_0"
                 }
               ]
             }
@@ -64430,7 +65334,7 @@
           "rules"
         ]
       },
-      "__s1786_0": {
+      "__s1834_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64491,7 +65395,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1786_0"
+                  "$ref": "#/components/schemas/__s1834_0"
                 }
               ]
             }
@@ -64502,7 +65406,7 @@
           "rules"
         ]
       },
-      "__s1787_0": {
+      "__s1835_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -64563,7 +65467,367 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s1787_0"
+                  "$ref": "#/components/schemas/__s1835_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s1836_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s1836_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s1837_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s1837_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s1838_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s1838_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s1839_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s1839_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s1840_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s1840_0"
                 }
               ]
             }

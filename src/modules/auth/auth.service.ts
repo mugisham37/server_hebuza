@@ -116,6 +116,7 @@ export function sessionModel(u: User, expiresAt: Date | null) {
     roles: normalizeRoles({ role: u.role }),
     isEmailVerified: u.isEmailVerified,
     language: u.language,
+    customerNo: u.customerNo ?? null,
     createdAt: new Date(u.createdAt).toISOString(),
     expiresAt: expiresAt ? expiresAt.toISOString() : null,
   };
@@ -405,6 +406,13 @@ export class AuthService {
     return authErr.creds(CFG.lockoutMax - n);
   }
 
+  /** IAM-16: refuse passwords seen in public breaches (HIBP, fail-open), then hash. */
+  private async newHash(pw: string) {
+    if (await this.pw.isBreached(pw))
+      throw authErr.validation("This password appears in a known data breach. Choose another one.");
+    return this.pw.hash(pw);
+  }
+
   // ── flows ──
   async signup(
     h: Http,
@@ -431,7 +439,7 @@ export class AuthService {
       throw authErr.validation(
         "Partner sign-up opens with the partner programme.",
       );
-    const passwordHash = await this.pw.hash(b.password);
+    const passwordHash = await this.newHash(b.password);
     return this.txs.run(async (tx) => {
       if ((await this.usersBy(tx, type, id)).some((u) => u.role === role))
         throw authErr.exists(
@@ -677,7 +685,7 @@ export class AuthService {
   }) {
     if (b.confirmPassword != null && b.confirmPassword !== b.password)
       throw authErr.validation("Passwords do not match.");
-    const hash = await this.pw.hash(b.password);
+    const hash = await this.newHash(b.password);
     return this.txs.run(async (tx) => {
       const x = await this.resetRow(tx, b.token, true);
       if (!x.r) throw authErr.badReset();
@@ -733,7 +741,7 @@ export class AuthService {
     b: { name?: string; phone?: string; password: string },
   ) {
     const e = staffPasswordError(b.password);
-    const hash = e ? "" : await this.pw.hash(b.password);
+    const hash = e ? "" : await this.newHash(b.password);
     return this.txs.run(async (tx) => {
       const x = await this.resetRow(tx, token, true);
       if (x.bad === "expired")
@@ -883,9 +891,9 @@ export class AuthService {
       throw authErr.validation(
         "New password must differ from the current password.",
       );
-    if (b.newPassword.length < 8)
-      throw authErr.validation("Password must be at least 8 characters.");
-    const hash = await this.pw.hash(b.newPassword);
+    if (b.newPassword.length < 10)
+      throw authErr.validation("Password must be at least 10 characters.");
+    const hash = await this.newHash(b.newPassword);
     return this.txs.run(async (tx) => {
       const u = await this.activeUser(tx, me);
       if (!(await this.pw.verify(u.passwordHash, b.currentPassword)))
