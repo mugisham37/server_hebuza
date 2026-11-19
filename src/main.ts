@@ -42,6 +42,10 @@ async function bootstrap() {
     if (g) Object.defineProperty(req, "ip", { value: g });
   });
   await app.register(helmet);
+  // Phase 7: API responses carry personal data; never let shared caches/proxies keep them (public catalogue sets its own).
+  app.getHttpAdapter().getInstance().addHook("onSend", async (req, reply) => {
+    if (req.url.startsWith("/api/") && !reply.hasHeader("cache-control")) void reply.header("cache-control", "no-store");
+  });
   await app.register(cookie);
   // Africa's Talking delivery reports + inbound SMS post form-encoded bodies (notifications webhooks).
   app.getHttpAdapter().getInstance().addContentTypeParser("application/x-www-form-urlencoded", { parseAs: "string", bodyLimit: 16_384 }, (_req, body, done) =>

@@ -6,6 +6,8 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "node:crypto";
 import type { Readable } from "node:stream";
+import { maxBytes, uploadProblem } from "@/domain/upload-policy";
+import { AppError } from "../http/errors";
 
 const TTL = 300;
 
@@ -27,7 +29,10 @@ export class StorageService {
     return `u/${userId}/${purpose}/${randomUUID()}`;
   }
 
-  async presignPut(p: { key: string; contentType: string; size: number; purpose: string }) {
+  async presignPut(p: { key: string; contentType: string; size: number; purpose: string; filename?: string }) {
+    const problem = uploadProblem(p); // Phase 7: one MIME/size gate for every upload flow
+    if (problem)
+      throw new AppError(422, "validation", problem === "too_large" ? `Files up to ${maxBytes(p.purpose) / 1048576} MB.` : "This file type is not allowed.");
     const url = await getSignedUrl(
       this.s3,
       new PutObjectCommand({ Bucket: this.bucket, Key: p.key, ContentType: p.contentType, ContentLength: p.size }),
