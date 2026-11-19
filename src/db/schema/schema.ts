@@ -67,6 +67,8 @@ export const applicationMessages = pgTable("application_messages", {
 }, (table) => [
 	index("ix_application_messages_application_id").using("btree", table.applicationId.asc().nullsLast()),
 	index("ix_application_messages_conversation_id").using("btree", table.conversationId.asc().nullsLast()),
+	// F-MSG-11 chat full-text search
+	index("ix_application_messages_content_fts").using("gin", sql`to_tsvector('simple', ${table.content})`),
 	uniqueIndex("uq_application_messages_client_msg").using("btree", table.senderId.asc().nullsLast(), table.clientMsgId.asc().nullsLast()).where(sql`(client_msg_id IS NOT NULL)`),
 	uniqueIndex("uq_application_messages_conversation_seq").using("btree", table.conversationId.asc().nullsLast(), table.seq.asc().nullsLast()),
 	foreignKey({

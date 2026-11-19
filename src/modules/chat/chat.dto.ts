@@ -112,6 +112,7 @@ export class CardDto extends dto(
     payload: z.record(z.string(), z.unknown()).default({}),
   }),
 ) {}
+export class ComplaintDto extends dto(z.object({ summary: z.string().trim().min(10).max(2000) })) {}
 export class HoldDto extends dto(z.object({ on: z.boolean() })) {}
 export class CardActionDto extends dto(z.object({ action: z.enum(["accept", "decline"]) })) {}
 export class TemplateDto extends dto(

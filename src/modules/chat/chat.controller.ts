@@ -196,6 +196,12 @@ export class ChatController {
     return this.svc.cardAction(me, id, b.action);
   }
 
+  @Post("chat/conversations/:id/complaint")
+  @Route({ auth: D.STAFF, limit: "write", audit: "chat.complaint_flagged" })
+  complaint(@Param("id") id: string, @Body() b: D.ComplaintDto, @CurrentUser() me: SessionUser) {
+    return this.svc.flagComplaint(me, id, b.summary);
+  }
+
   @Post("chat/conversations/:id/legal-hold")
   @Route({ auth: D.STAFF, limit: "write", audit: "chat.legal_hold.changed" })
   legalHold(@Param("id") id: string, @Body() b: D.HoldDto, @CurrentUser() me: SessionUser) {

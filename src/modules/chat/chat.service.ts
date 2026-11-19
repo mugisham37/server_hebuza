@@ -4,6 +4,8 @@
 // does not exist (404, never 403). Messages are keyset-paged by `seq` (unique (conversation_id, seq) index; seq is
 // allocated under the conversation row lock so it orders exactly like created_at). Every new message / edit / reaction /
 // read receipt is pushed to the conversation's recipients with RealtimeService.emit after the tx commits.
+import { createTicket } from "../applications/support.service";
+import { normalizeRoles } from "@/domain/auth/roles";
 import { FIRST_RESPONSE_MIN, addBusinessMinutes, clientLaneReadOnly, parseCard, CARD_ACTIONS } from "@/domain/chat/rules";
 import { Injectable } from "@nestjs/common";
 import {
@@ -845,13 +847,14 @@ export class ChatService {
             eq(applicationMessages.conversationId, c.conversationId),
             inArray(applicationMessages.lane, a.lanes),
             isNull(applicationMessages.deletedAt),
-            ilike(
+            // F-MSG-11: full-text (simple dictionary: rw/en/fr mixed) with a substring fallback for codes and partial words.
+            sql`(to_tsvector('simple', ${applicationMessages.content}) @@ websearch_to_tsquery('simple', ${q.trim()}) or ${ilike(
               applicationMessages.content,
               `%${q.trim().replace(/[\\%_]/g, "\\$&")}%`,
-            ),
+            )})`,
           ),
         )
-        .orderBy(desc(applicationMessages.seq))
+        .orderBy(sql`ts_rank(to_tsvector('simple', ${applicationMessages.content}), websearch_to_tsquery('simple', ${q.trim()})) desc`, desc(applicationMessages.seq))
         .limit(50);
       return { results: await this.decorate(tx, rows) };
     });
@@ -1236,6 +1239,21 @@ export class ChatService {
       const out = await this.one(tx, sys);
       push({ to: await this.recipients(tx, c, a, "client"), type: "chat.message", payload: { conversation_id: c.conversationId, message: out } });
       return { id: mid, action };
+    });
+  }
+
+  /** F-MSG-14: staff flag a case conversation as a complaint → FBK ticket for the client (type complaint, case linked). */
+  flagComplaint(s: SessionUser, cid: string, summary: string) {
+    return this.tx.run(async (tx) => {
+      const { c, a } = await this.open(tx, s, cid);
+      if (a.role === "client" || !a.app) throw new AppError(403, "forbidden", "Staff only, on a case conversation.");
+      const clientId = a.app.clientId;
+      if (!clientId) throw new AppError(422, "validation", "Guest case: no client account to attach the complaint to.");
+      const [u] = await tx.select({ role: users.role }).from(users).where(eq(users.userId, clientId));
+      const client: SessionUser = { id: clientId, roles: normalizeRoles({ role: u?.role ?? "client" }), scopes: {}, sid: "" };
+      const t = await createTicket(tx, client, `Complaint: ${summary.slice(0, 120)}`, summary, { type: "complaint", caseRef: a.app.code });
+      await this.postSystem(tx, c, "complaint_flagged", `Complaint ${t.ref} opened by ${s.id === a.app.assignedAgentId ? "the agent" : "a manager"}`, { ticket: t.ref }, "internal");
+      return { ticket: t.ref };
     });
   }
 
