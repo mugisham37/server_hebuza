@@ -41,6 +41,8 @@ const NO_CONSENT: Consents = {
   analytics: false,
   profileReuse: false, // ORG-06: prefill forms from saved profile data
 };
+type Address = { province: string; district: string; sector: string; cell: string; street: string };
+const NO_ADDRESS: Address = { province: "", district: "", sector: "", cell: "", street: "" };
 type Export = {
   status: "none" | "pending" | "ready";
   requestedAt: string | null;
@@ -145,6 +147,8 @@ export class AccountService {
         "person.full_name": str(pi.fullName) ?? u?.name, "person.national_id": str(pi.nationalId), "person.dob": str(pi.dob),
         "person.phone": str(pi.phone) ?? u?.phone ?? undefined, "person.email": str(pi.email) ?? u?.email ?? undefined,
       };
+      const ad = await this.getDoc<Address>(tx, `${me.id}:address`, NO_ADDRESS);
+      for (const k of ["province", "district", "sector", "cell", "street"] as const) values[`person.${k}`] = ad[k] || undefined;
       if (party !== "me") {
         const [o] = (await tx.execute(sql`select o.legal_name, o.trade_name, o.tin, o.rdb_number, o.province, o.district, o.sector, o.cell, o.phone, o.email
           from organizations o join organization_members m on m.organization_id = o.id and m.user_id = ${me.id} and m.status = 'active' where o.id = ${party}`)) as unknown as Record<string, string | null>[]; // cast: execute() rows are untyped
@@ -155,6 +159,57 @@ export class AccountService {
         });
       }
       return { consent: true, values: Object.fromEntries(Object.entries(values).filter(([, v]) => v)) as Record<string, string> };
+    });
+  }
+
+  /**
+   * CLP-12 reminders hub: documents asked for, payments due, library documents expiring (60 days) and quotes waiting,
+   * with per-item snooze/done kept in the account docs.
+   */
+  reminders(me: SessionUser) {
+    return this.txs.run(async (tx) => {
+      const st = await this.getDoc<Record<string, { state: "done" | "snoozed"; until?: string }>>(tx, `${me.id}:reminders`, {});
+      const rows = (await tx.execute(sql`
+        select 'doc:' || r.id as id, 'document' as kind, a.code as ref, r.label as title, r.due_at as due
+          from document_requests r join applications a on a.application_id = r.application_id
+          where a.client_id = ${me.id} and r.fulfilled_at is null
+        union all
+        select 'pay:' || a.code, 'payment', a.code, a.service_name, a.due_at
+          from applications a where a.client_id = ${me.id} and a.status = 'awaiting_payment'
+        union all
+        select 'quote:' || a.code, 'quote', a.code, a.service_name, null
+          from applications a where a.client_id = ${me.id} and a.status = 'awaiting_quotation' and a.quote_status = 'sent'
+        union all
+        select 'exp:' || d.document_id, 'expiry', d.document_id, coalesce(d.label, d.original_filename), e.expires_on::timestamptz
+          from client_documents d join client_document_expiry e on e.document_id = d.document_id
+          where d.client_id = ${me.id} and d.is_active and e.expires_on <= current_date + 60`)) as unknown as { id: string; kind: string; ref: string; title: string; due: string | null }[]; // cast: execute() rows are untyped
+      const now = Date.now();
+      const items = rows
+        .map((r) => ({ ...r, state: st[r.id]?.state === "snoozed" && Date.parse(st[r.id].until ?? "") <= now ? "open" : (st[r.id]?.state ?? "open") }))
+        .sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
+      return { items };
+    });
+  }
+  setReminder(me: SessionUser, id: string, b: { state: "done" | "snoozed" | "open"; days?: number }) {
+    return this.txs.run(async (tx) => {
+      const key = `${me.id}:reminders`;
+      const st = await this.getDoc<Record<string, { state: "done" | "snoozed"; until?: string }>>(tx, key, {}, true);
+      if (b.state === "open") delete st[id];
+      else st[id] = { state: b.state, ...(b.state === "snoozed" && { until: new Date(Date.now() + (b.days ?? 3) * 864e5).toISOString() }) };
+      await this.putDoc(tx, key, st);
+      return { id, state: b.state };
+    });
+  }
+
+  /** CLP-03: postal address (kept with the account docs; reused by prefill as person.address_*). */
+  address(me: SessionUser) {
+    return this.txs.run((tx) => this.getDoc<Address>(tx, `${me.id}:address`, NO_ADDRESS));
+  }
+  setAddress(me: SessionUser, b: Address) {
+    return this.txs.run(async (tx) => {
+      await this.putDoc(tx, `${me.id}:address`, b);
+      await this.audit.record(tx, { action: "profile.address_updated", entity: "user", entityId: me.id });
+      return b;
     });
   }
 

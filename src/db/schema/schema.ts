@@ -781,6 +781,8 @@ export const applications = pgTable("applications", {
 	groupId: varchar("group_id", { length: 64 }),
 	/** ORG: set when submitted on behalf of a company (organizations.id); visible to its representatives. */
 	organizationId: varchar("organization_id", { length: 64 }),
+	/** REQ-17: status to return to when a refund request is declined. */
+	statusBeforeRefund: varchar("status_before_refund", { length: 32 }),
 }, (table): PgTableExtraConfigValue[] => [ // annotated: applications ⇄ assignment history FK cycle
 	index("ix_applications_assigned_agent_id").using("btree", table.assignedAgentId.asc().nullsLast()),
 	index("ix_applications_assigned_partner_id").using("btree", table.assignedPartnerId.asc().nullsLast()),

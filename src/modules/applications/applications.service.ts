@@ -501,6 +501,14 @@ export async function dashboard(db: Tx, s: SessionUser) {
       .flatMap((b) => paymentsFor(b.a, b.pr, b.balance))
       .filter((p) => p.status === "due"),
     unread,
+    // CLP-05 cards: quotes waiting for the client, freshly released results, upcoming due dates.
+    openQuotes: apps.filter((a) => a.status === "awaiting_quotation" && a.quoteStatus === "sent").map((a) => ({ code: a.code, service: a.serviceName })),
+    releasedDeliverables: apps.length ? (await db.select({ id: deliverables.id, code: applications.code, title: deliverables.title, at: deliverables.releasedAt })
+      .from(deliverables).innerJoin(applications, eq(applications.applicationId, deliverables.applicationId))
+      .where(and(inArray(deliverables.applicationId, apps.map((a) => a.applicationId)), isNotNull(deliverables.releasedAt), sql`${deliverables.releasedAt} > now() - interval '30 days'`))
+      .orderBy(desc(deliverables.releasedAt)).limit(5)).map((d) => ({ id: d.id, code: d.code, title: d.title, at: d.at! })) : [],
+    deadlines: apps.filter((a) => a.dueAt && !["completed_delivered", "cancelled", "rejected", "refunded"].includes(a.status)).map((a) => ({ code: a.code, service: a.serviceName, dueAt: a.dueAt! }))
+      .sort((x, y) => x.dueAt.localeCompare(y.dueAt)).slice(0, 5),
   };
 }
 
@@ -1139,6 +1147,21 @@ export class ApplicationsService {
   }
   track(code: string) {
     return this.tx.run((db) => track(db, code));
+  }
+
+  /** REQ-13 / CLP-13: a new draft from a past request: same service, tier and answers, plus the library documents it used. */
+  cloneDraft(s: SessionUser, code: string) {
+    return this.tx.run(async (db) => {
+      const a = await readableApp(db, s, code);
+      if (a.clientId !== s.id) throw err.notFound("Application not found");
+      const docs = (await db.execute(sql`select distinct on (ad.requirement_key) ad.requirement_key as key, cd.document_id as id
+        from application_documents ad join client_documents cd on cd.storage_path = ad.storage_path and cd.client_id = ${s.id} and cd.is_active
+        where ad.application_id = ${a.applicationId} and ad.removed_at is null`)) as unknown as { key: string; id: string }[]; // cast: execute() rows are untyped
+      return {
+        service_slug: a.serviceSlug, tier: a.tier, service_data: a.serviceData as Record<string, unknown>, personal_info: a.personalInfo as Record<string, unknown>,
+        library_documents: Object.fromEntries(docs.map((d) => [d.key, d.id])), from_code: a.code,
+      };
+    });
   }
 
   /** REQ-11: the owner cancels before work starts, or asks a manager to (ops approvals, kind "cancel") once it has. */
