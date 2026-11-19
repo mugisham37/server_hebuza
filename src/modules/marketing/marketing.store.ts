@@ -13,6 +13,7 @@ export type Exec = Tx;
 export type Session = SessionUser & { role: string };
 export type Kind =
   | "lead"
+  | "social_snapshot" // F-CRM-17 last lifetime totals per network (for daily deltas)
   | "promo" // F-CRM-20 promo codes (id = code)
   | "tax_reminder" // F-CRM-12 sent-marker (rule:date:lead:channel)
   | "rec_rule" // F-CRM-11 recommendation rules

@@ -1,7 +1,7 @@
 // F-CRM-17 social monitoring: daily pull of yesterday's organic page metrics from Meta (Facebook page) and LinkedIn
 // (organisation page) into the same social rows the manual entry / CSV import writes. Dormant until the tokens are set.
 import { addSocial } from "./marketing.insights";
-import type { Caller } from "./marketing.store";
+import { get, put, type Caller } from "./marketing.store";
 
 type Env = { META_PAGE_ID?: string; META_PAGE_TOKEN?: string; LINKEDIN_ORG_ID?: string; LINKEDIN_TOKEN?: string };
 type Day = { date: string; reach: number; impressions: number; engagements: number; clicks: number; followers: number };
@@ -29,15 +29,24 @@ async function linkedin(e: Env): Promise<Day | null> {
   if (!s.ok) throw new Error(`linkedin ${s.status}`);
   const t = ((await s.json()) as { elements?: { totalShareStatistics?: Record<string, number> }[] }).elements?.[0]?.totalShareStatistics ?? {};
   const followers = f.ok ? Number(((await f.json()) as { firstDegreeSize?: number }).firstDegreeSize ?? 0) : 0;
-  // shortcut: lifetime totals (not per-day deltas); switch to timeIntervals once daily granularity is needed.
   return { date: yesterday(), reach: t.uniqueImpressionsCount ?? 0, impressions: t.impressionCount ?? 0, engagements: (t.likeCount ?? 0) + (t.commentCount ?? 0) + (t.shareCount ?? 0), clicks: t.clickCount ?? 0, followers };
 }
 
 export async function pullSocial(c: Caller, e: Env) {
   let n = 0;
   for (const [network, f] of [["facebook", meta], ["linkedin", linkedin]] as const) {
-    const d = await f(e);
-    if (d) { await addSocial(c, { ...d, network, campaign: "organic", spend: 0 }); n++; }
+    let d = await f(e);
+    if (!d) continue;
+    if (network === "linkedin") {
+      // LinkedIn returns lifetime totals: store the snapshot and write the day-over-day delta (first pull only seeds it).
+      const prev = await get<Day>(c.db, "social_snapshot", network, true);
+      await put(c.db, { kind: "social_snapshot", id: network, data: d });
+      if (!prev) continue;
+      const delta = (k: "reach" | "impressions" | "engagements" | "clicks") => Math.max(0, d![k] - prev[k]);
+      d = { ...d, reach: delta("reach"), impressions: delta("impressions"), engagements: delta("engagements"), clicks: delta("clicks") };
+    }
+    await addSocial(c, { ...d, network, campaign: "organic", spend: 0 });
+    n++;
   }
   return n;
 }

@@ -569,7 +569,7 @@ export async function issuePlanInvoice(
   inv.planMonths = o.planMonths ?? 1;
   return issue(f, inv, false);
 }
-function newInvoice(
+export function newInvoice(
   f: Fin,
   o: {
     clientId: string;

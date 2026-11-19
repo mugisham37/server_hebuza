@@ -3,6 +3,7 @@
 // Visits are first-party (tracked /c and /r link clicks); GA4 traffic stays "not connected" until its API is wired.
 import { gte, sql } from "drizzle-orm";
 import { npsResponses } from "@/db/schema";
+import { siteEvents } from "@/db/schema/schema-marketing";
 import type { Exec } from "./marketing.store";
 import {
   avgRating,
@@ -452,8 +453,12 @@ export async function analytics(db: Exec, tab: string, q: RangeQ) {
       return {
         generatedAt,
         provider: "first_party",
-        sessions,
-        users: sessions, // shortcut: no visitor id on link clicks, users = sessions until first-party page events exist
+        // F-CRM-16 first-party page views (consented visitors): sessions add page views, users = distinct visitor ids.
+        ...(await (async () => {
+          const [pv] = await db.select({ views: sql<number>`count(*)::int`, users: sql<number>`count(distinct ${siteEvents.visitor})::int` })
+            .from(siteEvents).where(sql`${siteEvents.name} = 'page_view' and ${siteEvents.createdAt} >= ${from} and ${siteEvents.createdAt} <= ${to}`);
+          return { sessions: sessions + (pv?.views ?? 0), users: pv?.users || sessions };
+        })()),
         sources: Object.entries(src)
           .map(([source, s]) => ({ source, sessions: s }))
           .sort((a, b) => b.sessions - a.sessions),

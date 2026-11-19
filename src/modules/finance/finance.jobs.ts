@@ -30,7 +30,7 @@ export class FinanceJobs {
     private readonly outbox: OutboxService,
     private readonly payments: PaymentsService,
     private readonly ledger: LedgerService,
-    crypto: CryptoService,
+    private readonly crypto: CryptoService,
     storage: StorageService,
   ) {
     this.deps = finDeps(outbox, crypto, storage, ledger);
@@ -58,8 +58,9 @@ export class FinanceJobs {
 
   /** F-BKG-06 paid consultation → issued + paid invoice. */
   @Job("finance.booking.settled")
-  bookingSettled(d: { clientId: string; reference: string; paymentId: string; amount: number; label: string }) {
-    return this.sys((f) => bookingSettled(f, d));
+  bookingSettled(d: { clientId?: string | null; guest?: { name: string; phone?: string; email?: string }; reference: string; paymentId: string; amount: number; label: string }) {
+    const g = d.guest ? this.crypto.unseal(d.guest as Record<string, unknown>, ["phone", "email"]) as typeof d.guest : undefined;
+    return this.sys((f) => bookingSettled(f, { ...d, guest: g }));
   }
 
   /** createRefundRequest (lifecycle early cancel, dispute resolved "refund") → refund request on the paid case invoice. */

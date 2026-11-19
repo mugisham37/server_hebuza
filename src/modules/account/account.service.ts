@@ -34,12 +34,17 @@ import { normalizePhone } from "../auth/auth.rules";
 import { consentLedger } from "@/db/schema";
 import { POLICY_VERSION as CONSENT_POLICY_VERSION } from "../notifications/notifications.delivery";
 
-type Consents = { processing: boolean; marketing: boolean; analytics: boolean; profileReuse: boolean };
+type Consents = { processing: boolean; marketing: boolean; analytics: boolean; profileReuse: boolean; marketingEmail: boolean; marketingSms: boolean; marketingWhatsapp: boolean; aiHistory: boolean };
 const NO_CONSENT: Consents = {
   processing: true,
   marketing: false,
   analytics: false,
   profileReuse: false, // ORG-06: prefill forms from saved profile data
+  // F-CLP-14: per-channel marketing (the `marketing` master stays = any channel on) and assistant history.
+  marketingEmail: false,
+  marketingSms: false,
+  marketingWhatsapp: false,
+  aiHistory: true,
 };
 type Address = { province: string; district: string; sector: string; cell: string; street: string };
 const NO_ADDRESS: Address = { province: "", district: "", sector: "", cell: "", street: "" };
@@ -124,6 +129,13 @@ export class AccountService {
     });
   }
 
+  /** F-CLP-14: the user's own consent ledger, newest first (append-only; shows every grant and withdrawal). */
+  consentHistory(me: SessionUser) {
+    return this.txs.run(async (tx) => ({
+      items: (await tx.select({ purpose: consentLedger.purpose, granted: consentLedger.granted, source: consentLedger.source, policyVersion: consentLedger.policyVersion, at: consentLedger.createdAt })
+        .from(consentLedger).where(eq(consentLedger.userId, me.id)).orderBy(desc(consentLedger.createdAt)).limit(200)),
+    }));
+  }
   consents(me: SessionUser) {
     return this.txs.run(async (tx) => ({
       ...(await this.getDoc(tx, `${me.id}:consents`, NO_CONSENT)),
@@ -224,10 +236,16 @@ export class AccountService {
           "consent_locked",
           "Required while requests are open.",
         );
+      // `marketing` is the master switch: setting it sets every channel; channels update the master.
+      const chan = ["marketingEmail", "marketingSms", "marketingWhatsapp"] as const;
+      if (b.marketing !== undefined) for (const c of chan) if (b[c] === undefined) b = { ...b, [c]: b.marketing };
       const next = { ...cur, ...b };
+      next.marketing = chan.some((c) => next[c]);
+      if (cur.marketing !== next.marketing) b = { ...b, marketing: next.marketing };
       await this.putDoc(tx, id, next);
       // F-IAM-21 / F-NTF-09: every changed consent also lands in the append-only, versioned consent ledger.
-      const PURPOSE: Record<keyof Consents, string[]> = { processing: ["processing"], marketing: ["marketing_email", "marketing_sms", "marketing_whatsapp"], analytics: ["cookies_analytics"], profileReuse: ["profile_reuse"] };
+      const PURPOSE: Record<keyof Consents, string[]> = { processing: ["processing"], marketing: [], analytics: ["cookies_analytics"], profileReuse: ["profile_reuse"],
+        marketingEmail: ["marketing_email"], marketingSms: ["marketing_sms"], marketingWhatsapp: ["marketing_whatsapp"], aiHistory: ["ai_history"] };
       const at = new Date().toISOString();
       for (const k of Object.keys(PURPOSE) as (keyof Consents)[])
         if (k in b && b[k] !== cur[k])

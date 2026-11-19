@@ -1212,9 +1212,12 @@ export async function winbackSweep(db: Exec) {
   const leads = await list<Lead>(db, "lead");
   const leadOf = (clientId?: string) => leads.find((l) => clientId && l.clientId === clientId && l.stage !== "merged");
   const inactive = (m: (typeof all)[number]) => Date.now() - Date.parse(m.lastActiveAt) > p.inactiveDays * D;
-  // shortcut: one win-back run per lead ever; allow a new spell (e.g. after 12 months) if marketing asks.
-  const had = new Set((await list<AutomationRun>(db, "run")).filter((r) => r.ruleId === "sq-inactive").map((r) => r.subject.id));
-  const ids = all.filter((m) => inactive(m) && Object.values(m.consent).includes("in")).flatMap((m) => leadOf(m.clientId)?.id ?? []).filter((id) => !had.has(id));
+  // One win-back per inactivity spell: skip leads with a win-back run scheduled after the customer's last activity.
+  const winRuns = (await list<AutomationRun>(db, "run")).filter((r) => r.ruleId === "sq-inactive");
+  const ids = all.filter((m) => inactive(m) && Object.values(m.consent).includes("in")).flatMap((m) => {
+    const l = leadOf(m.clientId);
+    return l && !winRuns.some((r) => r.subject.id === l.id && r.runAt > m.lastActiveAt) ? [l.id] : [];
+  });
   let enrolled = 0;
   try { if (ids.length) enrolled = (await enrol({ db, session: null }, "sq-inactive", ids)).enrolled; } catch { /* rule missing or system-managed: nothing to enrol */ }
   const runs = await list<AutomationRun>(db, "run", { status: ["waiting", "deferred"] });

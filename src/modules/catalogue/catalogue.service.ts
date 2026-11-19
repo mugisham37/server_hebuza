@@ -218,6 +218,7 @@ function summary(s: Loaded, volume = 0) {
     fee_explainer: (s.feeExplainer as L3 | null) ?? null,
     markets: s.markets as string[],
     locale_slugs: s.localeSlugs as Partial<L3>,
+    updated_at: s.updatedAt,
   };
 }
 const detail = (s: Loaded, volume = 0) => ({

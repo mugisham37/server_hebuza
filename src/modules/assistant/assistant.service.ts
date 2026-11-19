@@ -1605,6 +1605,11 @@ export class AssistantService {
           )
           .limit(5000)
       ).map((o) => o.id);
+      // F-CLP-14: clients who turned off "keep my assistant chats" lose their sessions after a day (handoffs keep their own summary).
+      const optedOut = (await tx.execute(dsql`select split_part(id, ':', 1) as uid from system_records where kind = 'acct' and id like '%:consents' and data->>'aiHistory' = 'false'`)) as unknown as { uid: string }[]; // cast: execute() rows are untyped
+      if (optedOut.length)
+        old.push(...(await tx.select({ id: aiSessions.id }).from(aiSessions)
+          .where(and(inArray(aiSessions.ownerId, optedOut.map((o) => o.uid)), lt(aiSessions.startedAt, iso(Date.now() - 86_400_000)))).limit(5000)).map((o) => o.id));
       if (old.length) {
         await tx.delete(aiMessages).where(inArray(aiMessages.sessionId, old));
         await tx.delete(aiSessions).where(inArray(aiSessions.id, old));

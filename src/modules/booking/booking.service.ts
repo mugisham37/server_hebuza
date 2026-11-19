@@ -1172,8 +1172,12 @@ async function payStatus(k: K, txId: string) {
     const r = (await byId(db, p.bookingId, true))!;
     const row = await markPaid(k, r, p.id);
     // F-BKG-06: a client's paid consultation is invoiced in finance (worker job; idempotent per payment id).
-    if (row.clientId && row.status !== "expired")
-      await emit(k, "finance.booking.settled", { clientId: row.clientId, reference: row.reference, paymentId: p.id, amount: p.amount, label: `Consultation ${row.reference}` });
+    // Guests are billed under their booking name/contact (sealed in the outbox row).
+    if (row.status !== "expired")
+      await emit(k, "finance.booking.settled", {
+        clientId: row.clientId, reference: row.reference, paymentId: p.id, amount: p.amount, label: `Consultation ${row.reference}`,
+        ...(!row.clientId && { guest: k.d.crypto.seal({ name: row.contactName || "Guest", phone: dec(k, row.phoneEnc) ?? undefined, email: dec(k, row.emailEnc) ?? undefined }, ["phone", "email"]) }),
+      });
     return {
       status: row.status === "expired" ? "late_refunded" : "success",
       reference: row.reference,

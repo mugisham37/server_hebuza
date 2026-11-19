@@ -47,7 +47,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-CLP-11 | Feedback & complaints | P2 | DONE | Closed 2026-11-19: complaints filed by clients (help or not-OK receipt) also open an ops-register ticket (owner, response clock, resolution). (was PARTIAL) |
 | F-CLP-12 | Reminders hub | P2 | DONE | Closed 2026-11-19: GET/PUT me/reminders hub (documents, payments, quotes, expiring docs) with snooze/done; /dashboard/reminders. (was MISSING) |
 | F-CLP-13 | History & request again | P2 | DONE | Closed 2026-11-19: POST applications/:code/clone prefills a new draft (answers, personal details, library docs map); history "Request again" uses it. (was PARTIAL) |
-| F-CLP-14 | Consent centre | P1 | PARTIAL | me/consents GET/PUT (account.controller.ts:20-23), W settings-privacy.tsx. Missing: profile_reuse, per-channel marketing, AI history, timestamped log |
+| F-CLP-14 | Consent centre | P1 | DONE | Per-channel marketing (email/SMS/WhatsApp), profile reuse, AI history (opt-out purges assistant sessions after 1 day), each change in `consent_ledger`; `GET me/consents/history` + history view in privacy settings. |
 | F-CLP-15 | Data export & deletion | P1 | PARTIAL | see IAM-19/20 (JSON only, no PDF, immediate deletion) |
 | F-CLP-16 | Company switcher | P2 | DONE | Closed 2026-11-19: active company files requests (wizard), company cases listed for reps; company page scoped to the org. (was PARTIAL) |
 | F-CLP-17 | Notification preferences | P1 | DONE | W client/settings-channels.tsx, `notification_preferences` table |

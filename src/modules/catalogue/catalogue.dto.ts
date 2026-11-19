@@ -140,6 +140,7 @@ const summaryShape = {
   seo: z.record(z.string(), z.object({ title: z.string().optional(), description: z.string().optional(), og_image: z.string().optional() })),
   related_slugs: z.array(z.string()),
   locale_slugs: z.record(z.string(), z.string()),
+  updated_at: z.string(),
   revenue_agent_bps: n,
   fee_explainer: L3.nullable(),
   markets: z.array(z.string()),

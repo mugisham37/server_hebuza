@@ -18,6 +18,7 @@ import {
   createInvoice,
   invOr404,
   issueInvoice,
+  newInvoice,
   issueCaseInvoice,
   issuePlanInvoice,
   keyOf,
@@ -283,10 +284,19 @@ export async function planSettled(f: Fin, d: { clientId: string; paymentId: stri
 
 // ---------------------------------------------------------------- F-BKG-06 paid consultation → FIN invoice
 /** A settled booking payment becomes an issued, paid finance invoice (VAT-inclusive fee). Idempotent per payment id. */
-export async function bookingSettled(f: Fin, d: { clientId: string; reference: string; paymentId: string; amount: number; label: string }) {
+export async function bookingSettled(f: Fin, d: { clientId?: string | null; guest?: { name: string; phone?: string; email?: string }; reference: string; paymentId: string; amount: number; label: string }) {
   if ((await all<Inv>(f.db, "invoice")).some((i) => (i.gatewayPaymentIds ?? []).includes(d.paymentId))) return;
   const { net } = splitVat(d.amount, f.S.vat_bps);
-  const { key } = await createInvoice(f, { clientId: d.clientId, lines: [{ kind: "service_fee", label: { en: d.label, fr: d.label, rw: d.label }, qty: 1, unit: net, taxable: true }], dueAt: today() });
+  const lines: DocLine[] = [{ kind: "service_fee", label: { en: d.label, fr: d.label, rw: d.label }, qty: 1, unit: net, taxable: true }];
+  let key: string;
+  if (d.clientId) key = (await createInvoice(f, { clientId: d.clientId, lines, dueAt: today() })).key;
+  else {
+    // Guest booking (no account): bill the name/phone/email given at booking, under a per-booking guest id.
+    const inv = newInvoice(f, { clientId: `guest:${d.reference}`, series: "standard", lines, dueAt: today() });
+    inv.billTo = { name: d.guest?.name || "Guest", ...(d.guest?.email && { email: d.guest.email }), ...(d.guest?.phone && { phone: d.guest.phone }) };
+    await saveInv(f.db, inv);
+    key = inv.id;
+  }
   await issueInvoice(f, key, {});
   const inv = await invOr404(f.db, key);
   inv.gatewayPaymentIds = [d.paymentId];

@@ -22,6 +22,9 @@ export class AccountController {
   @Get("me/consents") @Route({ auth: CLIENT })
   consents(@CurrentUser() me: SessionUser) { return this.svc.consents(me); }
 
+  @Get("me/consents/history") @Route({ auth: CLIENT })
+  consentHistory(@CurrentUser() me: SessionUser) { return this.svc.consentHistory(me); }
+
   @Put("me/consents") @Route({ auth: CLIENT, limit: "write" })
   setConsents(@Body() b: D.ConsentsDto, @CurrentUser() me: SessionUser) { return this.svc.setConsents(me, b); }
 

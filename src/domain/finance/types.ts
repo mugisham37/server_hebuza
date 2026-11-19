@@ -50,7 +50,7 @@ export type Quote = {
 };
 export type Invoice = {
   no: string | null; series: Series; caseRef?: string; subscriptionId?: string; clientId: string;
-  billTo: { name: string; tin?: string; address?: string; email?: string; customerNo?: string }; status: InvoiceStatus;
+  billTo: { name: string; tin?: string; address?: string; email?: string; phone?: string; customerNo?: string }; status: InvoiceStatus;
   /** ORG: billed company (cases submitted for a company); REQ-03: request group of the case. */
   organizationId?: string; groupCode?: string; overdue: boolean;
   lines: DocLine[]; totals: DocTotals; amountPaid: Rwf; amountCredited: Rwf; balanceDue: Rwf; issuedAt?: string;
