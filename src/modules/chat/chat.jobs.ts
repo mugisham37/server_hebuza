@@ -2,9 +2,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { and, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { applicationMessages, conversations } from "@/db/schema";
-import { CHAT_RETENTION_YEARS, ESCALATION_CHAIN, escalationDue } from "@/domain/chat/rules";
+import { CHAT_RETENTION_YEARS, ESCALATION_CHAIN, businessHours, escalationDue } from "@/domain/chat/rules";
 import { DB, type Db } from "../../core/db/db";
-import { usersWithRole } from "../../core/db/system-records";
+import { settingOf, usersWithRole } from "../../core/db/system-records";
 import { TxService } from "../../core/db/tx";
 import { Cron } from "../../core/queue/queues";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -17,8 +17,9 @@ export class ChatJobs {
   @Cron("chat.support_sla", "*/5 * * * *")
   async sla(now = new Date()) {
     const open = await this.db.select().from(conversations).where(and(eq(conversations.kind, "support"), isNotNull(conversations.slaDueAt), isNull(conversations.firstResponseAt), isNull(conversations.closedAt)));
+    const hours = businessHours(await settingOf(this.db, "sla.business_start_hour"), await settingOf(this.db, "sla.business_end_hour"));
     for (const c of open) {
-      const level = escalationDue(c.slaDueAt!, c.escalationLevel, now);
+      const level = escalationDue(c.slaDueAt!, c.escalationLevel, now, hours);
       if (!level) continue;
       const role = ESCALATION_CHAIN[level - 1];
       const to = (await usersWithRole(this.db, [role])).map((id) => ({ id }));

@@ -104,6 +104,11 @@ export class DeliveryService {
     if (!u?.active) return;
     const rule = rules.find((r) => r.event === n.kind) ?? null;
     if (!rule && !n.channels?.length) return;
+    // F-SET-09: platform quiet hours apply to users who set none of their own.
+    if (!prefs.quiet && (await settingOf<boolean>(this.db, "notifications.global_quiet"))) {
+      const hh = (n: unknown) => `${String(Number.isInteger(n) ? n : 0).padStart(2, "0")}:00`;
+      prefs = { ...prefs, quiet: { on: true, from: hh(await settingOf(this.db, "notifications.quiet_start_hour")), to: hh(await settingOf(this.db, "notifications.quiet_end_hour")) } };
+    }
     const plan = planDelivery({
       kind: n.kind,
       requested: n.channels ?? [],

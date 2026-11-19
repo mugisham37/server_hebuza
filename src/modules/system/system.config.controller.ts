@@ -25,6 +25,7 @@ import {
   BudgetDto,
   CredentialDto,
   DeliveriesQueryDto,
+  SettingsImportDto,
   EnvDto,
   LanguageDto,
   PayLaterDto,
@@ -53,6 +54,11 @@ export class SystemConfigController {
   @Route(W)
   patchSettings(@Sys() c: RawCaller, @Body() b: SettingsPatchDto) {
     return cfg.patchSettings(this.s.on(c), b as SettingsPatchIn);
+  }
+  @Post("staff/settings/import")
+  @Route({ ...R, limit: "write" })
+  importSettings(@Sys() c: RawCaller, @Body() b: SettingsImportDto) {
+    return cfg.importSettingsJson(this.s.on(c), b);
   }
   @Post("staff/settings/export")
   @Route({ ...R, limit: "write" })

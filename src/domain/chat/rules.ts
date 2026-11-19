@@ -35,8 +35,8 @@ export const ESCALATION_CHAIN = ["staff:service_manager", "staff:executive"] as 
 const KIGALI_MS = 2 * 3600_000;
 
 /** `minutes` business minutes after `from` (business hours POLICY.businessHours, weekends skipped). */
-export function addBusinessMinutes(from: Date, minutes: number): Date {
-  const [open, close] = POLICY.businessHours;
+export function addBusinessMinutes(from: Date, minutes: number, hours: readonly [number, number] = POLICY.businessHours): Date {
+  const [open, close] = hours;
   let t = new Date(from.getTime() + KIGALI_MS); // Kigali wall clock in UTC fields
   let left = minutes;
   for (let guard = 0; guard < 400 && left > 0; guard++) {
@@ -53,9 +53,9 @@ export function addBusinessMinutes(from: Date, minutes: number): Date {
   return new Date(t.getTime() - KIGALI_MS);
 }
 /** Level due now (0 = none) given when the SLA started and the current level. */
-export const escalationDue = (slaDueAt: string, level: number, now: Date) => {
+export const escalationDue = (slaDueAt: string, level: number, now: Date, hours: readonly [number, number] = POLICY.businessHours) => {
   if (level >= ESCALATION_CHAIN.length) return null;
-  const due = level === 0 ? new Date(slaDueAt) : addBusinessMinutes(new Date(slaDueAt), FIRST_RESPONSE_MIN * level);
+  const due = level === 0 ? new Date(slaDueAt) : addBusinessMinutes(new Date(slaDueAt), FIRST_RESPONSE_MIN * level, hours);
   return now >= due ? level + 1 : null;
 };
 
@@ -64,3 +64,7 @@ export const escalationDue = (slaDueAt: string, level: number, now: Date) => {
 export const CHAT_RETENTION_YEARS = 7;
 export const retentionExpired = (closedAt: string | null, legalHold: boolean, now = Date.now()) =>
   !legalHold && !!closedAt && now - Date.parse(closedAt) > CHAT_RETENTION_YEARS * 365.25 * 86_400_000;
+
+/** F-SET-05: business hours from the console settings (start < end, else the policy default). */
+export const businessHours = (start: unknown, end: unknown): readonly [number, number] =>
+  Number.isInteger(start) && Number.isInteger(end) && (start as number) < (end as number) ? [start as number, end as number] : POLICY.businessHours;

@@ -195,6 +195,7 @@ export class TemplateDto extends dto(
     category: z.enum(["utility", "marketing", "authentication"]),
   }),
 ) {}
+export class SettingsImportDto extends dto(z.object({ json: z.string().min(2).max(200_000), reason: z.string().max(500).optional() })) {}
 export class DeliveriesQueryDto extends dto(
   z
     .object({ status: z.string().max(16), channel: z.string().max(16) })

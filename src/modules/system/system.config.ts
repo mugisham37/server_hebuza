@@ -1,6 +1,7 @@
 // P10 settings + feature flags + languages (U12), integrations registry (U12b) and notifications — rules, templates
 // with lint + Meta review, deliveries, channel budgets (U14). Port of handlers-system-d and the U14 half of -e.
 // Credentials are write-only: Fernet-encrypted in the system store, only last4 ever leaves the server.
+import { parseSettingsImport } from "@/domain/system/settings-registry";
 import type { DeliveryService } from "../notifications/notifications.delivery";
 import type { DeliveryVM } from "@/domain/system/types";
 import { eq } from "drizzle-orm";
@@ -197,6 +198,17 @@ export async function patchSettings(
     }
     return accepted({ ...bundle(w), change: cr });
   });
+}
+/** F-SET-13: re-apply an exported settings file. Goes through patchSettings, so validation, approvals and audit apply. */
+export async function importSettingsJson(c: Caller, b: { json: string; reason?: string }) {
+  let parsed: ReturnType<typeof parseSettingsImport>;
+  try {
+    parsed = parseSettingsImport(b.json);
+  } catch {
+    throw fail(422, "validation", "Not a settings export file.");
+  }
+  const res = await patchSettings(c, { values: parsed.values, reason: b.reason ?? "Imported settings file" });
+  return { result: res, skipped: parsed.skipped };
 }
 export async function exportSettingsJson(c: Caller) {
   await stepUp(c, guard(c.session));

@@ -6,7 +6,8 @@
 // read receipt is pushed to the conversation's recipients with RealtimeService.emit after the tx commits.
 import { createTicket } from "../applications/support.service";
 import { normalizeRoles } from "@/domain/auth/roles";
-import { FIRST_RESPONSE_MIN, addBusinessMinutes, clientLaneReadOnly, parseCard, CARD_ACTIONS } from "@/domain/chat/rules";
+import { settingOf } from "../../core/db/system-records";
+import { FIRST_RESPONSE_MIN, addBusinessMinutes, businessHours, clientLaneReadOnly, parseCard, CARD_ACTIONS } from "@/domain/chat/rules";
 import { Injectable } from "@nestjs/common";
 import {
   and,
@@ -495,7 +496,7 @@ export class ChatService {
       cur.kind !== "support" || v.senderRole === "system"
         ? {}
         : v.senderRole === "client"
-          ? cur.slaDueAt && !cur.firstResponseAt ? {} : { slaDueAt: addBusinessMinutes(new Date(now), FIRST_RESPONSE_MIN).toISOString(), firstResponseAt: null, escalationLevel: 0 }
+          ? cur.slaDueAt && !cur.firstResponseAt ? {} : { slaDueAt: addBusinessMinutes(new Date(now), FIRST_RESPONSE_MIN, businessHours(await settingOf(tx, "sla.business_start_hour"), await settingOf(tx, "sla.business_end_hour"))).toISOString(), firstResponseAt: null, escalationLevel: 0 }
           : cur.slaDueAt && !cur.firstResponseAt ? { firstResponseAt: now } : {};
     await tx
       .update(conversations)
