@@ -13,6 +13,7 @@ export type Exec = Tx;
 export type Session = SessionUser & { role: string };
 export type Kind =
   | "lead"
+  | "rec_rule" // F-CRM-11 recommendation rules
   | "activity"
   | "task"
   | "note"

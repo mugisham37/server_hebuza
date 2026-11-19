@@ -362,3 +362,7 @@ export class SiteEventDto extends dto(z.object({
   props: z.record(z.string().max(32), z.string().max(200)).refine((o) => Object.keys(o).length <= 10).optional(),
 })) {}
 export class EventSummaryQueryDto extends dto(z.object({ days: z.coerce.number().int().min(1).max(365).optional() })) {}
+export class RecRulesDto extends dto(z.object({ items: z.array(z.object({
+  id: z.string().regex(/^[a-z0-9-]{1,40}$/), ifUsed: z.string().regex(/^(\*|[a-z0-9]+(-[a-z0-9]+)*)$/).max(128),
+  recommend: z.array(z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/).max(128)).min(1).max(5), active: z.boolean(),
+})).max(100) })) {}

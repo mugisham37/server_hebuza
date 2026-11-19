@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { consentLedger } from "@/db/schema/schema-notifications";
 import { siteEvents } from "@/db/schema/schema-marketing";
+import { recommend, type RecRule } from "@/domain/marketing/recommend";
 import { and as dand, eq as deq, gte, sql as dsqlx } from "drizzle-orm";
 import { POLICY_VERSION } from "../notifications/notifications.delivery";
 // P11 CRM services (port of src/mocks/handlers-marketing-crm.ts): lead capture from every channel, the lead pipeline
@@ -1157,10 +1158,8 @@ export async function customer360(c: Caller, id: string): Promise<Customer360> {
     ),
     firstTouch: lead?.firstTouch,
     lastTouch: lead?.lastTouch,
-    // PLACEHOLDER(recommendation-rules): read-only next-service rules (CRM-11).
-    recommended: ct.servicesUsed.includes("company-registration")
-      ? ["vat-registration", "tax-filing"]
-      : ["company-registration"],
+    // F-CRM-11: editor-managed rules (marketing → customers → recommendation rules).
+    recommended: recommend(ct.servicesUsed, await list<RecRule>(c.db, "rec_rule")),
     related: {
       cases: kase.length,
       messages: timeline.filter((t) => t.kind === "message").length,
@@ -1243,4 +1242,15 @@ export async function bookingOutcome(c: Caller, b: { phone?: string; email?: str
     nextActionAt: l.nextActionAt ?? new Date(Date.now() + 2 * 864e5).toISOString(), // qualified leads need a next action
   } as LeadPatchIn);
   return { moved: true, leadId: l.id };
+}
+
+// ---------------------------------------------------------------- F-CRM-11 recommendation rules (editor)
+export const listRecRules = async (c: Caller) => ({ items: await list<RecRule>(c.db, "rec_rule") });
+/** Replaces the whole rule list (small, ordered; the editor saves it in one go). */
+export async function saveRecRules(c: Caller, items: RecRule[]) {
+  const old = await list<RecRule>(c.db, "rec_rule");
+  for (const r of old) if (!items.some((x) => x.id === r.id)) await remove(c.db, "rec_rule", r.id);
+  for (const [i, r] of items.entries()) await put(c.db, { kind: "rec_rule", id: r.id, data: r, pos: i });
+  await record(c, "lead.rec_rules_saved", "rec_rule", { n: items.length });
+  return { items };
 }

@@ -1,5 +1,5 @@
 // Marketing CRM (reference marketing.routes: public capture, leads, tasks & notes, inbox, customers) + unsubscribe.
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Put, Query } from "@nestjs/common";
 import { Route, IfMatch } from "../../core/http/route";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import { AppError } from "../../core/http/errors";
@@ -8,7 +8,7 @@ import * as crm from "./marketing.crm";
 import { MarketingRunner } from "./marketing.runner";
 import * as D from "./marketing.dto";
 
-const { MKT, STAFF } = D;
+const { MKT, MKT_EX, STAFF } = D;
 
 @Controller()
 export class MarketingCrmController {
@@ -27,6 +27,17 @@ export class MarketingCrmController {
   @Route({ auth: MKT })
   eventSummary(@Req() r: OpsReq, @Query() q: D.EventSummaryQueryDto) {
     return this.m.run(r, (c) => crm.eventSummary(c, q.days ?? 30));
+  }
+
+  @Get("admin/mkt/recommendation-rules")
+  @Route({ auth: MKT_EX })
+  recRules(@Req() r: OpsReq) {
+    return this.m.run(r, (c) => crm.listRecRules(c));
+  }
+  @Put("admin/mkt/recommendation-rules")
+  @Route({ auth: MKT, audit: "lead.rec_rules_saved" })
+  saveRecRules(@Req() r: OpsReq, @Body() b: D.RecRulesDto) {
+    return this.m.run(r, (c) => crm.saveRecRules(c, b.items));
   }
 
   @Post("leads")

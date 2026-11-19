@@ -82,7 +82,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-CRM-08 | Follow-up automation | P2 | DONE | sequences S:marketing.campaigns.controller.ts:134-164, cron marketing.jobs.ts:182; W:organisms/marketing/sequences.tsx |
 | F-CRM-09 | Segments | P2 | DONE | S:marketing.campaigns.controller.ts:28-53 (preview); W:organisms/marketing/segments.tsx |
 | F-CRM-10 | Campaigns | P2 | DONE | S:marketing.campaigns.controller.ts:60-98, send cron marketing.jobs.ts:120; W:marketing/campaigns.tsx, wizard.tsx |
-| F-CRM-11 | Service recommendations | P2 | PARTIAL | one hardcoded rule S:marketing.crm.ts:1147 (PLACEHOLDER). Gap: rules table + editor |
+| F-CRM-11 | Service recommendations | P2 | DONE | `rec_rule` records + `recommend()` (unit test), `GET/PUT admin/mkt/recommendation-rules`, editor `/marketing/customers/rules`; customer 360 uses it. |
 | F-CRM-12 | Tax/compliance reminders | P2 | PARTIAL | compliance calendar exists (S:modules/compliance). Gap: no marketing-category reminder to consented non-subscribers |
 | F-CRM-13 | Renewal reminders | P2 | PARTIAL | subscription renewals in SUB; client-registered licence expiry (`client_document_expiry`) reminder path not verified |
 | F-CRM-14 | Re-engagement | P2 | PARTIAL | inactive rule S:marketing.campaigns.controller.ts:169. Gap: auto segment + reactivation tracking not verified |
