@@ -140,6 +140,7 @@ export function publicPath(type: CmsType, key: string, slug: string, locale: Loc
   if (type === "regulatory_update") return `/${locale}/updates/${slug}`;
   if (type === "landing_page") return `/${locale}/campaign/${slug}`;
   if (type === "faq") return `/${locale}/faq`;
+  if (type === "legal_doc") return `/${locale}/legal/${key}`;
   if (type === "team_member") return `/${locale}/about`;
   if (type === "page") return key === "home" ? `/${locale}` : `/${locale}/${slug}`;
   return null;

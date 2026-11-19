@@ -20,8 +20,8 @@ export class CatalogueController {
   // ---- public catalogue
   @Get("services")
   @Route({ auth: "public", limit: "read", out: D.ServiceListOut })
-  listPublic() {
-    return this.svc.listPublicServices();
+  listPublic(@Query() q: D.SearchQueryDto) {
+    return Object.values(q).some((v) => v != null && v !== "") ? this.svc.searchPublicServices(q) : this.svc.listPublicServices();
   }
   @Get("services/:slug")
   @Route({ auth: "public", limit: "read", out: D.ServiceDetailOut })

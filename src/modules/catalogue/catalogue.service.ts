@@ -30,6 +30,8 @@ import {
 } from "@/domain/catalogue/rules";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
+import { OutboxService } from "../../core/db/outbox";
+import { facetsOf, type SearchIn } from "@/domain/catalogue/search";
 import { AuditService, type AuditEntry } from "../../core/db/audit";
 import { AppError } from "../../core/http/errors";
 import { PublicCache } from "./cache";
@@ -203,6 +205,14 @@ function summary(s: Loaded, volume = 0) {
     price_bands: bands,
     from_fee: fromFee(s, s.tiers, bands),
     copy_too_long: copyLimitIssues(meta).length > 0,
+    engagement_type: s.engagementType,
+    eligibility: s.eligibility as L3[],
+    deliverables: s.deliverables as L3[],
+    turnaround_days_min: s.turnaroundDaysMin,
+    turnaround_days_max: s.turnaroundDaysMax,
+    delivery_mode: s.deliveryMode,
+    seo: s.seo as Partial<Record<keyof L3, { title?: string; description?: string; og_image?: string }>>,
+    related_slugs: s.relatedSlugs as string[],
   };
 }
 const detail = (s: Loaded, volume = 0) => ({
@@ -299,6 +309,14 @@ export async function listPublicServices(db: Exec) {
       .map((s) => summary(s, vol.get(s.serviceId) ?? 0)),
   };
   return out;
+}
+/** Trigram match over the generated `search_text` (all locales), best first; ids only, rows come from the cached list. */
+export async function searchIds(db: Exec, q: string) {
+  const t = q.trim().toLowerCase().slice(0, 100);
+  const rows = (await db.execute(dsql`select service_id from services
+    where search_text ilike ${"%" + t.replace(/[\\%_]/g, "\\$&") + "%"} or ${t} <% search_text
+    order by word_similarity(${t}, search_text) desc limit 100`)) as unknown as { service_id: string }[]; // cast: execute() rows are untyped
+  return rows.map((r) => r.service_id);
 }
 export async function getPublicService(db: Exec, slug: string) {
   const [s] = await load(db, eq(services.slug, slug));
@@ -812,6 +830,15 @@ export async function createService(
 
 export type UpdateServiceIn = {
   [K in keyof Omit<CreateServiceIn, "slug">]?: CreateServiceIn[K] | null;
+} & {
+  engagement_type?: "application" | "consultation" | null;
+  eligibility?: L3[] | null;
+  deliverables?: L3[] | null;
+  turnaround_days_min?: number | null;
+  turnaround_days_max?: number | null;
+  delivery_mode?: "online" | "in_person" | "hybrid" | null;
+  seo?: Partial<Record<keyof L3, { title?: string; description?: string; og_image?: string }>> | null;
+  related_slugs?: string[] | null;
 };
 export async function updateService(
   db: Exec,
@@ -854,6 +881,17 @@ export async function updateService(
   if (b.is_featured != null) set.isFeatured = b.is_featured;
   const h = cleanHandler(b.handler);
   if (h) set.handler = h;
+  if (b.engagement_type != null) set.engagementType = b.engagement_type;
+  if (b.eligibility != null) set.eligibility = b.eligibility;
+  if (b.deliverables != null) set.deliverables = b.deliverables;
+  if (b.turnaround_days_min !== undefined) set.turnaroundDaysMin = b.turnaround_days_min;
+  if (b.turnaround_days_max !== undefined) set.turnaroundDaysMax = b.turnaround_days_max;
+  const lo = set.turnaroundDaysMin !== undefined ? set.turnaroundDaysMin : s.turnaroundDaysMin;
+  const hi = set.turnaroundDaysMax !== undefined ? set.turnaroundDaysMax : s.turnaroundDaysMax;
+  if (lo != null && hi != null && lo > hi) throw bad("Turnaround minimum cannot exceed the maximum.");
+  if (b.delivery_mode !== undefined) set.deliveryMode = b.delivery_mode;
+  if (b.seo != null) set.seo = b.seo;
+  if (b.related_slugs != null) set.relatedSlugs = [...new Set(b.related_slugs)].filter((x) => x !== slug);
   await db.update(services).set(set).where(eq(services.serviceId, s.serviceId));
   // Keep the draft's copy in step so the builder shows what was just saved.
   const d = draftOf(s);
@@ -1405,6 +1443,7 @@ export class CatalogueService {
     private readonly tx: TxService,
     private readonly audit: AuditService,
     private readonly cache: PublicCache,
+    private readonly outbox: OutboxService,
   ) {}
 
   private read<T>(fn: (t: Tx) => Promise<T>) {
@@ -1414,6 +1453,8 @@ export class CatalogueService {
   private async write<T>(fn: (t: Tx) => Promise<T>, audit?: Audit<T>) {
     const r = await this.tx.run(async (t) => {
       const out = await fn(t);
+      // Tell the web app to drop its `catalogue` cache tag (same signed webhook as CMS publishes).
+      await this.outbox.add(t, { type: "cms.revalidate", payload: { tags: ["catalogue"] } });
       if (audit) {
         const a = audit(out);
         await this.audit.record(t, { ...a, entity: a.entity ?? a.action.split(".")[0] });
@@ -1427,6 +1468,14 @@ export class CatalogueService {
   // public (cached)
   listPublicServices() {
     return this.cache.get("catalogue", "services", () => this.read(listPublicServices));
+  }
+  /** F-CAT-06: trigram text match (uncached, any query) + facet filters over the cached list. */
+  async searchPublicServices(f: SearchIn) {
+    const all = (await this.listPublicServices()).services;
+    const ids = f.q?.trim() ? await this.read((t) => searchIds(t, f.q!)) : null;
+    const rows = ids ? ids.flatMap((id) => all.filter((s) => s.service_id === id)) : all;
+    const { results, facets } = facetsOf(rows, f);
+    return { services: results, facets };
   }
   getPublicService(slug: string) {
     return this.cache.get("catalogue", `service:${slug}`, () => this.read((t) => getPublicService(t, slug)));

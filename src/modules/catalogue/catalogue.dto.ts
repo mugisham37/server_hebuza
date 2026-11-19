@@ -30,6 +30,11 @@ const Slug = z
   )
   .max(128);
 
+const SeoL = z.object({
+  title: z.string().max(70).optional(),
+  description: z.string().max(170).optional(),
+  og_image: z.string().max(500).optional(),
+});
 export const CategoryOut = z
   .object({
     id: z.string(),
@@ -126,6 +131,14 @@ const summaryShape = {
   price_bands: z.array(BandOut),
   from_fee: n,
   copy_too_long: z.boolean(),
+  engagement_type: z.string(),
+  eligibility: z.array(L3),
+  deliverables: z.array(L3),
+  turnaround_days_min: n,
+  turnaround_days_max: n,
+  delivery_mode: s,
+  seo: z.record(z.string(), z.object({ title: z.string().optional(), description: z.string().optional(), og_image: z.string().optional() })),
+  related_slugs: z.array(z.string()),
 };
 export const ServiceSummaryOut = z
   .object(summaryShape)
@@ -144,8 +157,12 @@ export const ServiceDetailOut = z
     structure: z.record(z.string(), z.unknown()).nullable().optional(),
   })
   .meta({ id: "ServiceDetailResponse" });
+const Counts = z.record(z.string(), z.number().int());
 export const ServiceListOut = z
-  .object({ services: z.array(ServiceSummaryOut) })
+  .object({
+    services: z.array(ServiceSummaryOut),
+    facets: z.object({ category: Counts, engagement_type: Counts, delivery_mode: Counts, price: Counts, turnaround: Counts }).optional(),
+  })
   .meta({ id: "ServiceListResponse" });
 export const StructureOut = z
   .object({
@@ -250,7 +267,24 @@ export const UpdateServiceIn = CreateServiceIn.omit({ slug: true, is_featured: t
     name: z.string().trim().min(1).max(255).nullable().optional(),
     category: s,
     is_featured: z.boolean().nullable().optional(),
+    engagement_type: z.enum(["application", "consultation"]).nullable().optional(),
+    eligibility: z.array(L3).max(20).nullable().optional(),
+    deliverables: z.array(L3).max(20).nullable().optional(),
+    turnaround_days_min: z.number().int().min(0).max(365).nullable().optional(),
+    turnaround_days_max: z.number().int().min(0).max(365).nullable().optional(),
+    delivery_mode: z.enum(["online", "in_person", "hybrid"]).nullable().optional(),
+    seo: z.partialRecord(z.enum(["rw", "en", "fr"]), SeoL).nullable().optional(),
+    related_slugs: z.array(Slug).max(6).nullable().optional(),
   });
+export const SearchQuery = z.object({
+  q: z.string().max(100).optional(),
+  category: z.string().max(64).optional(),
+  max_price: z.coerce.number().int().min(0).optional(),
+  max_days: z.coerce.number().int().min(0).max(365).optional(),
+  engagement: z.enum(["application", "consultation"]).optional(),
+  mode: z.enum(["online", "in_person", "hybrid"]).optional(),
+});
+export class SearchQueryDto extends dto(SearchQuery) {}
 const Rwf = z.number().int().min(0).max(1_000_000_000_000);
 const BandIn = z.object({
   min_amount_rwf: Rwf,

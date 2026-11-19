@@ -301,7 +301,21 @@ export const services = pgTable("services", {
 	planCovered: boolean("plan_covered").notNull(),
 	urgentSurchargeType: varchar("urgent_surcharge_type", { length: 16 }),
 	urgentSurchargeValue: integer("urgent_surcharge_value"),
+	// F-CAT-08: "consultation" services book a call instead of opening an application.
+	engagementType: varchar("engagement_type", { length: 16 }).default('application').notNull(), // application | consultation
+	// F-CAT-05 structured facts: eligibility/deliverables are {rw,en,fr}[]; delivery_mode online | in_person | hybrid.
+	eligibility: jsonb().default([]).notNull(),
+	deliverables: jsonb().default([]).notNull(),
+	turnaroundDaysMin: integer("turnaround_days_min"),
+	turnaroundDaysMax: integer("turnaround_days_max"),
+	deliveryMode: varchar("delivery_mode", { length: 16 }),
+	// F-CAT-07 per-locale SEO {rw|en|fr: {title, description, og_image}}; F-CAT-09 manual related service slugs.
+	seo: jsonb().default({}).notNull(),
+	relatedSlugs: jsonb("related_slugs").default([]).notNull(),
+	// F-CAT-06 search haystack (needs CREATE EXTENSION pg_trgm in the migration for the GIN index below).
+	searchText: text("search_text").generatedAlwaysAs(sql`lower(coalesce(name, '') || ' ' || coalesce(name_rw, '') || ' ' || coalesce(name_en, '') || ' ' || coalesce(name_fr, '') || ' ' || coalesce(short_description_rw, '') || ' ' || coalesce(short_description_en, '') || ' ' || coalesce(short_description_fr, '') || ' ' || category)`),
 }, (table) => [
+	index("ix_services_search_trgm").using("gin", sql`${table.searchText} gin_trgm_ops`),
 	index("ix_services_category_id").using("btree", table.categoryId.asc().nullsLast()),
 	index("ix_services_subcategory_id").using("btree", table.subcategoryId.asc().nullsLast()),
 	foreignKey({
