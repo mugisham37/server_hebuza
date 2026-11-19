@@ -11,7 +11,7 @@
     "start:worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "openapi": "tsup && node dist/openapi.js",
-    "lint": "eslint",
+    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
