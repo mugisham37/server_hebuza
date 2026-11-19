@@ -47,6 +47,11 @@ export const envSchema = z.object({
   // F-CRM-15 GA4 Measurement Protocol (server-side events). Both unset → dormant.
   GA4_MEASUREMENT_ID: z.string().regex(/^G-[A-Z0-9]+$/).optional(),
   GA4_API_SECRET: z.string().min(8).optional(),
+  // F-CRM-17 social pulls (each network dormant until its pair is set).
+  META_PAGE_ID: z.string().optional(),
+  META_PAGE_TOKEN: z.string().optional(),
+  LINKEDIN_ORG_ID: z.string().optional(),
+  LINKEDIN_TOKEN: z.string().optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
   BACKUP_STATUS_ENDPOINT: z.string().url().optional(),
   BACKUP_STATUS_BUCKET: z.string().optional(),

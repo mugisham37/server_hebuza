@@ -1178,7 +1178,17 @@ export async function unsubscribe(
   t: { contactId: string; channel: Channel; campaignId?: string },
 ) {
   const m = await get<Contact>(db, "contact", t.contactId, true);
-  if (!m) throw notFound("Contact");
+  if (!m) {
+    // F-CRM-12 reminders go to leads (non-clients): opt the lead out instead.
+    const l = await get<Lead>(db, "lead", t.contactId, true);
+    if (!l) throw notFound("Contact");
+    if (l.consent[t.channel] !== "out") {
+      l.consent = { ...l.consent, [t.channel]: "out" };
+      await saveLead(db, l);
+      await record({ db, session: null }, "consent.unsubscribed", l.id, { channel: t.channel, campaignId: t.campaignId });
+    }
+    return { unsubscribed: true };
+  }
   if (m.consent[t.channel] === "out") return { unsubscribed: true };
   m.consent = { ...m.consent, [t.channel]: "out" };
   await put(db, { kind: "contact", id: m.id, data: m, status: m.clientId ? "customer" : null, ref: m.clientId ?? null });

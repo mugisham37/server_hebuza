@@ -20,7 +20,15 @@ import { inQuietHours } from "@/domain/marketing/quiet-hours";
 import { eligibility } from "@/domain/marketing/consent";
 import { get, list, put, type Exec } from "./marketing.store";
 import { bookingOutcome, captureFrom, purgeStale, sweepWon, unsubToken } from "./marketing.crm";
-import { runTick, sendTick } from "./marketing.campaigns";
+import { runTick, sendTick, winbackSweep } from "./marketing.campaigns";
+import { complianceRules } from "@/db/schema/schema-ops";
+import { pullSocial } from "./marketing.social";
+import { kigaliToday, occurrences } from "../deadlines/deadlines.service";
+const TAX_TPL: Record<"en" | "fr" | "rw", string> = {
+  en: "Reminder: {label} is due on {date}. HEBUZA can file it for you.",
+  fr: "Rappel : {label} est dû le {date}. HEBUZA peut s'en charger pour vous.",
+  rw: "Kwibutsa: {label} bigomba gukorwa bitarenze {date}. HEBUZA ishobora kubigukorera.",
+};
 import { sweepReferrals } from "./marketing.insights";
 import { checkLinks, countClick, type LinkClick } from "./marketing.content";
 
@@ -222,6 +230,48 @@ export class MarketingJobs {
   @Cron("mkt.contact-sync", "17 * * * *")
   contactSync() {
     return this.txs.runAsSystem((tx) => syncContacts(tx));
+  }
+
+  /** F-CRM-12: 7 days before each active compliance deadline, consented leads who are not clients get one reminder per channel. */
+  @Cron("mkt.tax-reminders", "0 6 * * *")
+  async taxReminders() {
+    const day = kigaliToday(new Date(Date.now() + 7 * 864e5));
+    const jobs = await this.txs.runAsSystem(async (tx) => {
+      const rules = (await tx.select().from(complianceRules).where(eq(complianceRules.active, true)))
+        .filter((r) => occurrences(r.recurrence as Parameters<typeof occurrences>[0], day, day).length);
+      if (!rules.length) return [];
+      const leads = (await list<Lead>(tx, "lead")).filter((l) => !l.clientId && !["merged", "lost"].includes(l.stage));
+      const out: { l: Lead; ch: "email" | "sms"; text: string; key: string }[] = [];
+      for (const r of rules) for (const l of leads) for (const ch of ["email", "sms"] as const) {
+        if (l.consent[ch] !== "in" || !(ch === "email" ? l.email : l.phoneE164)) continue;
+        const key = `${r.code}:${day}:${l.id}:${ch}`;
+        if (await get(tx, "tax_reminder", key)) continue; // idempotent across retries/reruns
+        await put(tx, { kind: "tax_reminder", id: key, data: { at: new Date().toISOString() } });
+        const label = (r.label as Record<string, string>)[l.language] ?? (r.label as Record<string, string>).en ?? r.code;
+        out.push({ l, ch, key, text: TAX_TPL[l.language as "en"]?.replace("{label}", label).replace("{date}", day) ?? `${label}: ${day}` });
+      }
+      return out;
+    });
+    for (const j of jobs)
+      await this.send(j.ch, { email: j.l.email, phone: j.l.phoneE164 }, {
+        subject: "HEBUZA", body: j.text, language: j.l.language,
+        unsubscribe: `${this.origin}/unsubscribe?token=${unsubToken(this.crypto, { contactId: j.l.id, channel: j.ch, campaignId: "tax-reminders" })}`,
+      });
+  }
+
+  @Cron("mkt.social-pull", "20 5 * * *")
+  async socialPull() {
+    const g = (k: "META_PAGE_ID" | "META_PAGE_TOKEN" | "LINKEDIN_ORG_ID" | "LINKEDIN_TOKEN") => this.config.get(k, { infer: true });
+    const e = { META_PAGE_ID: g("META_PAGE_ID"), META_PAGE_TOKEN: g("META_PAGE_TOKEN"), LINKEDIN_ORG_ID: g("LINKEDIN_ORG_ID"), LINKEDIN_TOKEN: g("LINKEDIN_TOKEN") };
+    if (!Object.values(e).some(Boolean)) return;
+    const n = await this.txs.runAsSystem((tx) => pullSocial({ db: tx, session: null }, e));
+    if (n) this.log.log({ event: "mkt.social_pull", rows: n });
+  }
+
+  @Cron("mkt.winback", "10 4 * * *")
+  async winback() {
+    const r = await this.txs.runAsSystem((tx) => winbackSweep(tx));
+    if (r.enrolled || r.reactivated) this.log.log({ event: "mkt.winback", ...r });
   }
 
   @Cron("mkt.link-check", "30 3 * * *")

@@ -83,12 +83,12 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-CRM-09 | Segments | P2 | DONE | S:marketing.campaigns.controller.ts:28-53 (preview); W:organisms/marketing/segments.tsx |
 | F-CRM-10 | Campaigns | P2 | DONE | S:marketing.campaigns.controller.ts:60-98, send cron marketing.jobs.ts:120; W:marketing/campaigns.tsx, wizard.tsx |
 | F-CRM-11 | Service recommendations | P2 | DONE | `rec_rule` records + `recommend()` (unit test), `GET/PUT admin/mkt/recommendation-rules`, editor `/marketing/customers/rules`; customer 360 uses it. |
-| F-CRM-12 | Tax/compliance reminders | P2 | PARTIAL | compliance calendar exists (S:modules/compliance). Gap: no marketing-category reminder to consented non-subscribers |
-| F-CRM-13 | Renewal reminders | P2 | PARTIAL | subscription renewals in SUB; client-registered licence expiry (`client_document_expiry`) reminder path not verified |
-| F-CRM-14 | Re-engagement | P2 | PARTIAL | inactive rule S:marketing.campaigns.controller.ts:169. Gap: auto segment + reactivation tracking not verified |
+| F-CRM-12 | Tax/compliance reminders | P2 | DONE | `mkt.tax-reminders` daily: 7 days before each active compliance-rule date, consented non-client leads get one email/SMS (rw/en/fr) with an unsubscribe link (lead opt-out supported); idempotent per rule/date/lead/channel. |
+| F-CRM-13 | Renewal reminders | P2 | DONE | Licence/document expiry reminders: `documents.expiry` cron (60/30/0 days, `documents.jobs.ts`) over `client_document_expiry`. |
+| F-CRM-14 | Re-engagement | P2 | DONE | `mkt.winback` daily: inactive consented customers join `sq-inactive`; customers active again exit their run as `reactivated` (`winbackSweep`). |
 | F-CRM-15 | GA4 + Consent Mode + MP | P2 | DONE | `marketing.ga4_event` Measurement Protocol forwarder from consented `site_events` (dormant until `GA4_MEASUREMENT_ID`/`GA4_API_SECRET`). |
 | F-CRM-16 | First-party visitor analytics | P2 | DONE | `site_events` + `POST /api/events` (consent-gated page_view beacon in `tracking.tsx`), `GET admin/mkt/events/summary`. |
-| F-CRM-17 | Social media monitoring | P3 | PARTIAL | manual entry + CSV import S:marketing.insights.controller.ts:65-75; no Meta/LinkedIn API |
+| F-CRM-17 | Social media monitoring | P3 | DONE | `mkt.social-pull` daily from Meta page insights and LinkedIn org statistics into social rows (`marketing.social.ts`); dormant until `META_PAGE_*` / `LINKEDIN_*` set. |
 | F-CRM-18 | Tasks & notes | P2 | DONE | S:marketing.crm.controller.ts:98-113 |
 | F-CRM-19 | Enquiries inbox | P1 | DONE | S:marketing.crm.controller.ts:121-131; WA:(marketing)/marketing/inbox |
 | F-CRM-20 | Promotions | P3 | MISSING | no promo-code model or invoice hook |
