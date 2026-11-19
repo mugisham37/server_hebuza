@@ -117,7 +117,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DLV-07 | Download log | P1 | DONE | `deliverable.downloaded` audit (documents.service.ts:797) |
 | F-DLV-08 | Delivery receipt | P2 | DONE | Closed 2026-11-19: not-OK receipt opens a complaint ticket on the case (one open at a time). (was PARTIAL) |
 | F-DLV-09 | Deliverable vault | P1 | DONE | Closed 2026-11-19: Results show released rows; POST me/deliverables/:id/save-to-library copies the file into the library. (was PARTIAL) |
-| F-DLV-10 | E-signature hook | P3 | MISSING | — |
+| F-DLV-10 | E-signature hook | P3 | DONE | Closed 2026-11-19: built-in signing: staff/agent flag a file (per slot), client signs typed or drawn; record keeps the file SHA-256, a sealed audit hash, IP and user agent; dormant external-provider hook (core/esign). (was MISSING) |
 
 ## feedback-complaints-ratings (FBK)
 | F-ID | title | phase | status | evidence / gap |
