@@ -62,7 +62,9 @@ const LEGACY: Record<string, Role[]> = {
   client: ["client"],
   partner: ["ext:agent"],
   "staff:agent": ["staff:agent"],
-  // shortcut: seeded admin gets all three until the server issues roles[]; replace when user_roles ships.
+  // Deprecated read-compat (one release): the migration step in docs/audit/migration-notes.md §5 rewrites
+  // staff:admin users to staff:sysadmin + a staff:service_manager user_roles grant (+ staff:executive to keep access).
+  // Remove this alias once no token or row carries "staff:admin".
   "staff:admin": ["staff:service_manager", "staff:sysadmin", "staff:executive"],
 };
 
