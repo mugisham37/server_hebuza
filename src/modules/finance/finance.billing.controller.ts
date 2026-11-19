@@ -7,8 +7,11 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseInterceptors,
 } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
+import { RawResponse } from "../../core/http/envelope.interceptor";
 import { Route } from "../../core/http/route";
 import * as bill from "./finance.billing";
 import { AcceptedInterceptor, FinRunner } from "./finance.runner";
@@ -34,6 +37,13 @@ export class FinanceBillingController {
   @Route({ auth: D.FIN })
   quote(@Param("no") no: string) {
     return this.r.read((f) => bill.getQuote(f, no));
+  }
+  @Get("quotations/:no/pdf")
+  @Route({ auth: D.FIN })
+  @RawResponse()
+  async quotePdf(@Param("no") no: string, @Res() reply: FastifyReply) {
+    const pdf = await this.r.read((f) => bill.quotePdf(f, no));
+    return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="${no}.pdf"`).send(pdf);
   }
   @Post("quotations")
   @Route({ auth: D.FIN, ...D.W })

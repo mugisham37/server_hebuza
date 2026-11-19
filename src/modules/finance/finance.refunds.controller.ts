@@ -6,8 +6,14 @@ import {
   Param,
   Post,
   Query,
+  Res,
   UseInterceptors,
 } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
+import { RawResponse } from "../../core/http/envelope.interceptor";
+import { fail, one } from "./finance.store";
+import { invoiceDocPdf } from "./finance.billing";
+import type { CreditNote } from "@/domain/finance/types";
 import { Route } from "../../core/http/route";
 import * as rfd from "./finance.refunds";
 import { AcceptedInterceptor, FinRunner } from "./finance.runner";
@@ -68,6 +74,17 @@ export class FinanceRefundsController {
   @Route({ auth: D.FINX })
   creditNotes() {
     return this.r.read((f) => rfd.creditNotes(f));
+  }
+  @Get("credit-notes/:no/pdf")
+  @Route({ auth: D.FINX })
+  @RawResponse()
+  async creditNotePdf(@Param("no") no: string, @Res() reply: FastifyReply) {
+    const pdf = await this.r.read(async (f) => {
+      const cn = await one<CreditNote>(f.db, "credit_note", no);
+      if (!cn) throw fail(404, "not_found");
+      return invoiceDocPdf("Credit note", cn.no, { ...cn, caseRef: `Invoice ${cn.invoiceNo}${cn.ebmRef ? ` · EBM ${cn.ebmRef}` : ""}` });
+    });
+    return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="${no}.pdf"`).send(pdf);
   }
   @Get("credit-notes/:no")
   @Route({ auth: D.FINX })

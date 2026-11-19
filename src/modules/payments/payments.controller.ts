@@ -7,7 +7,10 @@ import {
   Param,
   Post,
   Query,
+  Res,
 } from "@nestjs/common";
+import type { FastifyReply } from "fastify";
+import { RawResponse } from "../../core/http/envelope.interceptor";
 import { CurrentUser, Webhook } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
@@ -83,6 +86,20 @@ export class PaymentsController {
   })
   invoices(@CurrentUser() me: SessionUser) {
     return this.svc.myInvoices(me.id);
+  }
+  @Get("me/invoices/:no/pdf")
+  @Route({ auth: ["client"], permission: "fin.invoice.read" })
+  @RawResponse()
+  async invoicePdf(@Param("no") no: string, @CurrentUser() me: SessionUser, @Res() reply: FastifyReply) {
+    const pdf = await this.svc.invoicePdf(me.id, no);
+    return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="${no}.pdf"`).send(pdf);
+  }
+  @Get("me/receipts/:no/pdf")
+  @Route({ auth: ["client"], permission: "fin.invoice.read" })
+  @RawResponse()
+  async receiptPdf(@Param("no") no: string, @CurrentUser() me: SessionUser, @Res() reply: FastifyReply) {
+    const pdf = await this.svc.receiptPdf(me.id, no);
+    return reply.header("content-type", "application/pdf").header("content-disposition", `attachment; filename="${no}.pdf"`).send(pdf);
   }
   @Get("me/receipts")
   @Route({

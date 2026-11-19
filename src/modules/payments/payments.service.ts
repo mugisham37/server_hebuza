@@ -55,6 +55,8 @@ import {
 } from "./payments.provider";
 import type { BankTransferDto, InitiateDto } from "./payments.dto";
 import { put } from "../finance/finance.store";
+import { clientCredit, clientInvoices, invoiceDocPdf, labelOf } from "../finance/finance.billing";
+import { textPdf } from "../chat/chat.service";
 
 type Payment = typeof payments.$inferSelect;
 type App = typeof applications.$inferSelect;
@@ -767,6 +769,10 @@ export class PaymentsService {
           paidAt: now,
         };
         await this.outbox.add(tx, {
+          type: "finance.payment.settled",
+          payload: { applicationCode: np.applicationCode, planId: np.planId, clientId: np.clientId, paymentId: np.paymentId, amount: np.amountRwf },
+        });
+        await this.outbox.add(tx, {
           type: "payment.settled",
           queue: "critical",
           payload: {
@@ -1285,9 +1291,11 @@ export class PaymentsService {
     });
   }
 
-  // shortcut: client invoices are derived from cases carrying a payable amount; read finance invoices once finance lands.
+  /** Finance invoices of the client (G0) + client credit; a payable case the finance sweep has not invoiced yet still shows. */
   myInvoices(clientId: string) {
     return this.txs.run(async (tx) => {
+      const docs = await clientInvoices(tx, clientId);
+      const invoiced = new Set(docs.map((d) => d.caseRef).filter(Boolean));
       const rows = await tx
         .select({
           code: applications.code,
@@ -1300,38 +1308,70 @@ export class PaymentsService {
         .where(
           and(
             eq(applications.clientId, clientId),
+            eq(applications.paymentStatus, "pending"),
             gt(applications.paymentAmount, 0),
           ),
         )
         .orderBy(desc(applications.submittedAt));
       const now = Date.now();
-      return {
-        invoices: rows.map((r) => {
-          const due = new Date(
-            Date.parse(r.submittedAt) + INVOICE_DUE_DAYS * 86_400_000,
-          ).toISOString();
-          const status =
-            r.status === "paid"
-              ? "paid"
-              : r.status === "refunded"
-                ? "refunded"
-                : Date.parse(due) < now
-                  ? "overdue"
-                  : "due";
+      const due = (_d: string, over: boolean) => (over ? "overdue" : "due") as "overdue" | "due";
+      const fin = docs.map((i) => ({ ...i, dueAt: i.dueAt ?? i.issuedAt ?? nowIso() })).map((i) => ({
+        number: i.no!,
+        service: labelOf(i.lines[0]?.label),
+        requestCode: i.caseRef ?? null,
+        issuedAt: iso(i.issuedAt ?? i.dueAt) as string,
+        dueAt: iso(i.dueAt),
+        amount: i.status === "paid" || i.status === "paid_by_plan" ? i.totals.total : i.balanceDue,
+        currency: "RWF",
+        status:
+          i.status === "paid" || i.status === "paid_by_plan"
+            ? ("paid" as const)
+            : i.status === "credited"
+              ? ("refunded" as const)
+              : due(i.dueAt, Date.parse(i.dueAt) < now),
+      }));
+      const pending = rows
+        .filter((r) => !invoiced.has(r.code))
+        .map((r) => {
+          const dueAt = new Date(Date.parse(r.submittedAt) + INVOICE_DUE_DAYS * 86_400_000).toISOString();
           return {
             number: invoiceNo(r.code),
             service: r.service,
             requestCode: r.code,
             issuedAt: iso(r.submittedAt),
-            dueAt: due,
+            dueAt,
             amount: r.amount ?? 0,
             currency: "RWF",
-            status,
+            status: due(dueAt, Date.parse(dueAt) < now),
           };
-        }),
-        creditBalance: 0, // shortcut: no credit notes before finance
+        });
+      return {
+        invoices: [...pending, ...fin].sort((x, y) => y.issuedAt.localeCompare(x.issuedAt)),
+        creditBalance: await clientCredit(tx, clientId),
       };
     });
+  }
+
+  /** Text PDF of one of the client's invoices (F-FIN-04). */
+  invoicePdf(clientId: string, no: string) {
+    return this.txs.run(async (tx) => {
+      const i = (await clientInvoices(tx, clientId)).find((x) => x.no === no);
+      if (!i) throw notFound("Invoice");
+      return invoiceDocPdf("Invoice", i.no!, i);
+    });
+  }
+  /** Text PDF of one of the client's receipts (F-FIN-06). */
+  async receiptPdf(clientId: string, no: string) {
+    const r = (await this.myReceipts(clientId)).receipts.find((x) => x.number === no);
+    if (!r) throw notFound("Receipt");
+    return textPdf(`Receipt ${r.number}`, [
+      `Invoice: ${r.invoiceNumber}`,
+      `Paid: ${r.paidAt.slice(0, 10)}`,
+      `Amount: ${r.amount} ${r.currency}`,
+      `Method: ${r.method}`,
+      "",
+      "HEBUZA · thank you for your payment.",
+    ]);
   }
 
   myReceipts(clientId: string) {

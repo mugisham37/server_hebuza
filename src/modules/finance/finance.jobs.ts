@@ -8,7 +8,12 @@ import { Cron, Job } from "../../core/queue/queues";
 import { TxService } from "../../core/db/tx";
 import { AuditService } from "../../core/db/audit";
 import { OutboxService } from "../../core/db/outbox";
-import { where } from "./finance.store";
+import { CryptoService } from "../../core/crypto/crypto.service";
+import { StorageService } from "../../core/storage/storage.service";
+import type { Tx } from "../../core/db/db";
+import { open, where, type Fin } from "./finance.store";
+import { finDeps } from "./finance.runner";
+import { caseSettled, planSettled, renewalInvoices, scheduledReminders, syncCases } from "./finance.cases";
 import { expirePending, returnStaleVerifications } from "./finance.payments";
 import { bookingRefund, claimDisbursement, failStaleClaims, settleDisbursement, type BookingRefund, type R } from "./finance.refunds";
 import { applyDueSettings } from "./finance.core";
@@ -22,7 +27,45 @@ export class FinanceJobs {
     private readonly outbox: OutboxService,
     private readonly payments: PaymentsService,
     private readonly ledger: LedgerService,
-  ) {}
+    crypto: CryptoService,
+    storage: StorageService,
+  ) {
+    this.deps = finDeps(outbox, crypto, storage, ledger);
+  }
+  private readonly deps: ReturnType<typeof finDeps>;
+
+  /** Finance handler as the system actor; its audits land in the same tx. */
+  private sys<T>(fn: (f: Fin) => Promise<T>) {
+    return this.txs.runAsSystem(async (db: Tx) => {
+      const f = await open(db, "system", this.deps);
+      const out = await fn(f);
+      for (const e of f.audits) await this.audit.record(db, e);
+      return out;
+    });
+  }
+
+  /** Gateway settle → case/plan invoice mirror, client credit, REV-03 allocation. Idempotent per payment id. */
+  @Job("finance.payment.settled")
+  paymentSettled(d: { applicationCode?: string | null; planId?: string | null; clientId?: string | null; paymentId: string; amount: number }) {
+    return this.sys(async (f) => {
+      if (d.planId && d.clientId) await planSettled(f, { clientId: d.clientId, paymentId: d.paymentId, amount: d.amount });
+      else if (d.applicationCode) await caseSettled(f, { applicationCode: d.applicationCode, paymentId: d.paymentId, amount: d.amount });
+    });
+  }
+
+  @Cron("finance.cases.sync", "*/10 * * * *")
+  async casesSync() {
+    const r = await this.sys((f) => syncCases(f));
+    if (r.made || r.allocated) this.log.log(`cases sync: ${r.made} invoices, ${r.allocated} allocations`);
+  }
+
+  /** 08:00 Africa/Kigali: F-FIN-16 reminders and F-SUB-04 renewal invoices. */
+  @Cron("finance.invoices.remind", "0 6 * * *")
+  async remindAndRenew() {
+    const made = await this.sys((f) => renewalInvoices(f));
+    const sent = await this.sys((f) => scheduledReminders(f));
+    this.log.log(`renewal invoices ${made}, reminders ${sent}`);
+  }
 
   /** Claim (tx) → gateway refund via PaymentsService (no tx) → outcome (tx). No gateway refund ⇒ execution_failed with the reason. */
   @Job("finance.refund.disburse")

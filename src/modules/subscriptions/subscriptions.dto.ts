@@ -1,5 +1,6 @@
 // Zod schemas moved verbatim from the reference subscriptions.routes.ts.
 import { z } from "zod";
+import { dto } from "../../core/http/dto";
 export const Plan = z
   .object({
     planId: z.string(),
@@ -39,6 +40,10 @@ export const Mine = z
     daysRemaining: z.number().int().optional(),
     maxApplicationsPerMonth: z.number().int().nullable().optional(),
     applicationsUsedThisPeriod: z.number().int().optional(),
+    usageWarning: z.boolean().optional(),
+    cancelAtPeriodEnd: z.boolean().optional(),
+    graceEndsAt: z.string().nullable().optional(),
+    amountRwf: z.number().int().nullable().optional(),
   })
   .meta({ id: "MySubscriptionResponse" });
 export const CheckoutOut = z.object({
@@ -46,3 +51,6 @@ export const CheckoutOut = z.object({
   purchasable: z.boolean(),
   unavailableReason: z.enum(["archived", "inactive", "trial", "free"]).nullable(),
 });
+export class CancelDto extends dto(
+  z.object({ when: z.enum(["period_end", "now"]).default("period_end"), reason: z.string().trim().min(1).max(500) }),
+) {}

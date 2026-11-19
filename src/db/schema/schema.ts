@@ -477,6 +477,13 @@ export const clientSubscriptions = pgTable("client_subscriptions", {
 	note: text(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull(),
+	// F-SUB-07 self-cancel: honoured by the expiry cron at period end.
+	cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false).notNull(),
+	cancelReason: text("cancel_reason"),
+	cancelledAt: timestamp("cancelled_at", { withTimezone: true, mode: 'string' }),
+	// F-SUB-05/12: reminder offsets already sent this period, and the 80 % usage warning (once per period).
+	remindersSent: jsonb("reminders_sent").default([]).notNull(),
+	usageWarnedAt: timestamp("usage_warned_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	index("ix_client_subscriptions_dedicated_agent_id").using("btree", table.dedicatedAgentId.asc().nullsLast()),
 	index("ix_client_subscriptions_status").using("btree", table.status.asc().nullsLast()),
@@ -501,7 +508,7 @@ export const clientSubscriptions = pgTable("client_subscriptions", {
 			name: "fk_client_subscriptions_plan_id_plans"
 		}),
 	unique("uq_client_subscriptions_client_id").on(table.clientId),
-	check("ck_client_subscriptions_ck_client_subscriptions_status", sql`(status)::text = ANY ((ARRAY['active'::character varying, 'paused'::character varying, 'cancelled'::character varying, 'expired'::character varying, 'trial'::character varying])::text[])`),
+	check("ck_client_subscriptions_ck_client_subscriptions_status", sql`(status)::text = ANY ((ARRAY['active'::character varying, 'past_due'::character varying, 'paused'::character varying, 'cancelled'::character varying, 'expired'::character varying, 'trial'::character varying])::text[])`),
 ]);
 
 export const users = pgTable("users", {

@@ -1,13 +1,13 @@
 // Finance persistence + shared plumbing: the (kind, id) document store, gapless numbering, the signed-in actor,
 // audit records (before/after/reason, read back by the history and HistoryTab views), effective-dated settings and
-// the party directory (clients, workers, services, cases) finance prices and pays against.
-import { and, eq, inArray, sql as dsql } from "drizzle-orm";
+// the party directory (clients, workers, services, cases from users/catalogue/applications) finance prices and pays against.
+import { and, eq, inArray, ne, sql as dsql } from "drizzle-orm";
 import type { Tx as Exec } from "../../core/db/db";
 import { AppError } from "../../core/http/errors";
 import type { AuditEntry } from "../../core/db/audit";
 import type { SessionUser } from "../../core/http/context";
 import type { LedgerService } from "../ledger/ledger.service";
-import { users } from "@/db/schema";
+import { applications, clientSubscriptions, services, supportTickets, users } from "@/db/schema";
 import { financeRecords, financeSequences } from "@/db/schema";
 import { formatNo, type NumberSeries } from "@/domain/finance/numbering";
 import type { Role } from "@/domain/auth/roles";
@@ -241,7 +241,7 @@ export const POLICY = {
     submitted: 2500,
     completed: 0,
   } as Record<string, number>,
-  reminderOffsets: [-2, 0, 3, 7, 14] as number[],
+  reminderOffsets: [-3, 0, 3, 7, 14] as number[],
   lockMs: 15 * 60_000,
 };
 export const SETTING_DEFAULTS: [FinanceSettingKey, unknown, string][] = [
@@ -310,8 +310,9 @@ export const policyOf = (s: Settings) =>
   }) as never;
 
 // ---------------------------------------------------------------- party directory
-// shortcut: finance keeps a denormalised directory of the clients, workers, services and cases it bills; the seed fills
-// it from the mock worlds and syncParty() is the hook ops/applications call on change. Upgrade: read applications/users/agents.
+// Read from the real tables: clients = users(role client), workers = agents, services = catalogue, cases = applications
+// (case ref = application code). A case is disputed while a dispute/complaint ticket on it is not resolved.
+// shortcut: loads every row per request; upgrade to per-ref lookups once finance lists page server-side.
 export type Client = {
   id: string;
   name: string;
@@ -336,33 +337,58 @@ export type Case = {
   flags?: string[];
   disputed?: boolean;
 };
-export async function syncParty(
-  db: Exec,
-  kind: "client" | "worker" | "service" | "case",
-  data: Client | Worker | Service | Case,
-) {
-  const id =
-    kind === "service"
-      ? (data as Service).slug
-      : kind === "case"
-        ? (data as Case).ref
-        : (data as Client).id;
-  await put(
-    db,
-    kind,
-    id,
-    data,
-    kind === "case" ? (data as Case).clientId : null,
-  );
+const DISPUTE_TYPES = ["dispute", "complaint", "billing_dispute"];
+async function parties(db: Exec) {
+  const [us, svcs, apps, tickets, subs] = await Promise.all([
+    db
+      .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language })
+      .from(users)
+      .where(inArray(users.role, ["client", "staff:agent", "ext:agent"])),
+    db.select({ slug: services.slug, name: services.name }).from(services),
+    db
+      .select({
+        ref: applications.code, service: applications.serviceSlug, clientId: applications.clientId,
+        status: applications.status, agent: applications.assignedAgentId, amount: applications.paymentAmount,
+        createdAt: applications.createdAt, updatedAt: applications.updatedAt, completedAt: applications.completedAt,
+        urgent: applications.isUrgent,
+      })
+      .from(applications),
+    db
+      .select({ caseRef: supportTickets.caseRef })
+      .from(supportTickets)
+      .where(and(inArray(supportTickets.type, DISPUTE_TYPES), ne(supportTickets.status, "resolved"))),
+    db
+      .select({ clientId: clientSubscriptions.clientId })
+      .from(clientSubscriptions)
+      .where(inArray(clientSubscriptions.status, ["active", "past_due"])),
+  ]);
+  const disputed = new Set(tickets.map((t) => t.caseRef));
+  const subscribers = new Set(subs.map((s) => s.clientId));
+  const clients: Client[] = us
+    .filter((u) => u.role === "client")
+    .map((u) => ({
+      id: u.id, name: u.name, type: "individual", phone: u.phone ?? "", email: u.email ?? "", language: u.language,
+      flags: subscribers.has(u.id) ? ["subscriber"] : [],
+    }));
+  const workers: Worker[] = us
+    .filter((u) => u.role !== "client")
+    .map((u) => ({ id: u.id, name: u.name, external: u.role === "ext:agent" }));
+  const cases: Case[] = apps
+    .filter((a) => a.clientId)
+    .map((a) => ({
+      ref: a.ref, service: a.service, clientId: a.clientId!, status: a.status,
+      assignees: a.agent ? [{ id: a.agent, role: "lead" as const }] : [],
+      amount: a.amount, createdAt: a.createdAt,
+      // The completion date fixes which revenue rule applies (REV §12).
+      updatedAt: a.completedAt ?? a.updatedAt,
+      flags: a.urgent ? ["urgent"] : [],
+      disputed: disputed.has(a.ref),
+    }));
+  return { clients, workers, services: svcs as Service[], cases };
 }
 export type Directory = Awaited<ReturnType<typeof directory>>;
 export async function directory(db: Exec) {
-  const [clients, workers, services, cases] = await Promise.all([
-    all<Client>(db, "client"),
-    all<Worker>(db, "worker"),
-    all<Service>(db, "service"),
-    all<Case>(db, "case"),
-  ]);
+  const { clients, workers, services, cases } = await parties(db);
   const cm = new Map(clients.map((c) => [c.id, c])),
     wm = new Map(workers.map((w) => [w.id, w])),
     sm = new Map(services.map((s) => [s.slug, s])),
@@ -398,8 +424,12 @@ export type FinDeps = {
 };
 export type Fin = Awaited<ReturnType<typeof open>>;
 /** Actor, effective settings and the party directory for one request; `rec` audits as the actor (in-tx, see runner). */
-export async function open(db: Exec, user: SessionUser, deps: FinDeps) {
-  const [me, S, D] = await Promise.all([actorOf(db, user), settings(db), directory(db)]);
+export async function open(db: Exec, user: SessionUser | "system", deps: FinDeps) {
+  const [me, S, D] = await Promise.all([
+    user === "system" ? ({ id: "system", name: "System", roles: ["staff:finance"] } as Actor) : actorOf(db, user),
+    settings(db),
+    directory(db),
+  ]);
   const audits: AuditEntry[] = [];
   const rec = (action: string, kind: string, id: string, before: unknown, afterV: unknown, reason?: string | null, category?: string) => {
     audits.push(auditEntry(action, kind, id, before, afterV, reason, category));

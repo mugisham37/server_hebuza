@@ -59,6 +59,11 @@ import {
   tail4,
 } from "./finance.store";
 import { postCreditApplied, postCreditNote, postInvoice } from "../ledger/ledger.postings";
+import { splitVat } from "@/domain/money";
+import { casePriceLines } from "./finance.cases";
+import { and, eq, sql as dsql } from "drizzle-orm";
+import { financeRecords } from "@/db/schema";
+import { textPdf } from "../chat/chat.service";
 
 // ---------------------------------------------------------------- records
 export type Q = Quote;
@@ -82,6 +87,11 @@ export type Inv = Invoice & {
   reminders?: BReminder[];
   arReminders?: DReminder[];
   statement?: { at: string; label: string; amount: number }[];
+  /** Case invoice mirroring a gateway-collected amount: revenue is posted by the payment, never by the invoice. */
+  cashBasis?: boolean;
+  gatewayPaymentIds?: string[];
+  /** Day offsets already reminded automatically (F-FIN-16). */
+  autoReminders?: number[];
 };
 export const keyOf = (i: Inv) => i.no ?? i.id;
 export const saveInv = (db: Exec, i: Inv) => put(db, "invoice", i.id, i, i.no);
@@ -246,14 +256,8 @@ export async function createQuote(f: Fin, caseRef: string) {
   const c = f.D.caseOf(caseRef);
   need(c, 422, "validation");
   const no = await nextNo(f.db, "QUO");
-  const fee = c!.amount ?? f.D.service(c!.service)?.fee ?? 100_000;
-  const lines: DocLine[] = [
-    {
-      kind: "service_fee",
-      label: f.D.serviceName(c!.service),
-      qty: 1,
-      unit: fee,
-    },
+  const lines = (await casePriceLines(f.db, c!.ref, f.S.vat_bps)) ?? [
+    { kind: "service_fee", label: f.D.serviceName(c!.service), qty: 1, unit: c!.amount ?? 0 },
   ];
   const client = f.D.client(c!.clientId);
   const q: Q = {
@@ -264,7 +268,8 @@ export async function createQuote(f: Fin, caseRef: string) {
     status: "draft",
     lines,
     totals: docTotals(lines, f.S.vat_bps),
-    depositPct: null,
+    // Deposit rule (D-08): large quotes ask for the configured share up front.
+    depositPct: docTotals(lines, f.S.vat_bps).total >= f.S.deposit_threshold ? f.S.deposit_bps : null,
     validUntil: addDays(today(), f.S.quote_validity_days),
     lang: (client?.language ?? "en") as Locale,
     preparedBy: refOf(f.me),
@@ -534,6 +539,30 @@ export async function convertQuote(f: Fin, no: string, b: { rev?: number }) {
 }
 
 // ---------------------------------------------------------------- invoices
+/** System-issued case invoice (finance.cases): issued at once, cash-basis (the gateway payment posts revenue). */
+export async function issueCaseInvoice(
+  f: Fin,
+  o: { clientId: string; caseRef: string; lines: DocLine[]; dueAt: string },
+) {
+  const inv = newInvoice(f, { ...o, series: "standard" });
+  inv.cashBasis = true;
+  return issue(f, inv, false);
+}
+/** Plan renewal invoice (F-SUB-04): cash-basis like case invoices (subscription payments post revenue). */
+export async function issuePlanInvoice(
+  f: Fin,
+  o: { clientId: string; subscriptionId: string; label: string; amountGross: number; dueAt: string },
+) {
+  const inv = newInvoice(f, {
+    clientId: o.clientId,
+    series: "plan",
+    subscriptionId: o.subscriptionId,
+    dueAt: o.dueAt,
+    lines: [{ kind: "service_fee", label: o.label, qty: 1, unit: splitVat(o.amountGross, f.S.vat_bps).net }],
+  });
+  inv.cashBasis = true;
+  return issue(f, inv, false);
+}
 function newInvoice(
   f: Fin,
   o: {
@@ -595,7 +624,7 @@ async function issue(f: Fin, inv: Inv, rev = true) {
     inv.changedAt = nowIso();
   }
   await saveInv(f.db, inv);
-  await postInvoice(f.deps.ledger,f.db, inv.no, inv.totals, f.me.id);
+  if (!inv.cashBasis) await postInvoice(f.deps.ledger, f.db, inv.no, inv.totals, f.me.id);
   f.rec("invoice.issued", "invoice", inv.no, before, {
     status: inv.status,
     no: inv.no,
@@ -842,7 +871,7 @@ export async function voidInvoice(
   invTouch(f, inv);
   await saveInv(f.db, inv);
   // A void keeps its number (A-4) and mirrors the receivable out of the ledger.
-  if (inv.no) {
+  if (inv.no && !inv.cashBasis) {
     await postCreditNote(
       f.deps.ledger,
       f.db,
@@ -1172,35 +1201,41 @@ export async function addArNote(
   return out;
 }
 
-/** U15 renewal job: one "plan" invoice per subscriber client per month. PLACEHOLDER(plan-price) until subscriptions own pricing. */
-export async function runRenewals(f: Fin, price = 30_000) {
-  const month = today().slice(0, 7);
-  const invs = await all<Inv>(f.db, "invoice");
-  const made: string[] = [];
-  for (const c of f.D.clients.filter((x) => x.flags.includes("subscriber"))) {
-    const sub = `sub-${c.id}`;
-    if (
-      invs.some(
-        (i) => i.subscriptionId === sub && (i.issuedAt ?? "").startsWith(month),
-      )
-    )
-      continue;
-    const inv = newInvoice(f, {
-      clientId: c.id,
-      series: "plan",
-      subscriptionId: sub,
-      dueAt: addDays(today(), f.S.invoice_terms_days),
-      lines: [
-        {
-          kind: "service_fee",
-          label: `Plan renewal · ${month}`,
-          qty: 1,
-          unit: price,
-        },
-      ],
-    });
-    await issue(f, inv, false);
-    made.push(inv.no!);
-  }
-  return { invoices: made };
+// ---------------------------------------------------------------- client side + PDFs (F-FIN-02/04, RFD-05)
+export const labelOf = (l: unknown): string =>
+  typeof l === "string" ? l : ((l as Partial<Record<Locale, string>> | undefined)?.en ?? "");
+/** The client's issued invoices (drafts never leave finance). */
+export async function clientInvoices(db: Exec, clientId: string) {
+  const rows = await db
+    .select({ data: financeRecords.data })
+    .from(financeRecords)
+    .where(and(eq(financeRecords.kind, "invoice"), dsql`${financeRecords.data}->>'clientId' = ${clientId}`));
+  return rows.map((r) => r.data as Inv).filter((i) => i.no && i.status !== "draft");
+}
+/** Dependency-free text PDF of a priced document (invoice, quote, credit note). */
+export function invoiceDocPdf(
+  title: string,
+  no: string,
+  d: { lines: DocLine[]; totals: { subtotal: number; vat: number; passThrough: number; total: number }; billTo?: { name: string }; dueAt?: string; validUntil?: string; caseRef?: string; balanceDue?: number },
+) {
+  const rwf = (n: number) => `${n.toLocaleString("en-US")} RWF`;
+  return textPdf(`${title} ${no}`, [
+    ...(d.billTo ? [`Bill to: ${d.billTo.name}`] : []),
+    ...(d.caseRef ? [`Case: ${d.caseRef}`] : []),
+    ...(d.dueAt ? [`Due: ${d.dueAt.slice(0, 10)}`] : []),
+    ...(d.validUntil ? [`Valid until: ${d.validUntil.slice(0, 10)}`] : []),
+    "",
+    ...d.lines.map((l) => `${labelOf(l.label)}  ${l.qty} x ${rwf(l.unit)}${l.kind === "discount" ? " (discount)" : ""}`),
+    "",
+    `Subtotal (taxable): ${rwf(d.totals.subtotal)}`,
+    `VAT: ${rwf(d.totals.vat)}`,
+    `Pass-through (government / third party): ${rwf(d.totals.passThrough)}`,
+    `Total: ${rwf(d.totals.total)}`,
+    ...(d.balanceDue != null ? [`Balance due: ${rwf(d.balanceDue)}`] : []),
+  ]);
+}
+export async function quotePdf(f: Fin, no: string) {
+  const { q } = await quoteOr404(f.db, no);
+  const c = f.D.client(q.clientId);
+  return invoiceDocPdf(`Quotation v${q.version}`, q.no, { ...q, billTo: c ? { name: c.name } : undefined });
 }

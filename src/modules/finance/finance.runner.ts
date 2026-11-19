@@ -28,6 +28,20 @@ import {
   type FinDeps,
 } from "./finance.store";
 
+/** Side-effect ports for finance handlers (request runner and worker jobs share them). */
+export const finDeps = (outbox: OutboxService, crypto: CryptoService, storage: StorageService, ledger: LedgerService): FinDeps => ({
+  ledger,
+  encrypt: (s) => crypto.encrypt(s),
+  decrypt: (s) => crypto.decrypt(s),
+  mail: (db, m, runAt) => outbox.add(db, { type: "auth.mail", queue: "critical", payload: crypto.seal(m, ["text"]), runAt }),
+  outbox: (db, type, payload, runAt) => outbox.add(db, { type, payload, runAt }),
+  publishFile: async (name, content, type) => {
+    const key = `exports/${rid("f")}/${name}`;
+    await storage.putObject(key, `\uFEFF${content}`, `${type}; charset=utf-8`);
+    return { url: await storage.presignGet(key, name), expiresAt: new Date(Date.now() + DAY).toISOString(), key, name };
+  },
+});
+
 @Injectable()
 export class FinRunner {
   readonly deps: FinDeps;
@@ -40,30 +54,7 @@ export class FinRunner {
     storage: StorageService,
     ledger: LedgerService,
   ) {
-    this.deps = {
-      ledger,
-      encrypt: (s) => crypto.encrypt(s),
-      decrypt: (s) => crypto.decrypt(s),
-      mail: (db, m, runAt) =>
-        outbox.add(db, {
-          type: "auth.mail",
-          queue: "critical",
-          payload: crypto.seal(m, ["text"]),
-          runAt,
-        }),
-      outbox: (db, type, payload, runAt) =>
-        outbox.add(db, { type, payload, runAt }),
-      publishFile: async (name, content, type) => {
-        const key = `exports/${rid("f")}/${name}`;
-        await storage.putObject(key, `\uFEFF${content}`, `${type}; charset=utf-8`);
-        return {
-          url: await storage.presignGet(key, name),
-          expiresAt: new Date(Date.now() + DAY).toISOString(),
-          key,
-          name,
-        };
-      },
-    };
+    this.deps = finDeps(outbox, crypto, storage, ledger);
   }
 
   private user() {

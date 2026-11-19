@@ -1,8 +1,8 @@
-import { Controller, Get, Param } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { SessionUser } from "../../core/http/context";
 import { Route } from "../../core/http/route";
-import { CheckoutOut, Mine, PlanList } from "./subscriptions.dto";
+import { CancelDto, CheckoutOut, Mine, PlanList } from "./subscriptions.dto";
 import { SubscriptionsService } from "./subscriptions.service";
 
 @Controller()
@@ -28,5 +28,15 @@ export class SubscriptionsController {
   @Route({ auth: ["client"], out: PlanList })
   upgradePlans() {
     return this.svc.listPublicPlans();
+  }
+  @Post("me/subscription/cancel")
+  @Route({ auth: ["client"], limit: "write", out: Mine })
+  cancel(@Body() b: CancelDto, @CurrentUser() me: SessionUser) {
+    return this.svc.cancel(me.id, b);
+  }
+  @Post("me/subscription/undo-cancel")
+  @Route({ auth: ["client"], limit: "write", out: Mine })
+  undoCancel(@CurrentUser() me: SessionUser) {
+    return this.svc.undoCancel(me.id);
   }
 }
