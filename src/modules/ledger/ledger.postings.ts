@@ -57,6 +57,8 @@ export const postCreditNote = (
   t: DocTotals,
   by?: string | null,
 ) => post(l, tx, "fin_credit_note", no, `Credit note ${no}`, docLines(t), by);
+/** Idempotency key for physical cash banked under one deposit reference (field confirm + finance manual entry). */
+export const cashKey = (depositRef: string) => `cash:${depositRef.trim().toUpperCase()}`;
 /** Cash in: applied settles receivable, any excess becomes client credit; provider fee recorded separately. */
 export const postPayment = (
   l: LedgerService,

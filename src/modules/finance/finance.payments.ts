@@ -1,6 +1,7 @@
 // Finance payments + reconciliation (U8–U10): payment queue, transfer proofs, manual confirm with the X-4 four-eyes chain,
 // provider verify, reversal, statement import + matcher, line actions, provider-day/month close and reopen.
 // Port of src/mocks/handlers-finance-c.ts onto finance_records; every settle posts to the ledger.
+import { cashKey } from "../ledger/ledger.postings";
 import type { Tx as Exec } from "../../core/db/db";
 import { and, eq, inArray } from "drizzle-orm";
 import { payments } from "@/db/schema";
@@ -247,7 +248,8 @@ export async function settle(
     (await postPayment(
       f.deps.ledger,
       f.db,
-      p.id,
+      // Cash banked on a deposit slip shares the field path's key, so the same cash is never journalled twice.
+      p.method === "cash" && p.bankReference ? cashKey(p.bankReference) : p.id,
       { method: p.method, applied, credit, fee: p.providerFee },
       f.me.id,
     )) ?? undefined;

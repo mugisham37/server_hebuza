@@ -4,6 +4,8 @@
 // (tx + caller + deps); FieldService at the bottom runs each in one TxService transaction, audit rows last.
 // Offline outbox: every agent write is replay-safe by (user, client_op_id) in `field_ops` on top of Idempotency-Key;
 // a stale write (base_version < office_version) answers 409 `field_conflict` with the server state in `data.conflict`.
+import { LedgerService } from "../ledger/ledger.service";
+import { cashKey, postPayment } from "../ledger/ledger.postings";
 import { clientInvoicesForCase } from "../finance/finance.billing";
 import { Injectable } from "@nestjs/common";
 import { PaymentsService } from "../payments/payments.service";
@@ -1568,7 +1570,6 @@ async function confirmCashEntry(k: K, id: string, b: D.ConfirmCashDto) {
     .set({ status: r.status, confirmations })
     .where(eq(fieldCash.id, id))
     .returning();
-  // shortcut: confirmed field cash is not yet posted to the ledger; Finance (Wave 5) posts `field_cash` journals.
   audit(k, "field.cash.confirmed", c.provisionalNo, {
     reason: b.reason,
     done: r.done,
@@ -2277,6 +2278,7 @@ export class FieldService {
     crypto: CryptoService,
     notify: NotificationsService,
     private readonly payments: PaymentsService,
+    private readonly ledger: LedgerService,
   ) {
     this.d = {
       storage,
@@ -2356,7 +2358,14 @@ export class FieldService {
     this.run((k) => decideExpenseClaim(k, id, b));
   financeCash = () => this.run(financeCash);
   confirmCash = (id: string, b: D.ConfirmCashDto) =>
-    this.run((k) => confirmCashEntry(k, id, b));
+    this.run(async (k) => {
+      const out = await confirmCashEntry(k, id, b);
+      // Fully confirmed cash is posted once under its deposit key; finance's manual cash entry for the same deposit
+      // uses the same key, so whichever path posts first wins and the other is a no-op (ledger source dedupe).
+      if (out.status === "confirmed" && out.depositRef)
+        await postPayment(this.ledger, k.db, cashKey(out.depositRef), { method: "cash", applied: out.amount, credit: 0 }, k.s.id);
+      return out;
+    });
   createVisit = (code: string, b: D.CreateVisitDto) =>
     this.run((k) => createVisit(k, code, b));
   /** Office edit hook for ops (reschedule / readdress / cancel). */
