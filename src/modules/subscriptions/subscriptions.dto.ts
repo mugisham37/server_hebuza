@@ -45,6 +45,7 @@ export const Mine = z
     graceEndsAt: z.string().nullable().optional(),
     amountRwf: z.number().int().nullable().optional(),
     scheduledPlanId: z.string().nullable().optional(),
+    scheduledPlanName: z.string().nullable().optional(),
     pausedUntil: z.string().nullable().optional(),
   })
   .meta({ id: "MySubscriptionResponse" });

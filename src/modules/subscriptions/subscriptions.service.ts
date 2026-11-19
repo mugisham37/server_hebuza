@@ -191,6 +191,7 @@ export async function getMine(db: Exec, clientId: string) {
     usageWarning: !!cap && used >= cap * 0.8,
     cancelAtPeriodEnd: s.cancelAtPeriodEnd,
     scheduledPlanId: s.scheduledPlanId,
+    scheduledPlanName: s.scheduledPlanId ? ((await getPlan(db, s.scheduledPlanId))?.name ?? null) : null,
     pausedUntil: iso(s.pausedUntil),
     graceEndsAt:
       s.status === "past_due"

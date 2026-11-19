@@ -159,7 +159,15 @@ export async function caseSettled(
     credit: d.amount - applied,
     status: inv.status,
   });
-  await allocateIfDue(f, d.applicationCode);
+  // F-RFD-07: money landing on a case that is already cancelled/rejected is owed back.
+  if (app && ["cancelled", "rejected"].includes(app.status))
+    await openCaseRefund(f, {
+      applicationId: d.applicationCode,
+      reason: "cancelled_before_work",
+      note: `Payment ${d.paymentId} arrived after the case was ${app.status}.`,
+      auto: "cancelled",
+    });
+  else await allocateIfDue(f, d.applicationCode);
 }
 
 export async function allocateIfDue(f: Fin, code: string) {
