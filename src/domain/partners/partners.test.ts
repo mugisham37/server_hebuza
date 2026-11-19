@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agreementState, commissionOf, partnerHealth, renewalDue } from "./partners";
+import { agreementState, commissionOf, partnerHealth, renewalDue, reversalOf } from "./partners";
 
 const today = "2026-06-01";
 describe("partners", () => {
@@ -19,5 +19,13 @@ describe("partners", () => {
     expect(commissionOf(100_001, 250)).toBe(2500);
     expect(renewalDue("2026-07-01", today)).toBe(30);
     expect(renewalDue("2026-07-02", today)).toBeNull();
+  });
+});
+
+describe("reversal", () => {
+  it("proportional, capped", () => {
+    expect(reversalOf(2500, 100_000, 50_000)).toBe(1250);
+    expect(reversalOf(2500, 100_000, 200_000)).toBe(2500);
+    expect(reversalOf(0, 100_000, 10)).toBe(0);
   });
 });

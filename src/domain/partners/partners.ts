@@ -35,3 +35,7 @@ export function renewalDue(endOn: string, today: string): number | null {
   const d = Math.round((Date.parse(endOn) - Date.parse(today)) / DAY);
   return (RENEWAL_OFFSETS as readonly number[]).includes(d) ? d : null;
 }
+
+/** Commission to take back for a refund: proportional to refunded / paid base, never more than what is left. */
+export const reversalOf = (remaining: number, base: number, refunded: number) =>
+  base <= 0 ? 0 : Math.min(remaining, Math.ceil((remaining * Math.min(refunded, base)) / base));

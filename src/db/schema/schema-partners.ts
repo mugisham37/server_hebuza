@@ -88,10 +88,12 @@ export const partnerCommissions = pgTable("partner_commissions", {
   referralId: varchar("referral_id", { length: 64 }), applicationId: varchar("application_id", { length: 64 }),
   baseAmount: bigint("base_amount", { mode: "number" }).notNull(), rateBps: integer("rate_bps").notNull(), amount: bigint({ mode: "number" }).notNull(),
   status: varchar({ length: 16 }).default("computed").notNull(), decidedBy: varchar("decided_by", { length: 64 }), decidedAt: ts("decided_at"), note: text(),
+  /** PRT §12: commission reversed when the referred case is refunded (proportional to the refund). */
+  reversedAmount: bigint("reversed_amount", { mode: "number" }).default(0).notNull(),
   createdAt: ts("created_at").notNull(),
 }, (t) => [
   index("ix_partner_commissions_partner").on(t.partnerId),
-  check("ck_partner_commissions_status", sql`status IN ('computed','approved','paid','rejected')`),
+  check("ck_partner_commissions_status", sql`status IN ('computed','approved','paid','rejected','reversed')`),
 ]);
 
 export const partnerObjectives = pgTable("partner_objectives", {

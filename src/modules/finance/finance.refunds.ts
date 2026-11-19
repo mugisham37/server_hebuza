@@ -1,6 +1,7 @@
 // Finance refunds + credit notes (U12): request, SM review, finance adjust, approve chain (four-eyes by user id, executive
 // above the limit or on a changed destination), credit note, allocation impact, execution and disbursement.
 // Port of the refund half of src/mocks/handlers-finance-d.ts onto finance_records.
+import { reversePartnerCommission } from "../partners/partners.reversal";
 import { ownUpload } from "../account/account.service";
 import type { Tx as Exec } from "../../core/db/db";
 import { splitVat } from "@/domain/money";
@@ -714,6 +715,7 @@ export async function executeRefund(
       { amount: amountOf(r), method: "bank" },
       f.me.id,
     );
+    await reversePartnerCommission(f.db, r.caseRef, amountOf(r));
     f.rec("refund.paid", "refund", r.no, before, {
       status: r.status,
       proof: b.proofName,
@@ -766,6 +768,7 @@ export async function settleDisbursement(db: Exec, ledger: LedgerService, no: st
     r.failReason = undefined;
     r.note = [r.note, `Gateway refund on ${out.transactionId}`].filter(Boolean).join(" · ");
     await postRefund(ledger, db, r.no, { amount: amountOf(r), method: out.kind }, null);
+    await reversePartnerCommission(db, r.caseRef, amountOf(r));
   } else {
     r.status = "execution_failed";
     r.failReason = out.reason;
