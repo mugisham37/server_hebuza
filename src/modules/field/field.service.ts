@@ -1236,7 +1236,19 @@ async function createIncident(k: K, id: string, b: Body) {
       for (const c of open)
         await pushCustody(k, c, { stage: type, at: nowIso(), by: byName });
     }
-    // shortcut: incident notice goes in-app to the agent's manager only; add the client SMS (wrk.custody_incident) when its copy exists.
+    // WRK custody incident: the client hears about it (SMS + in-app, their language); the manager follows up below.
+    if (type === "lost" || type === "damaged") {
+      const [cl] = await k.db.select({ id: applications.clientId, lang: users.language }).from(applications)
+        .leftJoin(users, eq(users.userId, applications.clientId)).where(eq(applications.code, v.caseRef));
+      if (cl?.id) {
+        const msg = CUSTODY_SMS[(cl.lang as "rw" | "en" | "fr") ?? "rw"] ?? CUSTODY_SMS.rw;
+        await k.d.notify.notify(k.db, {
+          userId: cl.id, kind: "field.custody_incident", channels: ["sms"],
+          title: msg.title, body: msg.body.replace("{ref}", v.caseRef), link: `/requests/${v.caseRef}`,
+          data: { type: "wrk.custody_incident", vars: { ref: v.caseRef } },
+        });
+      }
+    }
     const [a] = await k.db
       .select({ m: fieldAgents.managerId })
       .from(fieldAgents)
@@ -1275,6 +1287,12 @@ const momoState = (status: string | undefined, cancelled: boolean) =>
           ? "expired"
           : "failed";
 
+/** Neutral wording for a lost/damaged document in our custody (no blame, a clear next step). */
+const CUSTODY_SMS = {
+  en: { title: "An update about your documents", body: "HEBUZA: there is an issue with a document we are holding for request {ref}. Our team will contact you today with the next steps. Sorry for the inconvenience." },
+  rw: { title: "Amakuru ku nyandiko zawe", body: "HEBUZA: hari ikibazo ku nyandiko tubitse ku busabe {ref}. Itsinda ryacu riraguhamagara uyu munsi rikubwire ibikurikiraho. Tubiseguye." },
+  fr: { title: "Information sur vos documents", body: "HEBUZA : un document que nous détenons pour la demande {ref} pose problème. Notre équipe vous contacte aujourd'hui pour la suite. Toutes nos excuses." },
+};
 async function visitInvoices(k: K, id: string) {
   await requireAgent(k);
   const v = await ownVisit(k, id);
@@ -2164,16 +2182,24 @@ async function createVisit(k: K, code: string, b: D.CreateVisitDto) {
       "forbidden",
       "Only the case's agent or a service manager can request a visit.",
     );
-  // shortcut: no district routing — explicit agent, else the first active field agent; route by district when >1 per area.
+  // Routing: explicit agent; else an active field agent covering the visit's district (fewest open visits);
+  // else the least-loaded active field agent.
   let agentId = b.agent_id ?? null;
   if (!agentId) {
-    const [first] = await k.db
-      .select({ id: fieldAgents.userId })
+    const district = (b.district ?? String((app.personalInfo as Record<string, unknown> | null)?.district ?? "")).trim().toLowerCase();
+    const agents = await k.db
+      .select({ id: fieldAgents.userId, districts: fieldAgents.districts, at: fieldAgents.createdAt })
       .from(fieldAgents)
-      .where(isNull(fieldAgents.revokedAt))
-      .orderBy(asc(fieldAgents.createdAt))
-      .limit(1);
-    agentId = first?.id ?? null;
+      .where(isNull(fieldAgents.revokedAt));
+    const open = await k.db
+      .select({ id: fieldVisits.agentUserId, n: dsql<number>`count(*)::int` })
+      .from(fieldVisits)
+      .where(inArray(fieldVisits.status, ["offered", "scheduled", "in_progress"]))
+      .groupBy(fieldVisits.agentUserId);
+    const load = new Map(open.map((o) => [o.id, Number(o.n)]));
+    const local = district ? agents.filter((a) => a.districts.some((d) => d.toLowerCase() === district)) : [];
+    const pool = (local.length ? local : agents).sort((x, y) => (load.get(x.id) ?? 0) - (load.get(y.id) ?? 0) || x.at.localeCompare(y.at));
+    agentId = pool[0]?.id ?? null;
   }
   if (!agentId) throw new AppError(409, "conflict", "No field agent is available.");
   if (!(await isFieldAgent(k.db, agentId)))

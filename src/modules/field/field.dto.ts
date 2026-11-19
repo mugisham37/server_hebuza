@@ -48,6 +48,7 @@ export class CreateVisitDto extends dto(
     window_end: z.string().nullish(),
     checklist: z.array(z.string().max(200)).max(30).nullish(),
     agent_id: z.string().max(64).nullish(),
+    district: z.string().trim().max(64).nullish(),
     priority: z.enum(["normal", "high"]).nullish(),
     offer: z.boolean().nullish(),
   }),
