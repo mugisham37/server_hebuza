@@ -417,6 +417,8 @@ export const applicationEscalations = pgTable("application_escalations", {
 
 export const applicationDocuments = pgTable("application_documents", {
 	documentId: varchar("document_id", { length: 64 }).primaryKey().notNull(),
+	// F-DOC-12: OCR text excerpt + kind suggestion (dormant until OCR_ENDPOINT is set).
+	ocr: jsonb(),
 	applicationId: varchar("application_id", { length: 64 }).notNull(),
 	requirementKey: varchar("requirement_key", { length: 128 }).notNull(),
 	originalFilename: varchar("original_filename", { length: 512 }).notNull(),
@@ -463,6 +465,8 @@ export const applicationDocuments = pgTable("application_documents", {
 
 export const clientDocuments = pgTable("client_documents", {
 	documentId: varchar("document_id", { length: 64 }).primaryKey().notNull(),
+	// F-DOC-12: OCR text excerpt + kind suggestion (dormant until OCR_ENDPOINT is set).
+	ocr: jsonb(),
 	clientId: varchar("client_id", { length: 64 }).notNull(),
 	originalFilename: varchar("original_filename", { length: 512 }).notNull(),
 	storagePath: varchar("storage_path", { length: 1024 }).notNull(),

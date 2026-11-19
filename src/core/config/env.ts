@@ -46,6 +46,9 @@ export const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
+  // F-DOC-12 OCR: POST raw bytes (Content-Type = file MIME) → JSON { text }. Unset → no OCR.
+  OCR_ENDPOINT: z.string().url().optional(),
+  OCR_TOKEN: z.string().optional(),
   METRICS_TOKEN: z.string().min(24).optional(), // OBS-metrics: Bearer token for GET /metrics; unset → 404
   OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(), // OBS-tracing: OTLP/HTTP collector base URL; unset → spans not exported
   NOTIFY_WEBHOOK_TOKEN: z.string().min(24).optional(),

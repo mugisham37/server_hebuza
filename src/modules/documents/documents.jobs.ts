@@ -1,7 +1,11 @@
 // Worker side of documents: finalize presigned uploads (type sniff, scan hook, EXIF strip + thumbnail, activation) and
 // the daily orphan clean-up (port of .ref documents.jobs process_attachment + cleanup_orphan_documents).
 import { Injectable, Logger } from "@nestjs/common";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import { ConfigService } from "@nestjs/config";
+import type { Env } from "../../core/config/env";
+import { applicationDocuments, clientDocuments } from "@/db/schema";
+import { classifyText } from "@/domain/documents/classify";
 import sharp from "sharp";
 import { TxService } from "../../core/db/tx";
 import { Cron, Job, QueueService } from "../../core/queue/queues";
@@ -63,7 +67,27 @@ export class DocumentsJobs {
         this.log.warn({ event: "documents.process_failed", key: t.key, err: String(e) });
       }
     if (j.kind === "case") await this.tx.runAsSystem((db) => activateCaseUpload(db, this.notifications, j));
+    if (j.kind !== "chat" && this.cfg.get("OCR_ENDPOINT", { infer: true }) && (t.mime === "application/pdf" || t.mime.startsWith("image/")))
+      await this.queue.add("bulk", "documents.ocr", { kind: j.kind, id: j.id, key: t.key, mime: t.mime });
     return { status: "ok" };
+  }
+
+  /** F-DOC-12: OCR + kind suggestion. Provider errors retry with backoff; the result is advisory (staff QC decides). */
+  @Job("documents.ocr")
+  async ocr(j: { kind: "case" | "library"; id: string; key: string; mime: string }) {
+    const url = this.cfg.get("OCR_ENDPOINT", { infer: true });
+    if (!url) return { status: "off" };
+    const bytes = Buffer.concat(await (await this.storage.getStream(j.key)).toArray());
+    const token = this.cfg.get("OCR_TOKEN", { infer: true });
+    const r = await fetch(url, { method: "POST", headers: { "content-type": j.mime, ...(token && { authorization: `Bearer ${token}` }) }, body: bytes, signal: AbortSignal.timeout(60_000) });
+    if (!r.ok) throw new Error(`ocr: ${r.status}`);
+    const text = String(((await r.json()) as { text?: string }).text ?? "");
+    const ocr = { excerpt: text.slice(0, 2000), guess: classifyText(text), at: new Date().toISOString() };
+    await this.tx.runAsSystem((db) =>
+      j.kind === "case"
+        ? db.update(applicationDocuments).set({ ocr }).where(eq(applicationDocuments.documentId, j.id))
+        : db.update(clientDocuments).set({ ocr }).where(eq(clientDocuments.documentId, j.id)));
+    return { status: "ok", kind: ocr.guess.kind };
   }
 
   /** F-DOC-06: vault documents expiring in exactly 60 or 30 days (or today) → reminder to the owner, once per day mark. */
