@@ -72,14 +72,14 @@ export class TokenService implements OnModuleInit {
   }
 
   signAccess(u: SessionUser, ttl = ACCESS_TTL_S) {
-    return this.sign({ typ: "access", roles: u.roles, scopes: u.scopes, sid: u.sid, stepUpAt: u.stepUpAt, act: u.act, mfa_enrolled: u.mfa }, u.id, ttl);
+    return this.sign({ typ: "access", roles: u.roles, scopes: u.scopes, sid: u.sid, stepUpAt: u.stepUpAt, act: u.act, mfa_enrolled: u.mfa, active_role: u.activeRole }, u.id, ttl);
   }
 
   // shortcut: access tokens are stateless, so a revoked session keeps access ≤ 10 min; add a Redis sid denylist if that window matters.
   async verifyAccess(token: string): Promise<SessionUser> {
     const p = await this.verify(token, "access");
     const scopes = (p.scopes ?? {}) as SessionUser["scopes"];
-    return { id: p.sub, sid: p.sid, roles: normalizeRoles({ roles: p.roles }), scopes, stepUpAt: typeof p.stepUpAt === "number" ? p.stepUpAt : undefined, act: typeof p.act === "string" ? p.act : undefined, mfa: typeof p.mfa_enrolled === "boolean" ? p.mfa_enrolled : undefined };
+    return { id: p.sub, sid: p.sid, roles: normalizeRoles({ roles: p.roles }), scopes, stepUpAt: typeof p.stepUpAt === "number" ? p.stepUpAt : undefined, act: typeof p.act === "string" ? p.act : undefined, mfa: typeof p.mfa_enrolled === "boolean" ? p.mfa_enrolled : undefined, activeRole: typeof p.active_role === "string" ? (p.active_role as SessionUser["roles"][number]) : undefined };
   }
 
   /** Issued by the auth module after a fresh second factor; checked by AuthGuard on step-up routes. */

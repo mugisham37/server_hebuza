@@ -3,7 +3,7 @@ import { ClsModule, ClsService, ClsStore } from "nestjs-cls";
 import type { IncomingMessage } from "node:http";
 import type { Role } from "@/domain/auth/roles";
 
-export type SessionUser = { id: string; roles: Role[]; scopes: { orgId?: string; partnerId?: string; agentId?: string }; stepUpAt?: number; sid: string; /** real actor id while viewing as this user (read-only) */ act?: string; /** staff 2FA enrolled (→ `mfa_enrolled` claim) */ mfa?: boolean };
+export type SessionUser = { id: string; roles: Role[]; scopes: { orgId?: string; partnerId?: string; agentId?: string }; stepUpAt?: number; sid: string; /** real actor id while viewing as this user (read-only) */ act?: string; /** staff 2FA enrolled (→ `mfa_enrolled` claim) */ mfa?: boolean; /** F-IAM-01 the role chosen in the switcher (→ `active_role`) */ activeRole?: Role };
 export interface RequestStore extends ClsStore { user: SessionUser | null; requestId: string; ip: string; locale: string; http?: boolean; ua?: string; /** F-AUD-03: state before a @Route-audited change (set via auditBefore) */ auditBefore?: unknown }
 export type RequestContext = ClsService<RequestStore>;
 

@@ -16,7 +16,7 @@ export const SessionModel = z.object({
   createdAt: z.string(),
   expiresAt: z.string().nullable(),
 });
-const SessionWithRoles = SessionModel.extend({ roles: z.array(z.string()) });
+const SessionWithRoles = SessionModel.extend({ roles: z.array(z.string()), activeRole: z.string().optional() });
 export const AuthFlowData = z
   .object({
     session: SessionModel,
@@ -185,3 +185,4 @@ export class CodeDto extends dto(CodeIn) {}
 export class MfaVerifyDto extends dto(MfaVerifyIn) {}
 export class StepUpDto extends dto(StepUpIn) {}
 export class ImpersonateDto extends dto(ImpersonateIn) {}
+export class ActiveRoleDto extends dto(z.object({ role: z.string().min(1).max(32) })) {}

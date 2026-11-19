@@ -193,6 +193,13 @@ export class AuthController {
     );
   }
 
+  // F-IAM-01: switch the role this session works as (must be one of the account's roles).
+  @Post("auth/active-role")
+  @Route({ auth: "user", limit: "write", out: z.object({ activeRole: z.string(), roles: z.array(z.string()) }) })
+  activeRole(@Body() b: D.ActiveRoleDto, @CurrentUser() me: SessionUser, @Req() req: Rq, @Res({ passthrough: true }) reply: Rp) {
+    return this.auth.setActiveRole(me, { req, reply }, b.role);
+  }
+
   // IAM-11: throttled client ping on real input; returns the new session end for the expiry warning.
   @Post("auth/activity") @ImpersonationOk()
   @Route({ auth: "user", limit: "read", out: z.object({ expiresAt: z.string() }) })

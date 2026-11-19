@@ -2,6 +2,7 @@
 // family (TokenService), cookies (CookieService), mail/SMS through the outbox (auth.jobs.ts sends them).
 // Error types follow the MSW contract: unauthorized, locked(423), suspended(403), conflict, invalid_code(400),
 // expired(410), invalid_token(400).
+import { ACCESS_COOKIE } from "../../core/auth/cookies";
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { ClsService } from "nestjs-cls";
@@ -106,14 +107,15 @@ export const authErr = {
   unauth: (m = "Not signed in.") => new AppError(401, "unauthenticated", m),
 };
 
-export function sessionModel(u: User, expiresAt: Date | null) {
+export function sessionModel(u: User, expiresAt: Date | null, p?: Pick<SessionUser, "roles" | "activeRole">) {
   return {
     userId: u.userId,
     name: u.name,
     email: u.email ?? u.phoneE164 ?? "",
     phone: u.phoneE164,
     role: u.role,
-    roles: normalizeRoles({ role: u.role }),
+    roles: p?.roles ?? normalizeRoles({ role: u.role }),
+    ...(p?.activeRole ? { activeRole: p.activeRole } : {}),
     isEmailVerified: u.isEmailVerified,
     language: u.language,
     customerNo: u.customerNo ?? null,
@@ -201,21 +203,39 @@ export class AuthService {
     const id = u.userId;
     const [r] = (await tx.execute(sql`select
       (select data->'extraRoles' from system_records where kind = 'userMeta' and id = ${id}) as grants,
+      (select coalesce(jsonb_agg(role), '[]'::jsonb) from user_roles where user_id = ${id} and (expires_at is null or expires_at > now())) as extra,
+      (select active_role from auth_sessions where id = ${sid}) as active,
       (select data->>'activeOrgId' from system_records where kind = 'acct' and id = ${id + ":orgs"}) as org,
       exists (select 1 from partner_profiles where user_id = ${id}) as partner,
       coalesce((select twofa_enabled from staff_profiles where user_id = ${id}), false) as mfa,
       exists (select 1 from agent_profiles where user_id = ${id}) or exists (select 1 from field_agents where user_id = ${id} and revoked_at is null) as agent`)) as unknown as {
-      grants: { role: string; expiresAt: string | null }[] | null; org: string | null; partner: boolean; agent: boolean; mfa: boolean;
+      grants: { role: string; expiresAt: string | null }[] | null; extra: string[] | null; active: string | null; org: string | null; partner: boolean; agent: boolean; mfa: boolean;
     }[]; // cast: execute() rows are untyped
     const grants = (r?.grants ?? []).filter((g) => !g.expiresAt || Date.parse(g.expiresAt) > Date.now()).map((g) => g.role);
+    const roles = normalizeRoles({ roles: [u.role, ...grants, ...(r?.extra ?? [])] });
     const su: SessionUser = {
       id, sid, act: view?.act,
-      roles: normalizeRoles({ roles: [u.role, ...grants] }),
+      roles,
+      activeRole: roles.find((x) => x === r?.active) ?? roles[0],
       scopes: { ...(r?.org && { orgId: r.org }), ...(r?.partner && { partnerId: id }), ...(r?.agent && { agentId: id }) },
       mfa: !!r?.mfa, // the web proxy sends un-enrolled staff to 2FA setup (fails closed in production without this claim)
     };
     const ttl = view ? Math.max(1, Math.min(ACCESS_TTL_S, Math.floor((view.until.getTime() - Date.now()) / 1000))) : ACCESS_TTL_S;
     return { su, ttl, token: this.tokens.signAccess(su, ttl), expiresAt: new Date(Date.now() + ttl * 1000) };
+  }
+
+  /** F-IAM-01 role switcher: the session works as one of the account's roles; a fresh access token carries it. */
+  async setActiveRole(me: SessionUser, h: Http, role: string) {
+    if (!me.roles.includes(role as SessionUser["roles"][number])) throw authErr.validation("You don't hold that role.");
+    return this.txs.run(async (tx) => {
+      await tx.update(authSessions).set({ activeRole: role }).where(eq(authSessions.id, me.sid));
+      const u = await this.getUser(tx, me.id);
+      if (!u) throw authErr.unauth("Sign in again.");
+      const a = await this.access(tx, u, me.sid);
+      this.setCookie(h.reply, ACCESS_COOKIE, await a.token, a.ttl);
+      await this.audit.record(tx, { action: "auth.active_role.changed", entity: "user", entityId: me.id, after: { role } });
+      return { activeRole: a.su.activeRole ?? role, roles: a.su.roles };
+    });
   }
 
   /** New sign-in: auth_sessions row (= refresh family) first, then refresh + access cookies. */
@@ -868,7 +888,7 @@ export class AuthService {
     if (me) {
       const { u, ends } = await this.txs.run(async (tx) => ({ u: await this.getUser(tx, me.id), ends: await this.tokens.sessionEndsAt(tx, me.sid) }));
       if (!u || !u.isActive) throw authErr.unauth();
-      return { session: sessionModel(u, ends) };
+      return { session: sessionModel(u, ends, me) };
     }
     const raw = h.req.cookies?.[REFRESH_COOKIE];
     if (!raw) throw authErr.unauth();
@@ -884,7 +904,7 @@ export class AuthService {
         const u = target && target.isActive ? target : actor;
         const a = await this.access(tx, u, r.sid, u === actor ? undefined : { act: actor.userId, until: new Date(imp!.until) });
         this.cookies.set(h.reply, await a.token, r.refresh);
-        return { session: sessionModel(u, r.endsAt) };
+        return { session: sessionModel(u, r.endsAt, a.su) };
       });
     } catch (e) {
       this.cookies.clear(h.reply);
