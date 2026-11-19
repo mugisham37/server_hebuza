@@ -1,4 +1,5 @@
 // Sysadmin identity actions on another account: sessions, trusted devices, forced password reset, view-as.
+import { OutboxService } from "../../core/db/outbox";
 import { Injectable } from "@nestjs/common";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import {
@@ -30,6 +31,7 @@ export class AuthAdminService {
   constructor(
     private readonly auth: AuthService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
   ) {}
 
   private async target(tx: Tx, id: string) {
@@ -244,6 +246,17 @@ export class AuthAdminService {
         action: "access.impersonation.ended",
         entity: "user",
         entityId: hit.targetId,
+      });
+      // F-IAM-15: the user is told afterwards that support viewed their account, and why.
+      await this.outbox.add(tx, {
+        type: "notifications.deliver",
+        payload: {
+          userId: hit.targetId, kind: "security", channels: ["email"],
+          title: "HEBUZA support viewed your account",
+          body: `A support team member viewed your account as you on ${hit.startedAt.slice(0, 10)}. Reason: ${hit.reason}. Nothing was changed on your behalf without your request. Contact us if you did not ask for help.`,
+          link: "/settings/security",
+          data: { type: "security.impersonation_ended", vars: { date: hit.startedAt.slice(0, 10) } },
+        },
       });
       return { ended: true, targetId: hit.targetId };
     });
