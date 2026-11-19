@@ -37,6 +37,11 @@ export class ApplicationsController {
   detail(@Param("code") code: string, @CurrentUser() me: SessionUser) {
     return this.svc.detail(me, code);
   }
+  @Post("applications/:code/cancel")
+  @Route({ auth: ["client"], permission: "req.case.read", audit: "application.cancel", limit: "write", out: D.CancelOut })
+  cancel(@Param("code") code: string, @Body() b: D.CancelDto, @CurrentUser() me: SessionUser) {
+    return this.svc.cancel(me, code, b.reason);
+  }
   @Get("track/:code")
   @Route({ auth: "public", limit: "read", out: D.TrackOut })
   track(@Param("code") code: string) {

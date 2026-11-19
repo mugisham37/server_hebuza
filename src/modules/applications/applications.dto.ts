@@ -22,7 +22,12 @@ export const Detail = Summary.extend({
   needs: z.array(Need), payments: z.array(PaymentLine),
   timeline: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["done", "current", "upcoming"]), at: z.string().nullable() })),
   deliverables: z.array(z.object({ id: z.string(), name: z.string(), size: z.number().int(), released: z.boolean(), at: z.string() })),
+  outcome_ref: z.string().nullable(), outcome_institution: z.string().nullable(), outcome_at: z.string().nullable(),
+  cancel_mode: z.enum(["cancel", "request"]).nullable(),
 }).meta({ id: "ClientApplicationDetail" });
+export const CancelIn = z.object({ reason: z.string().trim().min(3).max(1000) });
+export class CancelDto extends dto(CancelIn) {}
+export const CancelOut = z.object({ state: z.enum(["cancelled", "requested"]) });
 
 const PersonalInfo = z.object({
   fullName: z.string().max(255).optional(), nationalId: z.string().max(32).optional(), dob: z.string().max(32).optional(),

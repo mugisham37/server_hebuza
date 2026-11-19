@@ -31,6 +31,7 @@ import {
   recList,
   recPut,
   saveCase,
+  releaseDeliverables,
   servicesBySlug,
   type AgentRow,
   type CaseRow,
@@ -233,7 +234,8 @@ export type Leave = {
   approvalId?: string;
 };
 export type Approval = {
-  kind: "leave" | "skill" | "due";
+  kind: "leave" | "skill" | "due" | "cancel";
+  /** For "cancel" this is the requesting client. */
   agentId: string;
   agentName: string;
   state: "pending" | "approved" | "declined";
@@ -330,6 +332,12 @@ export async function decideApproval(
       }
     }
   }
+  // REQ-11: an approved client cancellation request cancels the case as manager (refund follows via RFD).
+  if (a.kind === "cancel" && a.ref && state === "approved" && p.state === "pending") {
+    const r = await loadCase(db, a.ref, true);
+    await ctx.transition(r.app, "cancelled", {}, `Client request: ${a.reason}`);
+    await saveCase(db, r, { cancellationReason: a.reason });
+  }
   const out = await recPut<Approval>(db, "approval", {
     ...p,
     state,
@@ -339,8 +347,8 @@ export async function decideApproval(
     await notify(db, {
       userId: a.agentId,
       kind: "approval",
-      title: `Your ${a.kind} request was ${state}`,
-      href: "/agent/profile",
+      title: a.kind === "cancel" ? `Your cancellation request for ${a.ref} was ${state}` : `Your ${a.kind} request was ${state}`,
+      href: a.kind === "cancel" ? `/requests/${a.ref}` : "/agent/profile",
     });
   ctx.audit = { resourceId: id, details: { kind: a.kind, state } };
   return approvalOut(out);
@@ -652,6 +660,7 @@ async function applyToCase(
       const last = sl.versions.at(-1);
       if (last) last.state = "approved";
     }
+  if (review === "released") await releaseDeliverables(ctx.db, r, ctx.session!.id);
   await saveCase(ctx.db, r, {
     status,
     ...(status === "completed_delivered" && { completedAt: now }),

@@ -38,6 +38,7 @@ import {
   recList,
   recPut,
   saveCase,
+  releaseDeliverables,
   servicesBySlug,
   type AgentRow,
   type CaseRow,
@@ -860,6 +861,8 @@ export async function outcome(
     state: NonNullable<OpsX["outcome"]>["state"];
     note?: string;
     evidence?: string | null;
+    ref?: string;
+    institution?: string;
   },
 ) {
   const { r } = await myCase(ctx.db, ctx.session!, code, true);
@@ -877,7 +880,13 @@ export async function outcome(
     at: iso(),
     evidence: b.evidence ?? null,
   };
-  await saveCase(ctx.db, r);
+  // REQ-06: the client reads these columns (applications.clientDetail).
+  await saveCase(ctx.db, r, {
+    externalOutcome: b.state === "more_info" ? "more_info_requested" : b.state,
+    externalOutcomeRef: b.ref ?? null,
+    externalOutcomeInstitution: b.institution ?? null,
+    externalOutcomeAt: r.x.outcome.at,
+  });
   await wlog(
     ctx.db,
     ctx.session!,
@@ -1352,6 +1361,7 @@ export async function uploadDeliverable(
     at: iso(),
     state: "uploading", // → "uploaded" once the stored object is confirmed (submitReview)
     storageKey,
+    type: b.type,
   });
   await saveCase(ctx.db, r);
   await deps.scan(ctx.db, storageKey);
@@ -1410,6 +1420,7 @@ export async function submitReview(deps: Deps, ctx: Ctx, code: string) {
     }
     r.x.review = { state: "released", at: iso() };
     r.x.previous = r.app.status as CaseStatus;
+    await releaseDeliverables(ctx.db, r, s.id);
     await deps.apps.transition(ctx.db, null, r.app, "completed_delivered", "system", { deliverablesUploaded: r.x.slots.filter((x) => x.versions.length).length });
     await saveCase(ctx.db, r, {
       status: "completed_delivered",

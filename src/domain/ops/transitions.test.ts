@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canMove, commonMoves, movesFor } from "./transitions";
+import { canMove, clientCancelMode, commonMoves, movesFor } from "./transitions";
 import { normalizeStatus } from "../domain/case-status";
 
 describe("case status", () => {
@@ -43,5 +43,13 @@ describe("case transitions", () => {
     const r = commonMoves([{ status: "in_progress", deliverablesUploaded: 1 }, { status: "in_progress" }], "assignee");
     expect(r.allowed).toContain("on_hold");
     expect(r.blockedCount.awaiting_internal_review).toBe(1);
+  });
+});
+
+describe("clientCancelMode", () => {
+  it("cancel early, request late, nothing when done", () => {
+    expect(clientCancelMode("received")).toBe("cancel");
+    expect(clientCancelMode("in_progress")).toBe("request");
+    expect(clientCancelMode("completed_delivered")).toBeNull();
   });
 });

@@ -74,6 +74,8 @@ export class OutcomeDto extends dto(
     state: z.enum(["pending", "approved", "rejected", "more_info"]),
     note: z.string().max(2000).optional(),
     evidence: z.string().max(500).nullish(),
+    ref: z.string().max(128).optional(),
+    institution: z.string().max(255).optional(),
   }),
 ) {}
 export class FieldVisitDto extends dto(

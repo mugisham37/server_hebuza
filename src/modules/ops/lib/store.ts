@@ -15,7 +15,9 @@ import {
   opsCaseMeta,
   opsClientProfiles,
   opsRecords,
+  deliverables,
 } from "@/db/schema";
+import { statusEffects } from "@/modules/applications/status-effects";
 import type { CaseStatus } from "@/domain/domain/case-status";
 import type { ChecklistItem } from "@/domain/ops/completeness";
 import type { Agent } from "@/domain/ops/ranking";
@@ -44,6 +46,7 @@ export type DeliverableVersion = {
   state: "uploading" | "uploaded" | "returned" | "approved";
   comment?: string;
   storageKey?: string;
+  type?: string;
 };
 export type DeliverableSlot = {
   key: string;
@@ -288,7 +291,7 @@ export async function saveCase(
   if (Object.keys(appPatch).length) {
     await db
       .update(applications)
-      .set({ ...appPatch, updatedAt: now })
+      .set({ ...appPatch, updatedAt: now, ...(appPatch.status && appPatch.status !== c.app.status ? statusEffects(appPatch.status) : {}) })
       .where(eq(applications.applicationId, c.app.applicationId));
     Object.assign(c.app, appPatch, { updatedAt: now });
   }
@@ -698,4 +701,32 @@ export async function holidays(db: Exec) {
     .from(complianceHolidays)
     .where(gte(complianceHolidays.day, `${new Date().getUTCFullYear() - 1}-01-01`));
   return new Set(rows.map((r) => r.day));
+}
+
+/**
+ * DLV-01/04/09: on release, every slot's approved latest version becomes a client-visible `deliverables` row
+ * (the client "Results" tab reads only that table). Idempotent per slot+version. Downloads stay locked while a
+ * balance is due (documents.service checks the payment gate), so release never leaks unpaid work.
+ */
+export async function releaseDeliverables(db: Exec, c: CaseRow, by: string | null) {
+  const now = new Date().toISOString();
+  const rows = c.x.slots.flatMap((sl) => {
+    const v = sl.versions.at(-1);
+    if (!v?.storageKey || v.state !== "approved") return [];
+    return [{
+      id: `dlv_${c.app.applicationId}_${sl.key}_${v.v}`.slice(0, 64),
+      applicationId: c.app.applicationId,
+      title: sl.label || v.name,
+      storagePath: v.storageKey,
+      mimeType: v.type ?? "application/octet-stream",
+      fileSizeBytes: v.size,
+      version: sl.versions.length,
+      issuer: "HEBUZA",
+      releasedAt: now,
+      createdBy: by,
+      createdAt: now,
+    }];
+  });
+  if (rows.length) await db.insert(deliverables).values(rows).onConflictDoNothing({ target: deliverables.id });
+  return rows.length;
 }

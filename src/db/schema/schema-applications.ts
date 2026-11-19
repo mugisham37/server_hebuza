@@ -59,3 +59,29 @@ export const supportTicketMessages = pgTable("support_ticket_messages", {
   body: text().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
 }, (t) => [index("ix_support_ticket_messages_ticket").on(t.ticketId, t.createdAt)]);
+
+/** REQ-02/03: one basket submission = one group (RG-YYYY-NNNNNN) holding N cases (applications.group_id). */
+export const requestGroupRefSeq = pgSequence("request_group_ref_seq", { startWith: 1 });
+export const requestGroups = pgTable("request_groups", {
+  id: varchar({ length: 64 }).primaryKey().notNull(),
+  code: varchar({ length: 32 }).notNull().unique("uq_request_groups_code"),
+  clientId: varchar("client_id", { length: 64 }).references(() => users.userId, { onDelete: "set null" }),
+  totalAmountRwf: integer("total_amount_rwf").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull(),
+}, (t) => [index("ix_request_groups_client").on(t.clientId)]);
+
+/** CRM-01: gapless customer numbers per registration year. */
+export const customerSequences = pgTable("customer_sequences", {
+  year: integer().primaryKey().notNull(),
+  n: integer().notNull(),
+});
+
+/** REQ-10: one-time code sent to a guest case's phone before a signed-in client may claim it. */
+export const applicationClaimOtps = pgTable("application_claim_otps", {
+  applicationId: varchar("application_id", { length: 64 }).primaryKey().notNull().references(() => applications.applicationId, { onDelete: "cascade" }),
+  userId: varchar("user_id", { length: 64 }).notNull().references(() => users.userId, { onDelete: "cascade" }),
+  codeHash: varchar("code_hash", { length: 64 }).notNull(),
+  attempts: integer().default(0).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true, mode: "string" }).notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }).notNull(),
+});

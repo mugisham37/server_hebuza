@@ -516,6 +516,10 @@ export const users = pgTable("users", {
 	language: varchar({ length: 8 }).notNull(),
 	createdAt: timestamp("created_at", { withTimezone: true, mode: 'string' }).notNull(),
 	updatedAt: timestamp("updated_at", { withTimezone: true, mode: 'string' }).notNull(),
+	/** CRM-01/IAM-24: HBC-YYYY-NNNNNN-C, assigned at signup (clients) and on guest claim. */
+	customerNo: varchar("customer_no", { length: 24 }).unique("uq_users_customer_no"),
+	/** IAM-20: account deletion runs at this time unless the user signs in / cancels first. */
+	deletionScheduledAt: timestamp("deletion_scheduled_at", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	unique("uq_users_email_role").on(table.email, table.role),
 	unique("uq_users_phone_role").on(table.phoneE164, table.role),
@@ -728,6 +732,18 @@ export const applications = pgTable("applications", {
 	basisAmountRwf: bigint("basis_amount_rwf", { mode: "number" }),
 	priceBandId: varchar("price_band_id", { length: 64 }),
 	priceBandSnapshot: jsonb("price_band_snapshot"),
+	/** REQ-08: set while the case sits in a pausesSla status; slaPausedMs = total paused time so far. */
+	slaPausedAt: timestamp("sla_paused_at", { withTimezone: true, mode: 'string' }),
+	slaPausedMs: bigint("sla_paused_ms", { mode: "number" }).default(0).notNull(),
+	/** REQ-16: frozen snapshot written once on completed_delivered. */
+	completionRecord: jsonb("completion_record"),
+	/** REQ-06: what the external institution decided, as the agent recorded it. */
+	externalOutcome: varchar("external_outcome", { length: 32 }),
+	externalOutcomeRef: varchar("external_outcome_ref", { length: 128 }),
+	externalOutcomeInstitution: varchar("external_outcome_institution", { length: 255 }),
+	externalOutcomeAt: timestamp("external_outcome_at", { withTimezone: true, mode: 'string' }),
+	/** REQ-02: the basket submission this case belongs to (request_groups.id). */
+	groupId: varchar("group_id", { length: 64 }),
 }, (table): PgTableExtraConfigValue[] => [ // annotated: applications ⇄ assignment history FK cycle
 	index("ix_applications_assigned_agent_id").using("btree", table.assignedAgentId.asc().nullsLast()),
 	index("ix_applications_assigned_partner_id").using("btree", table.assignedPartnerId.asc().nullsLast()),

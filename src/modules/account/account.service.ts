@@ -5,6 +5,7 @@ import { Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import {
+  applicationClaimOtps,
   applicationDocuments,
   applications,
   notifications,
@@ -20,6 +21,10 @@ import { AppError, forbidden, notFound } from "../../core/http/errors";
 import type { Tx } from "../../core/db/db";
 import { TxService } from "../../core/db/tx";
 import { AuditService } from "../../core/db/audit";
+import { OutboxService } from "../../core/db/outbox";
+import { CryptoService } from "../../core/crypto/crypto.service";
+import { checkOtp, newOtp } from "../../core/auth/otp";
+import { assignCustomerNo } from "../../core/db/customer-no";
 import { StorageService } from "../../core/storage/storage.service";
 import { normalizePhone } from "../auth/auth.rules";
 
@@ -78,6 +83,8 @@ export class AccountService {
     private readonly txs: TxService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
+    private readonly outbox: OutboxService,
+    private readonly crypto: CryptoService,
   ) {}
 
   private async getDoc<T>(
@@ -337,7 +344,8 @@ export class AccountService {
   }
 
   // ── guest application claim ──
-  claim(me: SessionUser, b: { code: string; phone: string }) {
+  /** REQ-10: step 1 (no otp) texts a code to the case's phone; step 2 (otp) verifies it, then links the case. */
+  claim(me: SessionUser, b: { code: string; phone: string; otp?: string }) {
     const code = b.code.trim().toUpperCase();
     return this.txs.run(async (tx) => {
       // RLS hides unowned rows; the SECURITY DEFINER functions (migration 0005) expose only `client_id is null` rows by code.
@@ -345,14 +353,33 @@ export class AccountService {
       const phone = (a?.info as { phone?: unknown } | null)?.phone;
       if (!a || typeof phone !== "string" || phoneKey(phone) !== phoneKey(b.phone))
         throw new AppError(404, "not_found", "Application not found for that phone number.");
+      if (!b.otp) {
+        const [prev] = await tx.select().from(applicationClaimOtps).where(eq(applicationClaimOtps.applicationId, a.id));
+        if (prev && Date.now() - Date.parse(prev.sentAt) < 60_000)
+          throw new AppError(429, "rate_limited", "Wait before sending another code.", undefined, { retryAfterSeconds: 60 });
+        const o = newOtp();
+        const row = { applicationId: a.id, userId: me.id, codeHash: o.hash, attempts: 0, expiresAt: o.expiresAt.toISOString(), sentAt: new Date().toISOString() };
+        await tx.insert(applicationClaimOtps).values(row).onConflictDoUpdate({ target: applicationClaimOtps.applicationId, set: row });
+        await this.outbox.add(tx, {
+          type: "auth.sms",
+          queue: "critical",
+          payload: this.crypto.seal({ to: phone, text: `HEBUZA code to claim ${code}: ${o.code}. Valid 10 minutes.` }, ["text"]),
+        });
+        return { claimed: false, otpSent: true };
+      }
+      const [own] = await tx.select({ u: applicationClaimOtps.userId }).from(applicationClaimOtps).where(eq(applicationClaimOtps.applicationId, a.id));
+      const res = own?.u === me.id ? await checkOtp(tx, applicationClaimOtps, applicationClaimOtps.applicationId, a.id, b.otp) : "dead";
+      if (res !== "ok") throw new AppError(422, "otp_invalid", res === "dead" ? "The code expired. Request a new one." : "Wrong code.");
+      await tx.delete(applicationClaimOtps).where(eq(applicationClaimOtps.applicationId, a.id));
       const [c] = (await tx.execute(sql`select claim_application(${a.id}) as ok`)) as unknown as { ok: boolean }[]; // cast: execute() rows are untyped
       if (!c?.ok) throw new AppError(409, "conflict", "This application was already claimed.");
+      await assignCustomerNo(tx, me.id);
       await this.audit.record(tx, {
         action: "application.claimed",
         entity: "application",
         entityId: code,
       });
-      return { claimed: true };
+      return { claimed: true, otpSent: false };
     });
   }
 

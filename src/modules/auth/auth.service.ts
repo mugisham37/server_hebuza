@@ -52,6 +52,7 @@ import {
   type IdentifierType,
 } from "./auth.rules";
 import { iso } from "../../core/db/ids";
+import { assignCustomerNo } from "../../core/db/customer-no";
 
 export const CFG = {
   otpMaxAttempts: 3,
@@ -453,6 +454,7 @@ export class AuthService {
           updatedAt: t,
         })
         .returning();
+      await assignCustomerNo(tx, u.userId);
       await tx.insert(termsAcceptances).values({
         id: genId("terms"),
         userId: u.userId,

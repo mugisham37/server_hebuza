@@ -1,6 +1,7 @@
 // Port of .ref applications.service (client side: submit, list, detail, track) plus the client aggregates
 // (/me/dashboard, /me/activity). Query functions take the caller's tx (RLS applies); ApplicationsService runs them.
 // Status changes go through `transition()` → the shared machine in @/domain/ops/transitions.
+import { statusEffects } from "./status-effects";
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { randomInt, randomUUID } from "node:crypto";
@@ -42,7 +43,9 @@ import {
   normalizeStatus,
   type CaseStatus,
 } from "@/domain/domain/case-status";
-import { movesFor, type Actor, type CaseFacts } from "@/domain/ops/transitions";
+import { clientCancelMode, movesFor, type Actor, type CaseFacts } from "@/domain/ops/transitions";
+import { openApproval, type Approval } from "../ops/ops.manage";
+import { recList } from "../ops/lib/store";
 import type { Env } from "../../core/config/env";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import type { Tx } from "../../core/db/db";
@@ -483,15 +486,15 @@ export async function dashboard(db: Tx, s: SessionUser) {
   };
 }
 
-/** External outcome as the client sees it. shortcut: no outcome column yet (P5 agent "outcome" writes it); derived from status. */
-const outcomeOf = (s: CaseStatus) =>
-  s === "completed_delivered"
+/** External outcome as the client sees it: the agent's recorded outcome (REQ-06), else derived from status. */
+const outcomeOf = (s: CaseStatus, a?: App) =>
+  a?.externalOutcome ?? (s === "completed_delivered"
     ? "approved"
     : s === "rejected"
       ? "rejected"
       : s === "in_progress" || s === "awaiting_external_institution"
         ? "pending"
-        : "none";
+        : "none");
 
 export async function clientDetail(db: Tx, s: SessionUser | null, code: string) {
   const a = await readableApp(db, s, code);
@@ -528,7 +531,11 @@ export async function clientDetail(db: Tx, s: SessionUser | null, code: string) 
       .replace(/_/g, " ")
       .replace(/^\w/, (c) => c.toUpperCase()),
     assignee_name: b.agent,
-    outcome: outcomeOf(st),
+    outcome: outcomeOf(st, a),
+    outcome_ref: a.externalOutcomeRef,
+    outcome_institution: a.externalOutcomeInstitution,
+    outcome_at: a.externalOutcomeAt,
+    cancel_mode: clientCancelMode(st),
     needs: needsFor(a, b.reqs, b.balance),
     payments: paymentsFor(a, b.pr, b.balance),
     timeline: timeline(a, history).map((t, i) => ({
@@ -800,7 +807,7 @@ export async function transitionTx(
   const ts = new Date().toISOString();
   const done = await db
     .update(applications)
-    .set({ status: to, updatedAt: ts, ...(to === "completed_delivered" ? { completedAt: ts } : {}) })
+    .set({ status: to, updatedAt: ts, ...(to === "completed_delivered" ? { completedAt: ts } : {}), ...statusEffects(to) })
     .where(and(eq(applications.applicationId, a.applicationId), eq(applications.status, a.status)))
     .returning({ id: applications.applicationId });
   if (!done.length) throw err.conflict("The case changed meanwhile. Reload and try again.");
@@ -1104,6 +1111,28 @@ export class ApplicationsService {
   }
   track(code: string) {
     return this.tx.run((db) => track(db, code));
+  }
+
+  /** REQ-11: the owner cancels before work starts, or asks a manager to (ops approvals, kind "cancel") once it has. */
+  cancel(s: SessionUser, code: string, reason: string) {
+    return this.tx.run(async (db) => {
+      const a = await appByCode(db, code, { forUpdate: true });
+      if (!a || a.clientId !== s.id) throw err.notFound("Application not found");
+      const mode = clientCancelMode(normalizeStatus(a.status));
+      if (mode === "cancel") {
+        await this.transition(db, s, a, "cancelled", "client", { workStarted: false }, reason);
+        await db.update(applications).set({ cancellationReason: reason }).where(eq(applications.applicationId, a.applicationId));
+        // shortcut: a paid case needs a refund request (RFD); finance owns that flow, ops sees the cancelled+paid case meanwhile.
+        return { state: "cancelled" as const };
+      }
+      if (mode === "request") {
+        const open = (await recList<Approval>(db, "approval")).some((r) => r.data.kind === "cancel" && r.data.ref === a.code && r.data.state === "pending");
+        if (!open) await openApproval(db, { kind: "cancel", agentId: s.id, reason, ref: a.code, service: a.serviceName });
+        await this.audit.record(db, { action: "application.cancel_requested", entity: "application", entityId: a.applicationId, reason });
+        return { state: "requested" as const };
+      }
+      throw new AppError(409, "invalid_transition", "This request can no longer be cancelled.");
+    });
   }
   verifyTrack(code: string, contact: string) {
     return this.tx.run((db) => verifyTrack(db, code, contact));
