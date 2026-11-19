@@ -139,6 +139,8 @@ const summaryShape = {
   delivery_mode: s,
   seo: z.record(z.string(), z.object({ title: z.string().optional(), description: z.string().optional(), og_image: z.string().optional() })),
   related_slugs: z.array(z.string()),
+  fee_explainer: L3.nullable(),
+  markets: z.array(z.string()),
 };
 export const ServiceSummaryOut = z
   .object(summaryShape)
@@ -275,6 +277,8 @@ export const UpdateServiceIn = CreateServiceIn.omit({ slug: true, is_featured: t
     delivery_mode: z.enum(["online", "in_person", "hybrid"]).nullable().optional(),
     seo: z.partialRecord(z.enum(["rw", "en", "fr"]), SeoL).nullable().optional(),
     related_slugs: z.array(Slug).max(6).nullable().optional(),
+    fee_explainer: L3.nullable().optional(),
+    markets: z.array(z.string().regex(/^[A-Za-z]{2}$/)).min(1).max(20).nullable().optional(),
   });
 export const SearchQuery = z.object({
   q: z.string().max(100).optional(),

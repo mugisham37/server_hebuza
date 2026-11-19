@@ -1209,6 +1209,16 @@ export class CmsService {
       .where(eq(cmsSiteSettings.id, SETTINGS_ID));
     return r?.doc ?? DEFAULT_SETTINGS;
   }
+  /** Public (F-CMS-07): header/mobile/footer nav + site settings for the web layout; tags cms:nav / cms:settings. */
+  publicSite() {
+    return this.cache.get("cms", "site", () =>
+      this.read(async (tx) => {
+        const rows = await tx.select().from(cmsNav);
+        const nav = Object.fromEntries(rows.map((r) => [r.location, r.items])) as Partial<Record<NavLocation, NavNode[]>>;
+        return { nav: { header: nav.header ?? [], mobile: nav.mobile ?? [], footer: nav.footer ?? [] }, settings: await this.settings(tx) };
+      }),
+    );
+  }
   getSiteSettings() {
     return this.read((tx) => this.settings(tx));
   }

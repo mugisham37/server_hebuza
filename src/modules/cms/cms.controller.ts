@@ -203,6 +203,11 @@ export class CmsController {
   publicEntries() {
     return this.svc.publicEntries();
   }
+  @Get("content/site")
+  @Route({ auth: "public", limit: "read" })
+  site() {
+    return this.svc.publicSite();
+  }
   @Get("content/manifest")
   @Route({ auth: "public", limit: "read" })
   manifest() {

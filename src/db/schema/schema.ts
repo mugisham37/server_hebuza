@@ -312,6 +312,9 @@ export const services = pgTable("services", {
 	// F-CAT-07 per-locale SEO {rw|en|fr: {title, description, og_image}}; F-CAT-09 manual related service slugs.
 	seo: jsonb().default({}).notNull(),
 	relatedSlugs: jsonb("related_slugs").default([]).notNull(),
+	// F-CAT-13 approved indicative-fee explainer {rw,en,fr}; F-CAT-14 markets served (ISO country codes, e.g. ["RW","UG"]).
+	feeExplainer: jsonb("fee_explainer"),
+	markets: jsonb().default(["RW"]).notNull(),
 	// F-CAT-06 search haystack (needs CREATE EXTENSION pg_trgm in the migration for the GIN index below).
 	searchText: text("search_text").generatedAlwaysAs(sql`lower(coalesce(name, '') || ' ' || coalesce(name_rw, '') || ' ' || coalesce(name_en, '') || ' ' || coalesce(name_fr, '') || ' ' || coalesce(short_description_rw, '') || ' ' || coalesce(short_description_en, '') || ' ' || coalesce(short_description_fr, '') || ' ' || category)`),
 }, (table) => [

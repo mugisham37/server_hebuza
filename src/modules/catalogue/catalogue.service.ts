@@ -213,6 +213,8 @@ function summary(s: Loaded, volume = 0) {
     delivery_mode: s.deliveryMode,
     seo: s.seo as Partial<Record<keyof L3, { title?: string; description?: string; og_image?: string }>>,
     related_slugs: s.relatedSlugs as string[],
+    fee_explainer: (s.feeExplainer as L3 | null) ?? null,
+    markets: s.markets as string[],
   };
 }
 const detail = (s: Loaded, volume = 0) => ({
@@ -839,6 +841,8 @@ export type UpdateServiceIn = {
   delivery_mode?: "online" | "in_person" | "hybrid" | null;
   seo?: Partial<Record<keyof L3, { title?: string; description?: string; og_image?: string }>> | null;
   related_slugs?: string[] | null;
+  fee_explainer?: L3 | null;
+  markets?: string[] | null;
 };
 export async function updateService(
   db: Exec,
@@ -892,6 +896,8 @@ export async function updateService(
   if (b.delivery_mode !== undefined) set.deliveryMode = b.delivery_mode;
   if (b.seo != null) set.seo = b.seo;
   if (b.related_slugs != null) set.relatedSlugs = [...new Set(b.related_slugs)].filter((x) => x !== slug);
+  if (b.fee_explainer !== undefined) set.feeExplainer = b.fee_explainer;
+  if (b.markets != null) set.markets = [...new Set(b.markets.map((m) => m.toUpperCase()))];
   await db.update(services).set(set).where(eq(services.serviceId, s.serviceId));
   // Keep the draft's copy in step so the builder shows what was just saved.
   const d = draftOf(s);

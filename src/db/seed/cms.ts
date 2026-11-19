@@ -22,6 +22,95 @@ const base = (id: string, type: CmsEntry["type"], key: string, at: string, rest:
   id, type, key, ownerId: AUTHOR, serviceSlugs: [], tags: [], aiApproved: true, serviceFacts: false, blocks: [], meta: {}, variants: {}, version: 1, createdAt: at, ...rest,
 });
 
+// Legal docs (F-CMS-14): headings from the old web placeholder; the body says it awaits legal review (D-08), so
+// /legal/* renders instead of 404ing until legal publishes the reviewed wording in the CMS.
+const LEGAL_H: Record<"terms" | "privacy" | "cookies" | "disclaimers", Record<Locale, string[]>> = {
+  terms: {
+    en: [
+      "Who we are",
+      "Using HEBUZA",
+      "Requests and payments",
+      "Refunds",
+      "Liability",
+      "Changes to these terms",
+    ],
+    rw: [
+      "Abo turi bo",
+      "Gukoresha HEBUZA",
+      "Ubusabe no kwishyura",
+      "Gusubizwa amafaranga",
+      "Inshingano",
+      "Impinduka kuri aya mabwiriza",
+    ],
+    fr: [
+      "Qui sommes-nous",
+      "Utiliser HEBUZA",
+      "Demandes et paiements",
+      "Remboursements",
+      "Responsabilité",
+      "Modifications",
+    ],
+  },
+  privacy: {
+    en: [
+      "Data we collect",
+      "How we use it",
+      "Who we share it with",
+      "How long we keep it",
+      "Your rights",
+      "Contact",
+    ],
+    rw: [
+      "Amakuru dukusanya",
+      "Uko tuyakoresha",
+      "Abo tuyasangiza",
+      "Igihe tuyabika",
+      "Uburenganzira bwawe",
+      "Twandikire",
+    ],
+    fr: [
+      "Données collectées",
+      "Utilisation",
+      "Partage",
+      "Conservation",
+      "Vos droits",
+      "Contact",
+    ],
+  },
+  cookies: {
+    en: ["What cookies are", "Cookies we use", "Managing cookies"],
+    rw: ["Cookies ni iki", "Cookies dukoresha", "Kugenzura cookies"],
+    fr: ["Qu'est-ce qu'un cookie", "Cookies utilisés", "Gérer les cookies"],
+  },
+  disclaimers: {
+    en: [
+      "Not a government body",
+      "Institution decisions",
+      "Information on this site",
+    ],
+    rw: [
+      "Ntabwo turi urwego rwa Leta",
+      "Ibyemezo by'ibigo",
+      "Amakuru ari kuri uru rubuga",
+    ],
+    fr: [
+      "Pas un organisme public",
+      "Décisions des institutions",
+      "Informations du site",
+    ],
+  },
+};
+const LEGAL_BODY: Record<Locale, string> = {
+  en: "Placeholder legal text. This section will be replaced by the reviewed wording before launch. It is shown so the layout, contents list and translations can be checked.",
+  rw: "Inyandiko y'agateganyo. Iki gice kizasimburwa n'inyandiko yasuzumwe mbere yo gutangira. Kiri hano kugira ngo imiterere n'ubusobanuro bigenzurwe.",
+  fr: "Texte juridique provisoire. Cette section sera remplacée par la rédaction validée avant le lancement. Elle sert à vérifier la mise en page, le sommaire et les traductions.",
+};
+const legalDocs = () => (Object.keys(LEGAL_H) as (keyof typeof LEGAL_H)[]).map((doc) => base(`cms-legal-${doc}`, "legal_doc", doc, "2026-09-01", {
+  aiApproved: false,
+  blocks: LEGAL_H[doc].en.map((_, i) => ({ id: `s${i + 1}`, type: "rich_text" as const })),
+  variants: per((l) => variant(l, doc, LEGAL_H[doc][l][0], Object.fromEntries(LEGAL_H[doc][l].map((title, i) => [`s${i + 1}`, { title, doc: textDoc(LEGAL_BODY[l]) }])), "2026-09-01", { seo: { title: doc, description: doc, robots: "noindex" } })),
+}));
+
 function seedEntries(): CmsEntry[] {
   const guides = GUIDES.map((g) => base(`cms-guide-${g.slug}`, "guide", g.slug, g.date, {
     serviceSlugs: g.service ? [g.service] : [], tags: g.featured ? ["featured"] : [],
@@ -72,7 +161,7 @@ function seedEntries(): CmsEntry[] {
     aiApproved: false, tags: ["home"], meta: {}, blocks: [{ id: "q", type: "quote" }],
     variants: { en: variant("en", "ts-4", "Eric · Kivu Transport Co", { q: { text: "They handled the RDB filing while I kept working.", cite: "Eric · Kivu Transport Co", stars: 5 } }, "2026-10-20", { fallbackAllowed: true }) },
   });
-  return [...guides, ...updates, ...landings, ...faqs, home, testimonial];
+  return [...guides, ...updates, ...landings, ...faqs, home, testimonial, ...legalDocs()];
 }
 
 const seedNav = (): Record<"header" | "mobile" | "footer", NavNode[]> => {
