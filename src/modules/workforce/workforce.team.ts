@@ -73,7 +73,7 @@ export class TeamService {
     });
   }
   publicTeam() {
-    return this.tx.runAsSystem(async (t) => {
+    return this.tx.run(async (t) => {
       const rows = await t.select({ id: users.userId, name: users.name, ws: agentProfiles.ws, active: users.isActive }).from(agentProfiles).innerJoin(users, eq(users.userId, agentProfiles.userId))
         .where(sql`${agentProfiles.ws} -> 'publicProfile' ->> 'status' = 'approved' and ${agentProfiles.ws} -> 'publicProfile' ->> 'optIn' = 'true'`);
       return { items: rows.filter((r) => r.active).map((r) => ({ id: r.id, name: r.name, title: pp(r.ws)!.title, bio: pp(r.ws)!.bio })) };

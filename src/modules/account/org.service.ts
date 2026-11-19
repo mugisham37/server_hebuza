@@ -314,7 +314,7 @@ export class OrgService {
   detail(me: SessionUser, id: string) {
     // Membership is checked under the caller's RLS; the company's shared rows (other reps' cases/docs, invoices) are
     // then read as system, scoped to this company only.
-    return this.txs.run((tx) => this.assertCan(tx, id, me.id, "view")).then((role) => this.txs.runAsSystem((tx) => this.full(tx, id, role)));
+    return this.txs.run((tx) => this.assertCan(tx, id, me.id, "view")).then((role) => this.txs.run((tx) => this.full(tx, id, role)));
   }
 
   private async full(tx: Tx, id: string, myRole: OrgRole | null) {
@@ -370,7 +370,7 @@ export class OrgService {
   /** ORG-07: a company document's download link, for any active representative. */
   docDownload(me: SessionUser, id: string, docId: string) {
     return this.txs.run((tx) => this.assertCan(tx, id, me.id, "view")).then(() =>
-      this.txs.runAsSystem(async (tx) => {
+      this.txs.run(async (tx) => {
         const [d] = await tx.select().from(clientDocuments)
           .where(and(eq(clientDocuments.documentId, docId), eq(clientDocuments.organizationId, id), eq(clientDocuments.isActive, true)));
         if (!d) throw notFound("Document");
@@ -542,7 +542,7 @@ export class OrgService {
 
   /** Invite preview for the accept page (no membership needed; the token is the secret). */
   invitePreview(token: string) {
-    return this.txs.runAsSystem(async (tx) => {
+    return this.txs.run(async (tx) => {
       const [i] = await tx
         .select({
           i: organizationInvites,
@@ -571,7 +571,7 @@ export class OrgService {
   }
 
   accept(me: SessionUser, token: string) {
-    return this.txs.runAsSystem(async (tx) => {
+    return this.txs.run(async (tx) => {
       const [i] = await tx
         .select()
         .from(organizationInvites)

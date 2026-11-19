@@ -43,6 +43,7 @@ jobs:
       S3_SECRET_KEY: ci-secret
       MAIL_FROM: ci@example.test
       PAYMENTS_STUB: "true"
+      RATE_LIMIT_FACTOR: "1000" # matrix makes ~17k calls; limits are tested in their own spec
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

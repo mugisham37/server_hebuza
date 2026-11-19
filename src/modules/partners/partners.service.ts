@@ -752,7 +752,7 @@ export class PartnersService {
 
   /** PRT-13: logos for the public partners strip. */
   publicList() {
-    return this.txs.runAsSystem(async (tx) => ({
+    return this.txs.run(async (tx) => ({
       items: await tx
         .select({
           id: partners.id,

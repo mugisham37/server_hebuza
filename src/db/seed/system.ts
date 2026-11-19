@@ -3507,13 +3507,13 @@ const W = {
     },
     "flags.ai_assistant": {
       key: "flags.ai_assistant",
-      value: false,
+      value: true,
       changedBy: "Innocent Kayitare",
       changedAt: "2026-10-18T22:25:46.025Z",
     },
     "flags.field_cash": {
       key: "flags.field_cash",
-      value: false,
+      value: true,
       changedBy: "Innocent Kayitare",
       changedAt: "2026-10-18T22:25:46.025Z",
     },

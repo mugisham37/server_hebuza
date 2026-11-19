@@ -28,7 +28,7 @@ export class MarketingClientController {
   @Route({ auth: ["client"] })
   async requests(@CurrentUser() me: SessionUser) {
     const ids = await this.mine(me);
-    const ts = await this.txs.runAsSystem((tx) => list<Testimonial>(tx, "testimonial"));
+    const ts = await this.txs.run((tx) => list<Testimonial>(tx, "testimonial"));
     return { items: ts.filter((t) => t.consentRequested && ids.has(t.ratingId)).map((t) => ({ id: t.id, quote: t.excerpt ?? t.quote, stars: t.stars, service: t.serviceSlug })) };
   }
 
@@ -36,7 +36,7 @@ export class MarketingClientController {
   @Route({ auth: ["client"], limit: "write", audit: "testimonial.consent_answered" })
   async answer(@CurrentUser() me: SessionUser, @Param("id") id: string, @Body() b: ConsentDto) {
     const ids = await this.mine(me);
-    return this.txs.runAsSystem(async (tx) => {
+    return this.txs.run(async (tx) => {
       const t = (await list<Testimonial>(tx, "testimonial")).find((x) => x.id === id);
       if (!t || !ids.has(t.ratingId)) throw new AppError(404, "not_found", "Not found.");
       const r = await testimonialConsent(tx, id, b.consent);
