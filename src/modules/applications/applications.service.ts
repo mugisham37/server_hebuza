@@ -48,6 +48,7 @@ import { clientCancelMode, movesFor, type Actor, type CaseFacts } from "@/domain
 import { openApproval, type Approval } from "../ops/ops.manage";
 import { recList } from "../ops/lib/store";
 import { createRefundRequest } from "../finance/finance.cases";
+import { orgCan, type OrgRole } from "@/domain/org/org";
 import type { Env } from "../../core/config/env";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import type { Tx } from "../../core/db/db";
@@ -708,8 +709,18 @@ export async function submitTx(db: Tx, s: SessionUser | null, input: SubmitInput
   let code = generateTrackingCode();
   for (let i = 0; i < 5 && (await publicApp(db, code)); i++) code = generateTrackingCode();
 
+  // ORG: submitting for a company needs an owner/admin seat in it (spec company-profiles §2); 404 otherwise.
+  let organizationId: string | null = null;
+  if (input.organization_id) {
+    if (!s) throw err.notFound("Organisation not found");
+    const [m] = (await db.execute(sql`select role from organization_members where organization_id = ${input.organization_id} and user_id = ${s.id} and status = 'active'`)) as unknown as { role: string }[]; // cast: execute() rows are untyped
+    if (!m) throw err.notFound("Organisation not found");
+    if (!orgCan(m.role as OrgRole, "submit")) throw new AppError(403, "forbidden", "Your role in this company can't submit requests.");
+    organizationId = input.organization_id;
+  }
   const row: typeof applications.$inferInsert = {
     applicationId: generateId("app"),
+    organizationId,
     code,
     serviceId: svc.serviceId,
     structureVersionId: structure.id,
@@ -1180,7 +1191,7 @@ export class ApplicationsService {
   }
 
   /** REQ-02/03: one basket = one request group (RG-YYYY-NNNNNN) with one child case per service, in one tx. */
-  async submitBasket(s: SessionUser, b: { personal_info: SubmitInput["personal_info"]; items: Omit<SubmitInput, "personal_info">[]; idempotency_key?: string | null }) {
+  async submitBasket(s: SessionUser, b: { personal_info: SubmitInput["personal_info"]; items: Omit<SubmitInput, "personal_info">[]; idempotency_key?: string | null; organization_id?: string | null }) {
     const settings = await this.platform.getPublicSettings();
     return this.tx.run(async (db) => {
       const key = b.idempotency_key?.trim() || null;
@@ -1190,7 +1201,7 @@ export class ApplicationsService {
       await db.insert(requestGroups).values({ id, code, clientId: s.id, createdAt: new Date().toISOString() });
       const items = [];
       for (const [i, it] of b.items.entries()) {
-        const out = await this.submitOne(db, s, { ...it, personal_info: b.personal_info, idempotency_key: key ? `${key}:${i}` : it.idempotency_key }, null, settings);
+        const out = await this.submitOne(db, s, { ...it, organization_id: it.organization_id ?? b.organization_id, personal_info: b.personal_info, idempotency_key: key ? `${key}:${i}` : it.idempotency_key }, null, settings);
         await db.update(applications).set({ groupId: id }).where(eq(applications.applicationId, out.application_id));
         items.push(out);
       }

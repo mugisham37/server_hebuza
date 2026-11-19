@@ -39,16 +39,6 @@ type Export = {
   requestedAt: string | null;
   key?: string | null;
 };
-type OrgRole = "owner" | "admin" | "member";
-type Member = {
-  id: string;
-  name: string;
-  contact: string;
-  role: OrgRole;
-  pending?: boolean;
-};
-type Org = { id: string; name: string; members: Member[] };
-type Orgs = { activeOrgId: string | null; orgs: Org[] };
 type Upload = {
   owner: string;
   key: string;
@@ -66,9 +56,6 @@ export async function ownUpload(db: Pick<Tx, "select">, ownerId: string, id: str
   if (!u || u.owner !== ownerId) throw new AppError(422, "validation", "Unknown upload.");
   return { id, name: u.name, href: `/api/files/${id}/${encodeURIComponent(u.name)}` };
 }
-const NO_ORGS: Orgs = { activeOrgId: null, orgs: [] };
-const myRole = (o: Org, me: string): OrgRole =>
-  o.members.find((m) => m.id === me)?.role ?? "member";
 const AVATAR_MAX = 5 * 1024 * 1024;
 const UPLOAD_MAX = 10 * 1024 * 1024;
 const UPLOAD_MIME =
@@ -288,62 +275,6 @@ export class AccountService {
     });
   }
 
-  // ── organisations ──
-  orgs(me: SessionUser) {
-    return this.txs.run(async (tx) => {
-      const d = await this.getDoc<Orgs>(tx, `${me.id}:orgs`, NO_ORGS);
-      return {
-        activeOrgId: d.activeOrgId,
-        orgs: d.orgs.map((o) => ({ ...o, myRole: myRole(o, me.id) })),
-      };
-    });
-  }
-  setActiveOrg(me: SessionUser, orgId: string | null) {
-    return this.txs.run(async (tx) => {
-      const d = await this.getDoc<Orgs>(tx, `${me.id}:orgs`, NO_ORGS, true);
-      if (orgId && !d.orgs.some((o) => o.id === orgId))
-        throw notFound("Organisation");
-      await this.putDoc(tx, `${me.id}:orgs`, { ...d, activeOrgId: orgId });
-      return { activeOrgId: orgId };
-    });
-  }
-  private editOrg(me: SessionUser, orgId: string, fn: (o: Org) => void) {
-    return this.txs.run(async (tx) => {
-      const d = await this.getDoc<Orgs>(tx, `${me.id}:orgs`, NO_ORGS, true);
-      const o = d.orgs.find((x) => x.id === orgId);
-      if (!o) throw notFound("Organisation");
-      if (myRole(o, me.id) === "member") throw forbidden();
-      fn(o);
-      await this.putDoc(tx, `${me.id}:orgs`, d);
-    });
-  }
-  async invite(
-    me: SessionUser,
-    orgId: string,
-    b: { contact: string; role?: "admin" | "member" },
-  ) {
-    // shortcut: invitee recorded as pending, not emailed; add an outbox mail when org accounts ship.
-    await this.editOrg(me, orgId, (o) =>
-      o.members.push({
-        id: `mem_${randomUUID()}`,
-        name: b.contact,
-        contact: b.contact,
-        role: b.role === "admin" ? "admin" : "member",
-        pending: true,
-      }),
-    );
-    return { invited: true };
-  }
-  async removeMember(me: SessionUser, orgId: string, memberId: string) {
-    await this.editOrg(me, orgId, (o) => {
-      o.members = o.members.filter(
-        (m) => m.id !== memberId || m.role === "owner",
-      );
-    });
-    return { removed: true };
-  }
-
-  // ── guest application claim ──
   /** REQ-10: step 1 (no otp) texts a code to the case's phone; step 2 (otp) verifies it, then links the case. */
   claim(me: SessionUser, b: { code: string; phone: string; otp?: string }) {
     const code = b.code.trim().toUpperCase();

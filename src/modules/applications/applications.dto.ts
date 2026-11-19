@@ -37,6 +37,7 @@ const PersonalInfo = z.object({
 export const SubmitIn = z.object({
   service_slug: z.string().min(1).max(128), tier: z.string().min(1).max(32), personal_info: PersonalInfo,
   service_data: z.record(z.string(), z.unknown()).nullish(), idempotency_key: z.string().min(8).max(128).nullish(),
+  organization_id: z.string().max(64).nullish(),
   is_urgent: z.boolean().optional(), preferred_date: z.iso.date().nullish(),
 });
 export const SubmitOut = z.object({
@@ -61,6 +62,7 @@ export const BasketIn = z.object({
   personal_info: PersonalInfo,
   items: z.array(SubmitIn.omit({ personal_info: true })).min(1).max(10),
   idempotency_key: z.string().min(8).max(100).nullish(),
+  organization_id: z.string().max(64).nullish(),
 });
 export class BasketDto extends dto(BasketIn) {}
 export const BasketOut = z.object({ group_code: z.string(), total_amount_rwf: z.number().int(), items: z.array(SubmitOut) });

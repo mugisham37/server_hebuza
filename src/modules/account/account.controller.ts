@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Res } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Res } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
 import { ClsService } from "nestjs-cls";
 import { Route } from "../../core/http/route";
@@ -6,16 +6,18 @@ import { RawResponse } from "../../core/http/envelope.interceptor";
 import { CurrentUser } from "../../core/auth/decorators";
 import type { RequestStore, SessionUser } from "../../core/http/context";
 import { AccountService } from "./account.service";
+import { OrgService } from "./org.service";
 import * as D from "./account.dto";
 
 const CLIENT = ["client"] as const;
+const ORG_STAFF = ["staff:service_manager", "staff:executive", "staff:sysadmin", "staff:finance"] as const;
 const CASE_STAFF = ["staff:agent", "staff:service_manager", "staff:executive", "staff:sysadmin"] as const;
 
 // Client quotations/refunds (GET me/quotations, POST me/quotations/:no/:action, GET me/refunds/eligibility,
 // GET me/refunds, POST me/refunds) live in the finance module: they run on the finance store + refund workflow.
 @Controller()
 export class AccountController {
-  constructor(private readonly svc: AccountService, private readonly cls: ClsService<RequestStore>) {}
+  constructor(private readonly svc: AccountService, private readonly org: OrgService, private readonly cls: ClsService<RequestStore>) {}
 
   @Get("me/consents") @Route({ auth: CLIENT })
   consents(@CurrentUser() me: SessionUser) { return this.svc.consents(me); }
@@ -41,17 +43,48 @@ export class AccountController {
   @Delete("me/avatar") @Route({ auth: "user", limit: "write" })
   clearAvatar(@CurrentUser() me: SessionUser) { return this.svc.clearAvatar(me); }
 
+  // ── ORG company profiles ──
   @Get("me/orgs") @Route({ auth: CLIENT })
-  orgs(@CurrentUser() me: SessionUser) { return this.svc.orgs(me); }
+  orgs(@CurrentUser() me: SessionUser) { return this.org.mine(me); }
+
+  @Post("me/orgs") @Route({ auth: CLIENT, limit: "write" })
+  createOrg(@Body() b: D.OrgDto, @CurrentUser() me: SessionUser) { return this.org.create(me, { ...b, email: b.email || null }); }
 
   @Put("me/orgs/active") @Route({ auth: CLIENT, limit: "write" })
-  setActiveOrg(@Body() b: D.ActiveOrgDto, @CurrentUser() me: SessionUser) { return this.svc.setActiveOrg(me, b.orgId); }
+  setActiveOrg(@Body() b: D.ActiveOrgDto, @CurrentUser() me: SessionUser) { return this.org.setActive(me, b.orgId); }
 
-  @Post("me/orgs/:id/invites") @Route({ auth: CLIENT, limit: "write", audit: "org.member.invited" })
-  invite(@Param("id") id: string, @Body() b: D.InviteDto, @CurrentUser() me: SessionUser) { return this.svc.invite(me, id, b); }
+  @Get("organizations/:id") @Route({ auth: CLIENT })
+  orgDetail(@Param("id") id: string, @CurrentUser() me: SessionUser) { return this.org.detail(me, id); }
 
-  @Delete("me/orgs/:id/members/:mid") @Route({ auth: CLIENT, limit: "write", audit: "org.member.removed" })
-  removeMember(@Param("id") id: string, @Param("mid") mid: string, @CurrentUser() me: SessionUser) { return this.svc.removeMember(me, id, mid); }
+  @Patch("organizations/:id") @Route({ auth: CLIENT, limit: "write" })
+  updateOrg(@Param("id") id: string, @Body() b: D.OrgPatchDto, @CurrentUser() me: SessionUser) { return this.org.update(me, id, { ...b, ...(b.email !== undefined && { email: b.email || null }) } as Parameters<OrgService["update"]>[2]); }
+
+  @Post("organizations/:id/verification-request") @Route({ auth: CLIENT, limit: "write", audit: "org.verification_requested" })
+  requestOrgVerification(@Param("id") id: string, @CurrentUser() me: SessionUser) { return this.org.requestVerification(me, id); }
+
+  @Post("me/orgs/:id/invites") @Route({ auth: CLIENT, limit: "write" })
+  invite(@Param("id") id: string, @Body() b: D.InviteDto, @CurrentUser() me: SessionUser) { return this.org.invite(me, id, b); }
+
+  @Patch("organizations/:id/members/:mid") @Route({ auth: CLIENT, limit: "write" })
+  setMember(@Param("id") id: string, @Param("mid") mid: string, @Body() b: D.MemberPatchDto, @CurrentUser() me: SessionUser) { return this.org.setMember(me, id, mid, b); }
+
+  @Delete("me/orgs/:id/members/:mid") @Route({ auth: CLIENT, limit: "write" })
+  removeMember(@Param("id") id: string, @Param("mid") mid: string, @CurrentUser() me: SessionUser) { return this.org.removeMember(me, id, mid); }
+
+  @Get("org-invites/:token") @Route({ auth: "public", limit: "read" })
+  invitePreview(@Param("token") token: string) { return this.org.invitePreview(token); }
+
+  @Post("org-invites/:token/accept") @Route({ auth: CLIENT, limit: "auth" })
+  acceptInvite(@Param("token") token: string, @CurrentUser() me: SessionUser) { return this.org.accept(me, token); }
+
+  @Get("admin/organizations") @Route({ auth: ORG_STAFF })
+  adminOrgs(@Query() q: D.OrgAdminQueryDto) { return this.org.adminList(q); }
+
+  @Get("admin/organizations/:id") @Route({ auth: ORG_STAFF })
+  adminOrg(@Param("id") id: string) { return this.org.adminDetail(id); }
+
+  @Post("admin/organizations/:id/verify") @Route({ auth: ["staff:service_manager", "staff:sysadmin"], limit: "write" })
+  verifyOrg(@Param("id") id: string, @Body() b: D.OrgVerifyDto, @CurrentUser() me: SessionUser) { return this.org.verify(me, id, b); }
 
   @Post("applications/claim") @Route({ auth: CLIENT, limit: "auth", out: D.ClaimOut })
   claim(@Body() b: D.ClaimDto, @CurrentUser() me: SessionUser) { return this.svc.claim(me, b); }

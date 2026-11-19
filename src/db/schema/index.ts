@@ -17,3 +17,4 @@ export * from "./schema-ops";
 export * from "./schema-payments";
 export * from "./schema-procurement";
 export * from "./schema-system";
+export * from "./schema-org";
