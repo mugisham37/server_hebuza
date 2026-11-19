@@ -1,9 +1,10 @@
 // Chat crons: support first-response SLA escalation (F-MSG-13) and retention archival with legal hold (F-MSG-15).
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { and, eq, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
-import { applicationMessages, conversations, users } from "@/db/schema";
+import { and, eq, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { applicationMessages, conversations } from "@/db/schema";
 import { CHAT_RETENTION_YEARS, ESCALATION_CHAIN, escalationDue } from "@/domain/chat/rules";
 import { DB, type Db } from "../../core/db/db";
+import { usersWithRole } from "../../core/db/system-records";
 import { TxService } from "../../core/db/tx";
 import { Cron } from "../../core/queue/queues";
 import { NotificationsService } from "../notifications/notifications.service";
@@ -20,8 +21,7 @@ export class ChatJobs {
       const level = escalationDue(c.slaDueAt!, c.escalationLevel, now);
       if (!level) continue;
       const role = ESCALATION_CHAIN[level - 1];
-      // shortcut: recipients by users.role (plus legacy staff:admin); extra console grants are not consulted, use the IAM role resolver when it is shared.
-      const to = await this.db.select({ id: users.userId }).from(users).where(and(inArray(users.role, [role, "staff:admin"]), eq(users.isActive, true)));
+      const to = (await usersWithRole(this.db, [role])).map((id) => ({ id }));
       await this.tx.runAsSystem(async (tx) => {
         await tx.update(conversations).set({ escalationLevel: level }).where(and(eq(conversations.conversationId, c.conversationId), eq(conversations.escalationLevel, c.escalationLevel)));
         for (const u of to)

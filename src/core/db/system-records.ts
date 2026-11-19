@@ -1,6 +1,7 @@
 // Read-only access to system-console documents (system_records) for other modules: settings, notification rules,
 // templates, budgets. Writes stay in the system world (system.world.ts) so they keep the lock + audit.
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import { normalizeRoles } from "@/domain/auth/roles";
 import { systemRecords } from "@/db/schema";
 import { SETTINGS } from "@/domain/system/settings-registry";
 import type { Db } from "./db";
@@ -37,4 +38,15 @@ export async function settingOf<T>(
     : SETTINGS.find((d) => d.key === key)?.default;
   cache.set(key, { at: now, v });
   return v as T;
+}
+
+/** Active users holding any of `roles`: users.role (legacy names normalised) ∪ unexpired console grants
+ *  (userMeta.extraRoles) — the same resolution as AuthService.access. */
+export async function usersWithRole(db: Pick<Db, "execute">, roles: readonly string[]): Promise<string[]> {
+  const rows = (await db.execute(sql`select u.user_id as id, u.role, m.data->'extraRoles' as grants
+    from users u left join system_records m on m.kind = 'userMeta' and m.id = u.user_id
+    where u.is_active and (u.role like 'staff:%' or m.data ? 'extraRoles')`)) as unknown as { id: string; role: string; grants: { role: string; expiresAt: string | null }[] | null }[]; // cast: execute() rows are untyped
+  const now = Date.now();
+  return rows.filter((r) => normalizeRoles({ roles: [r.role, ...(r.grants ?? []).filter((g) => !g.expiresAt || Date.parse(g.expiresAt) > now).map((g) => g.role)] })
+    .some((x) => roles.includes(x))).map((r) => r.id);
 }

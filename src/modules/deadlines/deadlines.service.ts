@@ -24,6 +24,7 @@ import {
   users,
 } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
+import { usersWithRole } from "../../core/db/system-records";
 import type { NotifyInput } from "../notifications/notifications.service";
 import { generateId } from "../../core/db/ids";
 
@@ -276,8 +277,7 @@ export async function markMissed(db: Tx, now: Date, notify?: Notify) {
     )
     .returning({ id: clientObligations.id, clientId: clientObligations.clientId, label: clientObligations.label, dueDate: clientObligations.dueDate, applicationId: clientObligations.applicationId });
   if (!notify || !r.length) return r.length;
-  // shortcut: managers by users.role (+ legacy staff:admin); swap for the shared IAM role resolver when one exists.
-  const managers = await db.select({ id: users.userId }).from(users).where(and(inArray(users.role, ["staff:service_manager", "staff:admin"]), eq(users.isActive, true)));
+  const managers = (await usersWithRole(db, ["staff:service_manager"])).map((id) => ({ id }));
   for (const o of r) {
     const label = (o.label as Record<string, string>).en ?? Object.values(o.label as Record<string, string>)[0] ?? "Obligation";
     await notify(db, { userId: o.clientId, kind: "deadline.missed", title: `Missed deadline: ${label}`, body: `The due date ${o.dueDate} has passed. Late filing can bring penalties; reply to us and we will help you file now.`, link: "/dashboard/calendar", channels: ["email", "sms"] });
