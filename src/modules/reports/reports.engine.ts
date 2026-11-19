@@ -82,6 +82,10 @@ const serviceDim = (c: RCtx, ref?: string) => {
     ? { key: k.service, label: c.D.serviceName(k.service) }
     : { key: "standalone", label: "standalone" };
 };
+const agentDim = (c: RCtx, ref?: string) => {
+  const lead = c.D.caseOf(ref)?.assignees.find((a) => a.role === "lead")?.id;
+  return lead ? { key: lead, label: c.D.workerName(lead) } : { key: "unassigned", label: "unassigned" };
+};
 const invHref = (no: string) => `/finance/invoices/${no}`;
 export const issued = (c: RCtx) =>
   c.data.invs.filter(
@@ -248,23 +252,39 @@ const DEFS: Record<ReportKey, Def> = {
     empty: (c) => (c.data.imps.length ? null : "no_import"),
   },
   "fin.refunds_credit_notes": {
-    groups: ["reason", "service"],
+    // F-RFD-09: by reason, service and agent (case lead), with the refund rate against paid invoices.
+    groups: ["reason", "service", "agent"],
     cols: [
       ["refunds", "count", true],
       ["amount", "money", true],
       ["credit_notes", "count", true],
+      ["paid_invoices", "count", true],
+      ["refund_rate", "pct"],
     ],
     recs: (c) => [
+      ...c.data.invs
+        .filter((i) => i.no && i.caseRef && ["paid", "credited", "partially_paid"].includes(i.status))
+        .map((i) => ({
+          date: i.issuedAt ?? i.dueAt ?? "",
+          dims: { reason: { key: "-", label: "-" }, service: serviceDim(c, i.caseRef), agent: agentDim(c, i.caseRef) },
+          values: { refunds: 0, amount: 0, credit_notes: 0, paid_invoices: 1 },
+          ref: i.no!,
+          href: invHref(i.no!),
+          party: i.billTo.name,
+          state: i.status,
+        })),
       ...c.data.refunds.map((r) => ({
         date: r.at,
         dims: {
           reason: { key: r.reason, label: r.reason },
           service: serviceDim(c, r.caseRef),
+          agent: agentDim(c, r.caseRef),
         },
         values: {
           refunds: 1,
           amount: r.approved ?? r.recommended ?? r.requested,
           credit_notes: 0,
+          paid_invoices: 0,
         },
         ref: r.no,
         href: `/finance/refunds/${r.no}`,
@@ -279,14 +299,18 @@ const DEFS: Record<ReportKey, Def> = {
           dims: {
             reason: { key: r?.reason ?? "other", label: r?.reason ?? "other" },
             service: serviceDim(c, i?.caseRef),
+            agent: agentDim(c, i?.caseRef),
           },
-          values: { refunds: 0, amount: 0, credit_notes: 1 },
+          values: { refunds: 0, amount: 0, credit_notes: 1, paid_invoices: 0 },
           ref: cn.no,
           href: `/finance/credit-notes/${cn.no}`,
           party: i?.billTo.name ?? "",
         };
       }),
     ],
+    derive: (v) => {
+      v.refund_rate = v.paid_invoices ? Math.round((v.refunds / v.paid_invoices) * 1000) / 10 : 0;
+    },
   },
   "fin.revenue_share": {
     groups: ["agent", "service", "month"],
