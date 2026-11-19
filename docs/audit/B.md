@@ -58,10 +58,10 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-MSG-08 | Templates | P1 | DONE | `chat_templates`, `/render` (`chat.service.ts:1975`), web `agent/inbox/templates`. |
 | F-MSG-09 | Disputes | P1 | DONE | Disputes and resolve routes (`chat.controller.ts:200-210`, `chat.service.ts:2147`). The 4 h SLA timer was not verified. |
 | F-MSG-10 | Oversight console | P1 | DONE | `admin/chat/*` list/counts/metrics/claim/transcript PDF (`chat.service.ts:96,1649,1753`); web `ops/conversations`. |
-| F-MSG-11 | Search | P2 | PARTIAL | Search is `ilike` only (`chat.service.ts:837`). No tsvector or global search. |
-| F-MSG-12 | Omnichannel threading | P2 | MISSING | No inbound WhatsApp/SMS/email to conversation path. |
+| F-MSG-11 | Search | P2 | DONE | Closed 2026-11-19: GIN tsvector full-text search, ranked, substring fallback. (was PARTIAL) |
+| F-MSG-12 | Omnichannel threading | P2 | DONE | Closed 2026-11-19: inbound SMS/WhatsApp threads into support tickets (notifications.delivery thread()). (was MISSING) |
 | F-MSG-13 | Enquiry SLA & escalation | P1 | DONE | Closed 2026-11-19: support first-response SLA in business hours + SM→exec escalation cron. (was MISSING) |
-| F-MSG-14 | Complaint flag | P2 | MISSING | No convert-to-FBK action. |
+| F-MSG-14 | Complaint flag | P2 | DONE | Closed 2026-11-19: flag case conversation as complaint → FBK ticket; ops conversation action. (was MISSING) |
 | F-MSG-15 | Retention & legal hold | P1 | DONE | Closed 2026-11-19: retention archival cron + legal hold endpoint. (was MISSING) |
 | F-MSG-16 | Attachment safety | P1 | DONE | Goes through the `documents.finalize` job (sniff, scan, EXIF strip; `chat.service.ts:724`) and short-lived download URLs. HEIC→JPEG was not verified. |
 | F-MSG-17 | Conversation summary | P3 | DONE | `assistant/copilot/{kind}` "summarise" (`assistant.controller.ts:136`). |
@@ -73,19 +73,19 @@ So the server has catalogue and CMS publish/admin APIs, and the admin screens ca
 | F-NTF-02 | In-app centre | P1 | DONE | `notifications.controller.ts:12-18`, SSE emit (`notifications.jobs.ts:37`), web `(client)/notifications`, `organisms/client/notifications.tsx`. |
 | F-NTF-03 | Email | P1 | DONE | Closed 2026-11-19: bounce/complaint webhook → suppression; List-Unsubscribe on non-security mail. (was PARTIAL) |
 | F-NTF-04 | WhatsApp Business | P2 | DONE | Closed 2026-11-19: WhatsApp Cloud API driver + approved templates + Meta webhook (dormant until keys, flags.whatsapp_channel). (was MISSING) |
-| F-NTF-05 | SMS | P1/P2 | PARTIAL | `core/notify/sms.service.ts` exists and is used for OTP. GSM-7 segmenting and the sender-ID config were not verified. |
+| F-NTF-05 | SMS | P1/P2 | DONE | Closed 2026-11-19: GSM-7/UCS-2 segment costing (smsSegments); sender id AT_SENDER_ID. (was PARTIAL) |
 | F-NTF-06 | Channel router & fallback | P2 | DONE | Closed 2026-11-19: ordered fallback chain per rule; final failure falls through. (was MISSING) |
 | F-NTF-07 | Preferences | P1 | DONE | Closed 2026-11-19: per-category matrix + email switch enforced (domain/notify/delivery.ts planDelivery). (was PARTIAL) |
 | F-NTF-08 | Quiet hours | P2 | DONE | Closed 2026-11-19: quiet hours defer the send job (Kigali time), critical/security exempt. (was PARTIAL) |
 | F-NTF-09 | Consent ledger | P1 | DONE | Closed 2026-11-19: consent_ledger table, POST /api/consent (cookie banner), STOP/HAGARIKA/START inbound. (was MISSING) |
-| F-NTF-10 | Template registry | P2 | PARTIAL | Lint, versions and Meta review are simulated in the system world store (`system.config.ts:583-777`); web `system/notifications/templates/[key]`. Sends do not use these templates. |
+| F-NTF-10 | Template registry | P2 | DONE | Closed 2026-11-19: sends use active templates per language; Meta submission + status polling with WHATSAPP_WABA_ID. (was PARTIAL) |
 | F-NTF-11 | Delivery tracking | P1 | DONE | Closed 2026-11-19: notification_deliveries + per-send job with backoff + Resend/AT/Meta status webhooks; console reads the table. (was MISSING) |
 | F-NTF-12 | Cost metering & caps | P2 | DONE | Closed 2026-11-19: per-delivery cost, monthly spend from deliveries, budget cap in delivery. (was PARTIAL) |
-| F-NTF-13 | Inbound channels | P2 | MISSING | — |
+| F-NTF-13 | Inbound channels | P2 | DONE | Closed 2026-11-19: inbound SMS/WhatsApp: STOP/START + threading into the client's support ticket. (was MISSING) |
 | F-NTF-14 | Digests | P1 | DONE | Closed 2026-11-19: daily staff digest (notifications.staff_digest). (was PARTIAL) |
 | F-NTF-15 | Suppression & dedupe | P1 | DONE | Closed 2026-11-19: 10-min dedupe window + suppression list. (was PARTIAL) |
 | F-NTF-16 | Secure links | P1 | DONE | Messages carry a title, body and portal link only (`notifications.jobs.ts:43`); the manage token is sealed in the outbox. |
-| F-NTF-17 | Manual send | P2 | MISSING | No send-template-to-client from the client profile. |
+| F-NTF-17 | Manual send | P2 | DONE | Closed 2026-11-19: POST staff/clients/:id/notify (rules/preferences/consent apply). (was MISSING) |
 | F-NTF-18 | Web push | P3 | MISSING | — |
 
 ## AI assistant (AIA)

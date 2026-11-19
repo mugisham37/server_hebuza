@@ -17,7 +17,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-IAM-09 | MFA recovery | P1 | DONE | `auth/team/access-request` kind two_factor (auth.controller.ts:114), admin `staff/users/:id/mfa-reset` (system.users.controller.ts:85), W system/users/[id] |
 | F-IAM-10 | Staff lockout | P1 | DONE | verified from 90e4816: staff 10/24h lockout until unlock request. One generic lockout: 5 tries / 15 min, auto-expiring (auth.service.ts:59-60,386-404). The staff rule (10/24h, locked until an unlock access request) is missing. The admin unlock route exists (system.users.controller.ts:94) |
 | F-IAM-11 | Session policy | P1 | DONE | verified from 90e4816 + dcf7344: idle (real activity) + absolute session end. `platform_settings.session_timeout_minutes` is stored (platform.service.ts:15). There is no per-role idle enforcement in refresh, no absolute 24h/8h lifetime (refresh lives 30d, core/auth/tokens.ts:15) and no 2-min warning modal in web |
-| F-IAM-12 | IP allowlist | P2 | PARTIAL | Setting plus break-glass approval kind exist (system.config.ts:60,126). There is no CIDR check at login or per request |
+| F-IAM-12 | IP allowlist | P2 | DONE | Closed 2026-11-19: PlatformGuard CIDR allowlist for sysadmin/finance. (was PARTIAL) |
 | F-IAM-13 | Session management | P1 | DONE | me/sessions list/revoke and admin revoke (auth.controller.ts:196-325). W components/organisms/client/settings-security.tsx. No geo-IP (shortcut) |
 | F-IAM-14 | Invitations | P1 | DONE | staff/users/invitations, auth/invite/:token, set-password, forced MFA setup (W (auth)/team/invite/[token]). Expiry/terms+NDA step not verified |
 | F-IAM-15 | Impersonation | P2 | DONE | user notified (in-app + email) when an impersonation ends, with date and reason. Reason ≥10 chars, protected targets, audited start/end (S auth.admin.ts:155-251), banner in W (system)/layout.tsx. No "notify user afterwards" |
@@ -26,7 +26,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-IAM-18 | Forgot password | P1 | PARTIAL | forgot/reset routes exist (auth.controller.ts:79-89). For staff, MFA after reset relies on the normal login MFA; there is no explicit post-reset MFA requirement |
 | F-IAM-19 | Personal data export | P2 | PARTIAL | me/data-export builds a JSON synchronously (S account.service.ts:217-260). It has only profile, apps, notifications and consents: no messages, invoices, documents, ZIP, email link or 24h expiry. W settings-privacy.tsx |
 | F-IAM-20 | Account deletion | P1 | DONE | verified from 90e4816 + 38c73ce: 14-day cooling-off, sweep, finance pseudonymisation. `DELETE /api/auth/account` anonymises immediately and is blocked when cases are open (auth.service.ts:962-1000). There is no 14-day cooling-off and no retention pseudonymisation of finance records |
-| F-IAM-21 | Consent/terms | P1 | PARTIAL | `terms_acceptances` is written at signup (auth.service.ts:456). Consents hold only processing/marketing/analytics booleans (account.service.ts:26), not consent per channel or a versioned log |
+| F-IAM-21 | Consent/terms | P1 | DONE | Closed 2026-11-19: settings consents append to the versioned consent ledger per channel. (was PARTIAL) |
 | F-IAM-22 | Company representatives | P2 | PARTIAL | See ORG: org roles owner/admin/member live in a per-user JSON doc |
 | F-IAM-23 | Access reviews | P3 | DONE | Quarterly job (S system.jobs.ts:69), W system/access-reviews |
 | F-IAM-24 | Customer ID | P1 | DONE | verified from 40c0d27/0e0cfb7: users.customer_no assigned + backfilled, shown in session/admin/CRM. `customerNo` exists only in the system store seed (seed/system.ts:467). There is no `users` column or sequence and nothing is assigned at signup |
@@ -95,7 +95,7 @@ Heads-up: much state lives in the generic `system_records` JSON table (ops "x" c
 | F-DOC-02 | Attach from library | P1 | DONE | `me/documents/:id/attach` (controller:39), used by W apply-wizard.tsx:297 |
 | F-DOC-03 | Requirement uploads | P1 | DONE | `applications/:code/documents` with requirement_key (documents.service.ts:746-785) |
 | F-DOC-04 | QC review | P1 | DONE | agent `documents/:id/qc` (agent.controller.ts:162), ops `documents/:doc/decision` (ops.cases.controller.ts:163) |
-| F-DOC-05 | Version history | P1 | PARTIAL | Versions are kept and listed (documents.service.ts:114-175). No restore endpoint and no metadata diff |
+| F-DOC-05 | Version history | P1 | DONE | Closed 2026-11-19: restore endpoint me/documents/:id/versions/:v/restore. (was PARTIAL) |
 | F-DOC-06 | Expiry tracking | P2 | DONE | Closed 2026-11-19: 60/30/0-day expiry reminders (documents.expiry cron). (was PARTIAL) |
 | F-DOC-07 | Access log | P1 | DONE | `document.viewed` audit on staff file open (S account.service.ts:466), W system/audit/sensitive |
 | F-DOC-08 | Malware scan | P2 | DONE | ClamAV INSTREAM job (S core/storage/scan.processor.ts:13-49), `infected` quarantine (documents.service.ts:561-570) |

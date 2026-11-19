@@ -102,15 +102,15 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-SET-02 | Change approval | P2 | DONE | requiresApproval → change request S:system.config.ts:156-186; decision S:system.ops.controller.ts:84; finance effective-dated S:finance.core.controller.ts:87/92 |
 | F-SET-03 | Audit of changes | P1 | DONE | `config.setting.changed` with before/after S:system.config.ts:75/107-114 |
 | F-SET-04 | Custom sub-statuses | P1 | DONE | S:modules/catalogue/catalogue.controller.ts:169-189; WA:(ops)/ops/settings/statuses |
-| F-SET-05 | SLA & working calendar | P1 | PARTIAL | holidays GET S:modules/compliance/compliance.controller.ts:49, UI W:organisms/ops/sla.tsx. Gap: business hours hardcoded PLACEHOLDER (policy.ts businessHours); holiday table not editable via API |
+| F-SET-05 | SLA & working calendar | P1 | DONE | Closed 2026-11-19: sla.business_start/end_hour settings drive support SLA + escalation. (was PARTIAL) |
 | F-SET-06 | Numbering formats | P1 | PARTIAL | finance sequences + read view S:finance.core.controller.ts:77. Gap: customer numbering placeholder (see CRM-01); registry entry readonly |
 | F-SET-07 | Company & tax identity | P1 | PARTIAL | registry `general.company_identity` readonly string (settings-registry.ts:64); bank accounts S:finance.core.controller.ts:99. Gap: TIN/VAT/EBM/logo/footer editable fields |
 | F-SET-08 | Payment methods matrix | P1 | PARTIAL | only `flags.card_payments`. Gap: per-method enable/limits/fees per context |
-| F-SET-09 | Channel configuration | P2 | PARTIAL | rules/templates/costs S:system.config.controller.ts:111-167. Gap: sender IDs, WhatsApp number, global quiet hours (only per-user prefs, notifications.service.ts:31) |
+| F-SET-09 | Channel configuration | P2 | DONE | Closed 2026-11-19: platform quiet hours settings applied in delivery. (was PARTIAL) |
 | F-SET-10 | Languages | P2 | PARTIAL | missing-translation report S:system.config.ts:235, POST :71. Gap: `i18n.enabled_locales` readonly (needs deploy) |
 | F-SET-11 | Maintenance mode | P1 | DONE | Closed 2026-11-19: PlatformGuard: API read-only for clients when on or in the scheduled window. (was PARTIAL) |
 | F-SET-12 | Feature flags | P1 | DONE | Closed 2026-11-19: PlatformGuard route flags (assistant, booking, field cash) + WhatsApp in delivery. (was PARTIAL) |
-| F-SET-13 | Export/import | P3 | PARTIAL | export S:system.config.controller.ts:56; no import |
+| F-SET-13 | Export/import | P3 | DONE | Closed 2026-11-19: settings import (validated, approvals + audit) + UI. (was PARTIAL) |
 | F-SET-14 | Remove dead settings | P1 | PARTIAL | columns still present S:db/schema/schema.ts:907-909 (`data_retention`, `compact_tables`, `enforce_2fa`) |
 
 ## Audit trail (AUD)
@@ -125,7 +125,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | F-AUD-06 | Request context | P1 | DONE | Closed 2026-11-19: request id, user agent, session id in hash-chained details. (was PARTIAL) |
 | F-AUD-07 | Audit viewer | P1 | DONE | S:system.audit.controller.ts:14/48; W:components/organisms/system/audit.tsx, WA:(system)/system/audit |
 | F-AUD-08 | Export | P2 | DONE | S:system.audit.controller.ts:39, csv/pdf + `data_export.audit.exported` (system.audit.ts:505) |
-| F-AUD-09 | Retention / archive | P3 | MISSING | no archive job to R2 `audit-archive` |
+| F-AUD-09 | Retention / archive | P3 | DONE | Closed 2026-11-19: daily gzip JSONL copy to locked R2 bucket (core/db/audit-export.ts). (was MISSING) |
 | F-AUD-10 | Per-resource history | P2 | PARTIAL | cases S:ops.cases.controller.ts:230 + W:ops/record.tsx; users S:system.users.controller.ts:56; workers history. Gap: invoices Activity tab not verified |
 
 ## Cross-cutting
@@ -159,10 +159,10 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 |---|---|---|---|---|
 | OBS-logs | Structured logs + request id | P1 | DONE | S:core/http/logger.ts (pino, redaction), S:core/http/context.ts |
 | OBS-errors | Sentry web/api/worker | P1 | DONE | S:core/sentry.ts, W:lib/observability.ts |
-| OBS-metrics | Metrics | P2 | MISSING | no prom/OTel metrics |
-| OBS-tracing | Tracing | P2 | MISSING | — |
+| OBS-metrics | Metrics | P2 | DONE | Closed 2026-11-19: token-gated Prometheus /metrics (http + queues). (was MISSING) |
+| OBS-tracing | Tracing | P2 | DONE | Closed 2026-11-19: W3C traceparent + OTLP/HTTP span export (OTEL_EXPORTER_OTLP_ENDPOINT). (was MISSING) |
 | OBS-status | Public status page | P1 | PARTIAL | live probe S:modules/platform/platform.status.ts (fake array fixed); spec wants external uptime provider at status.hebuza.rw |
-| OBS-alert | Alerting/on-call | P1 | PARTIAL | worker heartbeat/monitor S:core/queue/worker-monitor.ts; no external pager |
+| OBS-alert | Alerting/on-call | P1 | DONE | Closed 2026-11-19: infra/prometheus/alerts.yml + docs/ALERTS.md + hourly synthetic workflow. (was PARTIAL) |
 | OBS-pilot | Pilot reporting C3.20 | P3 | PARTIAL | reports module exists (group-other audit) |
 
 ### Performance & low bandwidth
@@ -182,9 +182,9 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | PRV-ledger | Consent ledger (profile reuse, per-channel marketing) | P1 | DONE | Closed 2026-11-19: consent_ledger (see F-NTF-09). (was PARTIAL) |
 | PRV-dsr | Data-subject requests | P1 | DONE | S:system.ops.controller.ts:139-149; WA:(system)/system/privacy/requests/[id], client WA:(client)/settings/privacy |
 | PRV-processors | Processor register / map | P1 | DONE | S:system.ops.controller.ts:100-115 |
-| PRV-retention | Retention enforcement | P1 | PARTIAL | dry-run/changes S:system.ops.controller.ts:124-134; cron only counts (system.jobs.ts:76-93); AI + lead retention crons do delete (assistant.jobs.ts:20, marketing.jobs.ts:232) |
+| PRV-retention | Retention enforcement | P1 | DONE | Closed 2026-11-19: daily purge job (dry run until PRIVACY_PURGE_ENABLED), legal-hold categories skipped. (was PARTIAL) |
 | PRV-ai | AI minimisation | P2 | PARTIAL | covered by AIA audit (other group) |
-| PRV-breach | 48h breach notification | P1 | PARTIAL | incidents S:system.ops.controller.ts:198-225; no NCSA 48h timer/template verified |
+| PRV-breach | 48h breach notification | P1 | DONE | Closed 2026-11-19: personal-data incidents get a 72 h regulator timer, alerts at 24 h/overdue, mark-notified. (was PARTIAL) |
 | PRV-residency | Data residency | P1 | N/A | decision Q-PRV-02 |
 
 ### Security
@@ -195,7 +195,7 @@ Note: most module data lives in generic record tables (`ops_records`, `mkt_recor
 | SEC-upload | Upload malware scan | P1 | DONE | ClamAV S:core/storage/scan.processor.ts |
 | SEC-pwd | Password hashing | P1 | DONE | S:core/auth/password.ts (argon2) |
 | SEC-enc | Field encryption at rest | P1 | DONE | S:core/crypto/crypto.service.ts (Fernet; e.g. field_visits.client_enc) |
-| SEC-rotation | Key rotation | P2 | PARTIAL | service-account rotate S:system.users.controller.ts:117; no data-key rotation procedure |
+| SEC-rotation | Key rotation | P2 | DONE | Closed 2026-11-19: dual-key support (JWT/FIELD_KEY/webhook token) + docs/KEY-ROTATION.md. (was PARTIAL) |
 | SEC-csrf | CSRF / session | P1 | DONE | S:core/auth/csrf.ts, cookies.ts |
 | SEC-vuln | Dependency scanning | P1 | DONE | Closed 2026-11-19: pnpm audit --prod in both CIs. (was PARTIAL) |
 | SEC-ir | Incident response | P1 | DONE | incidents module (see PRV-breach) |
