@@ -6,4 +6,4 @@
   `k6 run -e BASE_URL=https://staging.hebuza.rw -e API_URL=https://api-staging.hebuza.rw test/k6/mixed.js`
 - Smaller smoke: `k6 run --vus 20 --duration 1m test/k6/mixed.js` (the scenario stages are overridden by --vus/--duration).
 - Paths used: check them against the deployed route table before a run (`/api/services`, `/api/service-categories`,
-  `/api/status`, `/api/track/:code`, `/api/me/dashboard`, `/api/notifications`, `/api/consent`, `/api/auth/login`).
+  `/api/track/:code`, `/api/me/dashboard`, `/api/notifications`, `/api/consent`, `/api/auth/login`).

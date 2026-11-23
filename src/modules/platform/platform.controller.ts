@@ -19,7 +19,7 @@ export class PlatformController {
     return this.svc.getPublicSettings();
   }
   @Get("status")
-  @Route({ auth: "public", limit: "read", out: StatusOut })
+  @Route({ auth: ["staff:sysadmin", "staff:service_manager"], limit: "read", out: StatusOut })
   getStatus() {
     return this.status.get();
   }

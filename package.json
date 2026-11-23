@@ -19,7 +19,8 @@
     "db:purge-demo": "tsx src/db/seed/purge.ts",
     "db:reset": "tsx src/db/seed/reset.ts && drizzle-kit migrate && tsx src/db/seed/index.ts",
     "db:migrate:prod": "node dist/migrate.js",
-    "admin:create": "tsx src/admin-create.ts"
+    "admin:create": "tsx src/admin-create.ts",
+    "owner:account": "tsx src/owner-account.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.10.0",

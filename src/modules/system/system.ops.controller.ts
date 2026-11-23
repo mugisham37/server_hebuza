@@ -231,10 +231,4 @@ export class SystemOpsController {
   ) {
     return ops.incidentEvent(this.s.on(c), id, b.text);
   }
-
-  @Get("status/updates")
-  @Route({ auth: "public", limit: "read" })
-  publicStatus(@Sys() c: RawCaller) {
-    return ops.publicStatus(this.s.on(c));
-  }
 }

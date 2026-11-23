@@ -50,7 +50,7 @@ export const KNOWN = {
   "GET /api/admin/services/{slug}/structure/published": "dup: structure/versions/{v}",
   "GET /api/plans/{plan_id}": "dup: me/subscription/plans", "GET /api/admin/settings": "dup: system settings screens",
   "POST /api/auth/staff/login": "wrapper of auth/login", "GET /api/auth/invite/{token}": "deprecated alias of set-password/{token}",
-  "POST /api/auth/sign-out": "alias of DELETE auth/session", "GET /api/status/updates": "dup: /api/status",
+  "POST /api/auth/sign-out": "alias of DELETE auth/session",
   "GET /api/admin/public-holidays": "dup: admin/ops/sla/rules", "POST /api/deliverables/{id}/require-signature": "dup: agent/x deliverables {signature}",
   "GET /api/admin/clients/{id}": "dup: client record on ops case rows", "GET /api/admin/ops/audit/{kind}/{id}": "dup: admin/audit-log?entity=",
   "GET /api/payments/{transaction_id}": "dup: payments/{id}/status", "GET /api/staff/settings/changes": "dup: finance/settings returns changes",

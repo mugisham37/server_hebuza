@@ -1081,11 +1081,6 @@ export function postStatus(
     return { id };
   });
 }
-/** Public status feed (P11's /status page reads this; no auth). */
-export const publicStatus = (c: Caller) =>
-  read(c, (w) => ({
-    items: w.statusPosts.slice(0, 20).map(({ by, ...p }) => (void by, p)),
-  }));
 export function incidents(c: Caller) {
   guard(c.session);
   return read(c, (w) => ({ items: w.incidents }));

@@ -6,7 +6,6 @@ dist
 *.pem
 .turbo
 test
-backup
 docs
 coverage
 *.log

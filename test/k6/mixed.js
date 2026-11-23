@@ -39,7 +39,7 @@ export const options = {
 };
 
 const PAGES = ["/rw", "/en", "/en/services", "/en/pricing", "/en/how-it-works", "/en/faq", "/en/knowledge", "/en/about", "/fr/services"];
-const API_READS = ["/api/services?limit=20", "/api/service-categories", "/api/status", "/health"];
+const API_READS = ["/api/services?limit=20", "/api/service-categories", "/health"];
 const ok = (r, name) => errors.add(!check(r, { [name]: (x) => x.status >= 200 && x.status < 400 }));
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 

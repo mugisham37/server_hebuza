@@ -13064,46 +13064,6 @@
         ]
       }
     },
-    "/api/status/updates": {
-      "get": {
-        "operationId": "SystemOpsController_publicStatus",
-        "parameters": [],
-        "responses": {
-          "2XX": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "required": [
-                    "success",
-                    "message",
-                    "errorType",
-                    "data"
-                  ],
-                  "properties": {
-                    "success": {
-                      "type": "boolean"
-                    },
-                    "message": {
-                      "type": "string"
-                    },
-                    "errorType": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "data": {}
-                  }
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "SystemOps"
-        ]
-      }
-    },
     "/api/admin/compliance-calendar": {
       "get": {
         "operationId": "ComplianceController_list",
