@@ -1,6 +1,6 @@
 // P1 auth tables that FastAPI never had. DDL for the integrator's migration is in the P1 report;
 // refresh_tokens / password_reset_tokens / backup_codes / staff_profiles stay in schema.ts (pulled).
-import { pgTable, varchar, timestamp, index, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, varchar, timestamp, index, primaryKey, boolean, unique } from "drizzle-orm/pg-core";
 import { users } from "./schema";
 
 const ts = (n: string) => timestamp(n, { withTimezone: true, mode: "string" });
@@ -76,4 +76,22 @@ export const userRoles = pgTable(
     expiresAt: ts("expires_at"),
   },
   (t) => [primaryKey({ columns: [t.userId, t.role] }), index("ix_user_roles_user").on(t.userId)],
+);
+
+/** External sign-in identities (Google OIDC). (provider, subject) is the stable key; email is the snapshot at link time. */
+export const userIdentities = pgTable(
+  "user_identities",
+  {
+    id: varchar({ length: 64 }).primaryKey().notNull(),
+    userId: varchar("user_id", { length: 64 })
+      .notNull()
+      .references(() => users.userId, { onDelete: "cascade" }),
+    provider: varchar({ length: 32 }).notNull(),
+    subject: varchar({ length: 255 }).notNull(),
+    email: varchar({ length: 255 }),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    linkedAt: ts("linked_at").notNull(),
+    lastUsedAt: ts("last_used_at"),
+  },
+  (t) => [unique("uq_user_identities_provider_subject").on(t.provider, t.subject), index("ix_user_identities_user_id").on(t.userId)],
 );

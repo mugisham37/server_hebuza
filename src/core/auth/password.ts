@@ -13,7 +13,13 @@ export class PasswordService {
     return hash(pw, OPTS);
   }
 
-  verify(stored: string, pw: string) {
+  private dummy?: Promise<string>;
+  /** null hash (Google-only account) fails closed after an equal-time dummy verify. */
+  async verify(stored: string | null, pw: string) {
+    if (!stored) {
+      await verify(await (this.dummy ??= this.hash("timing-equaliser")), pw).catch(() => false);
+      return false;
+    }
     return verify(stored, pw).catch(() => false);
   }
 

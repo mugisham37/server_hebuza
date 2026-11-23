@@ -8,7 +8,7 @@ import QRCode from "qrcode";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { authTrustedDevices, backupCodes, staffProfiles, users } from "@/db/schema";
 import type { SessionUser } from "../../core/http/context";
-import { conflict } from "../../core/http/errors";
+import { AppError, conflict } from "../../core/http/errors";
 import type { Tx } from "../../core/db/db";
 import { AuditService } from "../../core/db/audit";
 import { CryptoService } from "../../core/crypto/crypto.service";
@@ -272,6 +272,9 @@ export class MfaService {
     return this.auth.txs.run(async (tx) => {
       // enrolled → code only; not enrolled → password
       const enrolled = !!(await this.profile(tx, me.id))?.twofaEnabled;
+      // shortcut: Google-only accounts without 2FA can't step up until they set a password; add a Google re-auth (intent=stepup) if that friction matters.
+      if (!enrolled && !(await this.auth.getUser(tx, me.id))?.passwordHash)
+        throw new AppError(409, "set_password_first", "Set a password (or turn on two-factor sign-in) to confirm this action.");
       await this.proveIdentity(tx, me.id, enrolled ? { ...b, password: undefined } : { password: b.password }, !enrolled);
       await this.audit.record(tx, {
         action: "auth.step_up",

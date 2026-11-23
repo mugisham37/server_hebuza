@@ -192,9 +192,11 @@ async function main() {
       if (r.method !== "GET" && ok) continue; // never fire writes that could pass auth
       if (
         r.path.includes("realtime/stream") ||
+        r.path.startsWith("/auth/oauth/") || // browser 302s (Google start/callback), not JSON verdicts
+
         (r.path === "/auth/session" && r.method === "DELETE")
       )
-        continue; // SSE hangs
+        continue; // SSE hangs / redirects
       tasks.push({ r, w });
     }
   await pool(tasks, 8, async ({ r, w }) => {

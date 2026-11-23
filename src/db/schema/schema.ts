@@ -548,7 +548,8 @@ export const users = pgTable("users", {
 	name: varchar({ length: 255 }).notNull(),
 	email: varchar({ length: 255 }),
 	phoneE164: varchar("phone_e164", { length: 32 }),
-	passwordHash: text("password_hash").notNull(),
+	/** null = no password yet (Google-only account); PasswordService.verify fails closed. */
+	passwordHash: text("password_hash"),
 	role: varchar({ length: 32 }).notNull(),
 	isActive: boolean("is_active").notNull(),
 	isEmailVerified: boolean("is_email_verified").notNull(),

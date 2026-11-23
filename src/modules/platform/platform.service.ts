@@ -1,6 +1,8 @@
 // Port of the reference platform.service.ts (read side). Settings writes live in the system module (system.config
 // writeThrough busts PublicCache "platform" after commit).
 import { Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import type { Env } from "../../core/config/env";
 import { eq } from "drizzle-orm";
 import { platformSettings } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
@@ -38,7 +40,7 @@ const read = (db: Tx) => db.select().from(platformSettings).where(eq(platformSet
 
 @Injectable()
 export class PlatformService {
-  constructor(private readonly tx: TxService, private readonly cache: PublicCache) {}
+  constructor(private readonly tx: TxService, private readonly cache: PublicCache, private readonly cfg: ConfigService<Env, true>) {}
 
   /** Admin view; creates the singleton row with defaults on first read, like Python _ensure_settings. */
   getSettings() {
@@ -63,6 +65,9 @@ export class PlatformService {
           acceptNewApps: r?.acceptNewApps ?? true,
           maintenanceMode: r?.maintenanceMode ?? false,
           enabledLocales: enabledLocales(await settingOf(db, "i18n.enabled_locales")) as ("rw" | "en" | "fr")[],
+          // = GoogleAuthService.enabled (mock is refused in production at boot)
+          googleSignIn: (this.cfg.get("GOOGLE_OAUTH_MOCK", { infer: true }) && this.cfg.get("NODE_ENV", { infer: true }) !== "production") ||
+            !!(this.cfg.get("GOOGLE_OAUTH_CLIENT_ID", { infer: true }) && this.cfg.get("GOOGLE_OAUTH_CLIENT_SECRET", { infer: true })),
         };
       }),
     );

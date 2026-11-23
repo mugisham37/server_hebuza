@@ -63,6 +63,8 @@ export const envSchema = z.object({
   // F-BKG-10 adviser calendar sync (dormant per provider until both are set).
   GOOGLE_OAUTH_CLIENT_ID: z.string().optional(),
   GOOGLE_OAUTH_CLIENT_SECRET: z.string().optional(),
+  // Google sign-in (OIDC) reuses the pair above; on when both are set. MOCK=true skips Google for e2e (refused in production).
+  GOOGLE_OAUTH_MOCK: z.enum(["true", "false", "1", "0"]).default("false").transform((v) => v === "true" || v === "1"),
   MS_OAUTH_CLIENT_ID: z.string().optional(),
   MS_OAUTH_CLIENT_SECRET: z.string().optional(),
   // Read-only view of the external backup job's status (server/backup/backup.sh → status/LATEST-<env>.json). Unset → dormant.
@@ -115,6 +117,7 @@ export const envSchema = z.object({
 }).superRefine((e, ctx) => {
   // Fail closed at boot: dev conveniences that accept unsigned money callbacks must never reach production.
   if (e.NODE_ENV !== "production") return;
+  if (e.GOOGLE_OAUTH_MOCK) ctx.addIssue({ code: "custom", path: ["GOOGLE_OAUTH_MOCK"], message: "must be false in production" });
   if (e.PAYMENTS_STUB) ctx.addIssue({ code: "custom", path: ["PAYMENTS_STUB"], message: "must be false in production" });
   if (!e.PAYMENTS_WEBHOOK_SECRET) ctx.addIssue({ code: "custom", path: ["PAYMENTS_WEBHOOK_SECRET"], message: "required in production" });
 });

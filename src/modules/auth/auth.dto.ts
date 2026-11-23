@@ -50,6 +50,8 @@ export const LoginIn = z.object({
   password: z.string().min(1).max(256),
   rememberMe: z.boolean().optional(),
   audience: Audience.optional(),
+  /** From /login?oauth=link_required: links the pending Google identity once the password is right. */
+  oauthLinkToken: z.string().min(1).max(128).optional(),
 });
 export const StaffLoginIn = z.object({
   email: z.email(),
@@ -94,7 +96,8 @@ export const AccessRequestIn = z.object({
   note: z.string().max(500).nullish(),
 });
 export const ChangePasswordIn = z.object({
-  currentPassword: z.string().min(1),
+  /** Omit only when the account has no password yet (Google-only): this then sets the first password. */
+  currentPassword: z.string().min(1).optional(),
   newPassword: z.string().min(1).max(256),
   confirmPassword: z.string().optional(),
 });

@@ -557,6 +557,7 @@ export class AuthService {
       password: string;
       rememberMe?: boolean;
       audience?: "client" | "partner";
+      oauthLinkToken?: string;
     },
   ) {
     const type = b.identifierType ?? inferType(b.identifier);
@@ -596,41 +597,50 @@ export class AuthService {
     const k = this.lockKeys(door);
     await this.redis.del(k.attempts, k.until);
     return this.txs.run(async (tx) => {
-      if (u.deletionScheduledAt) {
-        await tx.update(users).set({ deletionScheduledAt: null, updatedAt: iso() }).where(eq(users.userId, u.userId));
-        await this.audit.record(tx, { action: "auth.account.deletion_cancelled", entity: "user", entityId: u.userId });
-      }
-      await tx.insert(loginAttempts).values({
-        id: genId("lat"),
-        identifier: id,
-        ipAddress: this.ip,
-        success: true,
-        attemptedAt: iso(),
-      });
-      // the 2FA suggestion returns on every password sign-in (snooze = "remind me next time")
-      if (u.mfaPromptSnoozedUntil)
-        await tx.update(users).set({ mfaPromptSnoozedUntil: null }).where(eq(users.userId, u.userId));
-      if (
-        (await this.mfaEnrolled(tx, u.userId)) &&
-        (NO_TRUST_ROLES.has(u.role) || !(await this.trustedDeviceFor(tx, h, u.userId)))
-      ) {
-        // Password ok, second factor pending: a 5-min pre_2fa handle only; POST /api/auth/mfa/verify finishes.
-        const t = opaqueToken("p2f");
-        await this.redis.setex(`auth:pre2fa:${sha256(t)}`, 300, u.userId);
-        this.setCookie(h.reply, PRE2FA_COOKIE, t, 300);
-        return {
-          session: sessionModel(u, null),
-          maskedEmail: maskIdentifier(u.email, u.phoneE164),
-          mfaRequired: true,
-        };
-      }
-      const s = await this.startSession(tx, h, u);
-      if (!u.isEmailVerified && !isStaffRole(u.role)) await this.sendOtp(tx, u);
-      return {
-        session: sessionModel(u, s.accessExpiresAt),
-        maskedEmail: maskIdentifier(u.email, u.phoneE164),
-      };
+      if (b.oauthLinkToken) await this.onLinkToken?.(tx, b.oauthLinkToken, u);
+      return this.signIn(tx, h, u, id);
     });
+  }
+
+  /** Google pending link (auth.google.ts) consumed by the next successful password sign-in; set by GoogleAuthService. */
+  onLinkToken?: (tx: Tx, token: string, u: User) => Promise<void>;
+
+  /** Shared by password and Google sign-in: attempt row, snooze reset, 2FA (pre_2fa) or session + cookies. */
+  async signIn(tx: Tx, h: Http, u: User, identifier: string) {
+    if (u.deletionScheduledAt) {
+      await tx.update(users).set({ deletionScheduledAt: null, updatedAt: iso() }).where(eq(users.userId, u.userId));
+      await this.audit.record(tx, { action: "auth.account.deletion_cancelled", entity: "user", entityId: u.userId });
+    }
+    await tx.insert(loginAttempts).values({
+      id: genId("lat"),
+      identifier,
+      ipAddress: this.ip,
+      success: true,
+      attemptedAt: iso(),
+    });
+    // the 2FA suggestion returns on every password sign-in (snooze = "remind me next time")
+    if (u.mfaPromptSnoozedUntil)
+      await tx.update(users).set({ mfaPromptSnoozedUntil: null }).where(eq(users.userId, u.userId));
+    if (
+      (await this.mfaEnrolled(tx, u.userId)) &&
+      (NO_TRUST_ROLES.has(u.role) || !(await this.trustedDeviceFor(tx, h, u.userId)))
+    ) {
+      // Password ok, second factor pending: a 5-min pre_2fa handle only; POST /api/auth/mfa/verify finishes.
+      const t = opaqueToken("p2f");
+      await this.redis.setex(`auth:pre2fa:${sha256(t)}`, 300, u.userId);
+      this.setCookie(h.reply, PRE2FA_COOKIE, t, 300);
+      return {
+        session: sessionModel(u, null),
+        maskedEmail: maskIdentifier(u.email, u.phoneE164),
+        mfaRequired: true,
+      };
+    }
+    const s = await this.startSession(tx, h, u);
+    if (!u.isEmailVerified && !isStaffRole(u.role)) await this.sendOtp(tx, u);
+    return {
+      session: sessionModel(u, s.accessExpiresAt),
+      maskedEmail: maskIdentifier(u.email, u.phoneE164),
+    };
   }
 
   async staffLogin(h: Http, b: { email: string; password: string }) {
@@ -958,7 +968,7 @@ export class AuthService {
   async changePassword(
     me: SessionUser,
     b: {
-      currentPassword: string;
+      currentPassword?: string;
       newPassword: string;
       confirmPassword?: string;
     },
@@ -974,7 +984,8 @@ export class AuthService {
     const hash = await this.newHash(b.newPassword);
     return this.txs.run(async (tx) => {
       const u = await this.activeUser(tx, me);
-      if (!(await this.pw.verify(u.passwordHash, b.currentPassword)))
+      // Google-only account (no password yet): setting the first one needs no current password.
+      if (u.passwordHash && !(await this.pw.verify(u.passwordHash, b.currentPassword ?? "")))
         throw new AppError(
           400,
           "invalid_password",
@@ -990,7 +1001,7 @@ export class AuthService {
         .where(eq(users.userId, u.userId));
       await this.revokeAllSessions(tx, u.userId, me.sid); // keep this device signed in
       await this.audit.record(tx, {
-        action: "auth.password.changed",
+        action: u.passwordHash ? "auth.password.changed" : "auth.password.set",
         entity: "user",
         entityId: u.userId,
       });

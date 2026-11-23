@@ -19,6 +19,7 @@ export const PublicSettingsOut = z.object({
   acceptNewApps: z.boolean(),
   maintenanceMode: z.boolean(),
   enabledLocales: z.array(z.enum(["rw", "en", "fr"])), // F-SET-10
+  googleSignIn: z.boolean(), // "Continue with Google" shown only when true
 }).meta({ id: "PublicSettingsResponse" });
 
 const State = z.enum(["operational", "degraded", "outage"]);

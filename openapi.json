@@ -6671,6 +6671,218 @@
         ]
       }
     },
+    "/api/auth/oauth/google/start": {
+      "get": {
+        "operationId": "GoogleAuthController_start",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "GoogleAuth"
+        ]
+      }
+    },
+    "/api/auth/oauth/google/callback": {
+      "get": {
+        "operationId": "GoogleAuthController_callback",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "GoogleAuth"
+        ]
+      }
+    },
+    "/api/me/identities": {
+      "get": {
+        "operationId": "GoogleAuthController_identities",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "identities": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "provider": {
+                                "type": "string"
+                              },
+                              "email": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "linkedAt": {
+                                "type": "string"
+                              },
+                              "lastUsedAt": {
+                                "nullable": true,
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "provider",
+                              "email",
+                              "linkedAt",
+                              "lastUsedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "hasPassword": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "identities",
+                        "hasPassword"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "GoogleAuth"
+        ]
+      }
+    },
+    "/api/me/identities/google": {
+      "delete": {
+        "operationId": "GoogleAuthController_unlink",
+        "parameters": [],
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "removed": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "removed"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "GoogleAuth"
+        ]
+      }
+    },
     "/api/me/consents": {
       "get": {
         "operationId": "AccountController_consents",
@@ -57149,6 +57361,11 @@
               "client",
               "partner"
             ]
+          },
+          "oauthLinkToken": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
           }
         },
         "required": [
@@ -57308,7 +57525,6 @@
           }
         },
         "required": [
-          "currentPassword",
           "newPassword"
         ]
       },
@@ -63254,7 +63470,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1652_0"
+              "$ref": "#/components/schemas/__s1655_0"
             }
           }
         },
@@ -65318,7 +65534,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s2094_0"
+            "$ref": "#/components/schemas/__s2097_0"
           },
           "channel": {
             "type": "string",
@@ -65343,7 +65559,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s2098_0"
+            "$ref": "#/components/schemas/__s2101_0"
           }
         },
         "required": [
@@ -65361,7 +65577,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2102_0"
+                "$ref": "#/components/schemas/__s2105_0"
               }
             ]
           }
@@ -65605,7 +65821,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2154_0"
+                "$ref": "#/components/schemas/__s2157_0"
               }
             ]
           },
@@ -70744,6 +70960,9 @@
                 "fr"
               ]
             }
+          },
+          "googleSignIn": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -70751,7 +70970,8 @@
           "guestApps",
           "acceptNewApps",
           "maintenanceMode",
-          "enabledLocales"
+          "enabledLocales",
+          "googleSignIn"
         ],
         "additionalProperties": false
       },
@@ -72973,7 +73193,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1652_0": {
+      "__s1655_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -72995,7 +73215,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1652_0"
+              "$ref": "#/components/schemas/__s1655_0"
             }
           }
         },
@@ -73005,7 +73225,7 @@
           "label"
         ]
       },
-      "__s1653_0": {
+      "__s1656_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -73027,7 +73247,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1653_0"
+              "$ref": "#/components/schemas/__s1656_0"
             }
           }
         },
@@ -73037,7 +73257,7 @@
           "label"
         ]
       },
-      "__s1654_0": {
+      "__s1657_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -73059,7 +73279,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1654_0"
+              "$ref": "#/components/schemas/__s1657_0"
             }
           }
         },
@@ -73067,222 +73287,6 @@
           "id",
           "href",
           "label"
-        ]
-      },
-      "__s2094_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2094_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s2095_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2095_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s2096_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2096_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
         ]
       },
       "__s2097_0": {
@@ -73933,7 +73937,7 @@
           "rules"
         ]
       },
-      "__s2154_0": {
+      "__s2106_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -73994,7 +73998,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2154_0"
+                  "$ref": "#/components/schemas/__s2106_0"
                 }
               ]
             }
@@ -74005,7 +74009,7 @@
           "rules"
         ]
       },
-      "__s2155_0": {
+      "__s2107_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74066,7 +74070,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2155_0"
+                  "$ref": "#/components/schemas/__s2107_0"
                 }
               ]
             }
@@ -74077,7 +74081,7 @@
           "rules"
         ]
       },
-      "__s2156_0": {
+      "__s2108_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74138,7 +74142,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2156_0"
+                  "$ref": "#/components/schemas/__s2108_0"
                 }
               ]
             }
@@ -74715,6 +74719,222 @@
                 },
                 {
                   "$ref": "#/components/schemas/__s2164_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2165_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2165_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2166_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2166_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2167_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2167_0"
                 }
               ]
             }

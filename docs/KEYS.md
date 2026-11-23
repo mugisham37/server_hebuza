@@ -75,6 +75,9 @@ GitHub environment secrets, never in git. Rotation: `docs/RUNBOOK.md`.
 | --- | --- |
 | `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → widget → secret key (site key goes to the web) |
 | `REVALIDATE_SECRET` | ≥ 32 random chars, same value on the web (CMS revalidate hook) |
+| `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` | Google sign-in (and adviser calendar sync). Google Cloud Console → APIs & Services → OAuth consent screen (External; scopes `openid email profile`) → Credentials → Create OAuth client ID → Web application. Authorized redirect URIs: `https://hebuza-web-staging.up.railway.app/api/auth/oauth/google/callback` (staging) and `<production API_PUBLIC_URL>/api/auth/oauth/google/callback` (production); add `/api/calendar-sync/google/callback` too if calendar sync is used. Both set → "Continue with Google" shows (`googleSignIn` in public settings). |
+| `API_PUBLIC_URL` | Public API origin; builds the Google redirect URI (default: first `WEB_ORIGIN`). Must match the URI registered in Google exactly. |
+| `GOOGLE_OAUTH_MOCK` | `true` only for local/e2e: start → callback without Google, `mock_email`/`mock_sub`/`mock_unverified` query params simulate the account. Boot fails if set in production. |
 
 ## Scripts only
 
