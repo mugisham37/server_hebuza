@@ -1,5 +1,5 @@
 // Public status page probe: live component health, cached 15 s in Redis so the page cannot hammer the backends.
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Optional } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { sql } from "drizzle-orm";
 import type IORedis from "ioredis";
@@ -24,7 +24,7 @@ export class StatusService {
     private readonly queues: QueueService,
     private readonly storage: StorageService,
     private readonly config: ConfigService,
-    private readonly worker: WorkerMonitor,
+    @Optional() private readonly worker?: WorkerMonitor, // API-only (global in AppModule); the worker process loads this module via ApplicationsModule
   ) {}
 
   async get(): Promise<Status> {
@@ -52,6 +52,7 @@ export class StatusService {
         return { state: failed > 20 || backlog > 500 ? "degraded" : "operational", detail: `Backlog ${backlog} · ${failed} failed` };
       }),
       (async (): Promise<C> => {
+        if (!this.worker) return { key: "worker", name: "Background processing", state: "operational", uptime: null, days: [], since: null, detail: "Not monitored" };
         const w = this.worker.snapshot();
         const down = w.status === "down";
         return { key: "worker", name: "Background processing", state: down ? "degraded" : "operational", uptime: null, days: [], since: down ? w.lastSeen : null,
