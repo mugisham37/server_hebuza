@@ -6,8 +6,10 @@ import type { Tx } from "../../core/db/db";
 import { randomBytes } from "node:crypto";
 import { and, count, eq, inArray, ne, sql } from "drizzle-orm";
 import {
+  agentProfiles,
   applications,
   staffProfiles,
+  userRoles,
   teamAccessRequests,
   users,
 } from "@/db/schema";
@@ -16,8 +18,10 @@ import { needsApproval, PRIVILEGED_GRANT } from "@/domain/system/approvals";
 import {
   INVITE_TTL_MS,
   isLastSysadmin,
+  SOD_PAIRS,
   sodConflicts,
   USER_NEXT,
+  WAIVER_MAX_DAYS,
   type UserAction,
 } from "@/domain/system/governance";
 import { mask } from "@/domain/format";
@@ -40,6 +44,8 @@ import {
   onApply,
   record,
   stale,
+  nextNo,
+  person,
   stepUp,
   submitChange,
   write,
@@ -50,6 +56,7 @@ import {
   type World,
 } from "./system.world";
 import { iso } from "../../core/db/ids";
+import { loadExt, saveExt } from "../work/work.store";
 
 const D = 86_400_000;
 const ASSIGNABLE: readonly string[] = ROLES.filter(
@@ -62,6 +69,7 @@ type Row = typeof users.$inferSelect & {
   mfaOn: boolean | null;
   lastSeen: string | null;
   codes: number;
+  held?: RoleGrant[] | null;
 };
 async function rows(db: Exec, where?: ReturnType<typeof and>) {
   return (
@@ -73,6 +81,7 @@ async function rows(db: Exec, where?: ReturnType<typeof and>) {
           string | null
         >`(select max(s.last_seen_at) from auth_sessions s where s.user_id = ${users.userId})`,
         codes: sql<number>`(select count(*)::int from backup_codes b where b.user_id = ${users.userId} and b.used_at is null)`,
+        held: sql<RoleGrant[] | null>`(select jsonb_agg(jsonb_build_object('role', ur.role, 'grantedBy', coalesce(ur.granted_by, '—'), 'grantedAt', ur.granted_at, 'expiresAt', ur.expires_at)) from user_roles ur where ur.user_id = ${users.userId} and (ur.expires_at is null or ur.expires_at > now()))`,
       })
       .from(users)
       .leftJoin(staffProfiles, eq(staffProfiles.userId, users.userId))
@@ -82,6 +91,7 @@ async function rows(db: Exec, where?: ReturnType<typeof and>) {
     mfaOn: r.mfaOn,
     lastSeen: r.lastSeen,
     codes: Number(r.codes),
+    held: r.held,
   })) as Row[];
 }
 
@@ -97,6 +107,7 @@ export function toVM(r: Row, m: UserMeta | undefined): SystemUserVM {
     })),
     ...(m?.extraRoles ?? []).filter((g) => !primary.includes(g.role as Role)),
   ];
+  for (const g of r.held ?? []) if (!grants.some((x) => x.role === g.role)) grants.push(g); // user_roles table (all-workspaces / owner script)
   const kind: UserKind = m?.isBootstrap
     ? "service"
     : grants.every((g) => g.role === "client") && grants.length
@@ -598,7 +609,14 @@ export async function removeRole(w: World, u: SystemUserVM, role: string) {
     .select({ role: users.role })
     .from(users)
     .where(eq(users.userId, u.id));
+  await w.db.delete(userRoles).where(and(eq(userRoles.userId, u.id), eq(userRoles.role, role)));
   if (normalizeRoles({ role: row.role }).includes(role as Role)) {
+    const tbl = u.roles.find((g) => g.role !== role && !(m.extraRoles ?? []).some((x) => x.role === g.role));
+    if (!(m.extraRoles ?? []).some((g) => g.role !== role) && tbl) {
+      await w.db.delete(userRoles).where(and(eq(userRoles.userId, u.id), eq(userRoles.role, tbl.role)));
+      await w.db.update(users).set({ role: tbl.role, updatedAt: iso() }).where(eq(users.userId, u.id));
+      return;
+    }
     const next = (m.extraRoles ?? []).find((g) => g.role !== role);
     if (!next)
       throw fail(
@@ -986,5 +1004,50 @@ export async function decideIdentity(
       decidedBy: w.actor.name,
       decidedAt: now,
     };
+  });
+}
+
+// ---------------------------------------------------------------- all workspaces (one sysadmin account acts in every workspace)
+/** Every workspace role. A sysadmin holding all of them sees the full top-bar workspace switcher. */
+export const ALL_WORKSPACE_ROLES = ROLES.filter((r) => r !== "visitor") as Role[];
+const ALL_TAG = "all-workspaces";
+/**
+ * Grant (on) or remove (off) every workspace role on a sysadmin account: user_roles rows, an agent profile so work can be
+ * assigned to them, and audited SoD waivers for the blocked pairs. Maker ≠ checker still holds per person (own approvals refused).
+ */
+export async function allWorkspaces(c: Caller, id: string, b: { on: boolean; reason?: string }) {
+  const s = guard(c.session);
+  await stepUp(c, s);
+  const reason = (b.reason ?? "").trim();
+  if (reason.length < 10) throw fail(422, "reason_required", "Reason needed.");
+  return write(c, async (w) => {
+    const u = liveStatus(await target(w, id));
+    if (!u.roles.some((g) => g.role === "staff:sysadmin") || u.kind === "service")
+      throw fail(422, "validation", "Only a system admin account can hold every workspace.");
+    if (u.status !== "active") throw fail(409, "stale", "Account isn't active.");
+    const t = iso();
+    if (b.on) {
+      const missing = ALL_WORKSPACE_ROLES.filter((r) => !u.roles.some((g) => g.role === r));
+      if (missing.length)
+        await w.db.insert(userRoles).values(missing.map((role) => ({ userId: id, role, grantedBy: ALL_TAG, grantedAt: t }))).onConflictDoNothing();
+      await w.db.insert(staffProfiles).values({ userId: id, twofaEnabled: false, createdAt: t }).onConflictDoNothing();
+      await w.db.insert(agentProfiles).values({ userId: id, title: "System admin", clearance: "cleared" }).onConflictDoNothing(); // trusted + audited: skips agent onboarding
+      const ext = await loadExt(w.db as Tx, id);
+      if (ext.status !== "cleared") await saveExt(w.db as Tx, id, { ...ext, status: "cleared" }); // Work workspace: no partner onboarding either
+      const expiresAt = new Date(Date.now() + WAIVER_MAX_DAYS * D).toISOString();
+      for (const p of SOD_PAIRS)
+        if (!w.waivers.some((x) => x.userId === id && x.pair[0] === p.a && x.pair[1] === p.b))
+          w.waivers.unshift({ id: nextNo(w, "WV", 3, false), userId: id, userName: u.name, pair: [p.a, p.b], why: `${ALL_TAG}: ${reason}`, expiresAt, approvedBy: person(w.actor), approvedAt: t });
+      record(w, "access.all_workspaces.granted", "user", id, { roles: u.roles.map((g) => g.role) }, { roles: ALL_WORKSPACE_ROLES }, reason);
+    } else {
+      if (await openCases(w.db, id)) throw fail(409, "open_cases", "Reassign this person's open cases first.");
+      await w.db.delete(userRoles).where(and(eq(userRoles.userId, id), inArray(userRoles.grantedBy, [ALL_TAG, "owner-account"])));
+      await w.db.delete(agentProfiles).where(and(eq(agentProfiles.userId, id), eq(agentProfiles.title, "System admin")));
+      w.waivers = w.waivers.filter((x) => !(x.userId === id && x.why.startsWith(ALL_TAG)));
+      record(w, "access.all_workspaces.revoked", "user", id, { roles: u.roles.map((g) => g.role) }, null, reason);
+      await w.caller.deps.auth.revokeAllSessions(w.db as Tx, id, c.session?.sid); // like any role revoke
+    }
+    bump(w, id);
+    return view((await userById(w, id))!);
   });
 }

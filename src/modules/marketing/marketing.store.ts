@@ -1,6 +1,7 @@
 // Marketing data access (port of reference marketing.store): the mkt_records document store, staff directory, id
 // counters, the marketing notification feed, audit, and the cross-module reads marketing needs.
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { holdsRole } from "@/db/holds-role";
 import { financeRecords, mktRecords, outbox, users } from "@/db/schema";
 import type { Tx } from "../../core/db/db";
 import { usersWithRole } from "../../core/db/system-records";
@@ -206,12 +207,12 @@ const roleOf = (roles: readonly string[]): Staff["role"] | null =>
 /** Marketing, service-manager and executive seats: the people the CRM can assign, mention and name. */
 export async function staffList(db: Exec): Promise<Staff[]> {
   const rows = await db
-    .select({ id: users.userId, name: users.name, role: users.role })
+    .select({ id: users.userId, name: users.name, role: users.role, held: sql<string[]>`array(select ur.role from user_roles ur where ur.user_id = ${users.userId})` })
     .from(users)
-    .where(and(inArray(users.role, STAFF_ROLES), eq(users.isActive, true)))
+    .where(and(holdsRole(...STAFF_ROLES), eq(users.isActive, true)))
     .orderBy(asc(users.name));
   return rows.map((r) => {
-    const role = roleOf([r.role])!;
+    const role = roleOf([r.role, ...(r.held ?? [])]) ?? "marketing"; // overlay-only grant → marketing seat
     return { id: r.id, name: r.name, role, color: COLORS[role] };
   });
 }

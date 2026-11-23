@@ -8930,6 +8930,65 @@
         ]
       }
     },
+    "/api/staff/users/{id}/all-workspaces": {
+      "post": {
+        "operationId": "SystemUsersController_allWorkspaces",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AllWorkspacesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "2XX": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "success",
+                    "message",
+                    "errorType",
+                    "data"
+                  ],
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "errorType": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "data": {}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SystemUsers"
+        ]
+      }
+    },
     "/api/staff/users/{id}/status": {
       "post": {
         "operationId": "SystemUsersController_status",
@@ -58190,6 +58249,21 @@
           "role"
         ]
       },
+      "AllWorkspacesDto": {
+        "type": "object",
+        "properties": {
+          "on": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "on"
+        ]
+      },
       "StatusDto2": {
         "type": "object",
         "properties": {
@@ -63470,7 +63544,7 @@
             "type": "array",
             "maxItems": 100,
             "items": {
-              "$ref": "#/components/schemas/__s1655_0"
+              "$ref": "#/components/schemas/__s1659_0"
             }
           }
         },
@@ -65534,7 +65608,7 @@
         "type": "object",
         "properties": {
           "definition": {
-            "$ref": "#/components/schemas/__s2097_0"
+            "$ref": "#/components/schemas/__s2101_0"
           },
           "channel": {
             "type": "string",
@@ -65559,7 +65633,7 @@
             "maxLength": 120
           },
           "definition": {
-            "$ref": "#/components/schemas/__s2101_0"
+            "$ref": "#/components/schemas/__s2105_0"
           }
         },
         "required": [
@@ -65577,7 +65651,7 @@
           "definition": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2105_0"
+                "$ref": "#/components/schemas/__s2109_0"
               }
             ]
           }
@@ -65821,7 +65895,7 @@
           "conditions": {
             "allOf": [
               {
-                "$ref": "#/components/schemas/__s2157_0"
+                "$ref": "#/components/schemas/__s2161_0"
               }
             ]
           },
@@ -73197,7 +73271,7 @@
         ],
         "additionalProperties": false
       },
-      "__s1655_0": {
+      "__s1659_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -73219,7 +73293,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1655_0"
+              "$ref": "#/components/schemas/__s1659_0"
             }
           }
         },
@@ -73229,7 +73303,7 @@
           "label"
         ]
       },
-      "__s1656_0": {
+      "__s1660_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -73251,7 +73325,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1656_0"
+              "$ref": "#/components/schemas/__s1660_0"
             }
           }
         },
@@ -73261,7 +73335,7 @@
           "label"
         ]
       },
-      "__s1657_0": {
+      "__s1661_0": {
         "type": "object",
         "properties": {
           "id": {
@@ -73283,7 +73357,7 @@
             "maxItems": 50,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/__s1657_0"
+              "$ref": "#/components/schemas/__s1661_0"
             }
           }
         },
@@ -73291,294 +73365,6 @@
           "id",
           "href",
           "label"
-        ]
-      },
-      "__s2097_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2097_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s2098_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2098_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s2099_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2099_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
-        ]
-      },
-      "__s2100_0": {
-        "type": "object",
-        "properties": {
-          "join": {
-            "type": "string",
-            "enum": [
-              "and",
-              "or"
-            ]
-          },
-          "rules": {
-            "maxItems": 30,
-            "type": "array",
-            "items": {
-              "anyOf": [
-                {
-                  "type": "object",
-                  "properties": {
-                    "field": {
-                      "type": "string",
-                      "enum": [
-                        "service_used",
-                        "category_interest",
-                        "sector",
-                        "district",
-                        "province",
-                        "company_size",
-                        "subscription",
-                        "last_active_days",
-                        "ltv",
-                        "language",
-                        "obligation",
-                        "consent_email",
-                        "consent_whatsapp",
-                        "consent_sms"
-                      ]
-                    },
-                    "op": {
-                      "type": "string",
-                      "enum": [
-                        "is",
-                        "is_not",
-                        "in",
-                        "lt",
-                        "lte",
-                        "gt",
-                        "gte",
-                        "before",
-                        "after",
-                        "within_days"
-                      ]
-                    },
-                    "value": {}
-                  },
-                  "required": [
-                    "field",
-                    "op",
-                    "value"
-                  ]
-                },
-                {
-                  "$ref": "#/components/schemas/__s2100_0"
-                }
-              ]
-            }
-          }
-        },
-        "required": [
-          "join",
-          "rules"
         ]
       },
       "__s2101_0": {
@@ -74157,7 +73943,7 @@
           "rules"
         ]
       },
-      "__s2157_0": {
+      "__s2109_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74218,7 +74004,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2157_0"
+                  "$ref": "#/components/schemas/__s2109_0"
                 }
               ]
             }
@@ -74229,7 +74015,7 @@
           "rules"
         ]
       },
-      "__s2158_0": {
+      "__s2110_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74290,7 +74076,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2158_0"
+                  "$ref": "#/components/schemas/__s2110_0"
                 }
               ]
             }
@@ -74301,7 +74087,7 @@
           "rules"
         ]
       },
-      "__s2159_0": {
+      "__s2111_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74362,7 +74148,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2159_0"
+                  "$ref": "#/components/schemas/__s2111_0"
                 }
               ]
             }
@@ -74373,7 +74159,7 @@
           "rules"
         ]
       },
-      "__s2160_0": {
+      "__s2112_0": {
         "type": "object",
         "properties": {
           "join": {
@@ -74434,7 +74220,7 @@
                   ]
                 },
                 {
-                  "$ref": "#/components/schemas/__s2160_0"
+                  "$ref": "#/components/schemas/__s2112_0"
                 }
               ]
             }
@@ -74939,6 +74725,294 @@
                 },
                 {
                   "$ref": "#/components/schemas/__s2167_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2168_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2168_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2169_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2169_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2170_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2170_0"
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "join",
+          "rules"
+        ]
+      },
+      "__s2171_0": {
+        "type": "object",
+        "properties": {
+          "join": {
+            "type": "string",
+            "enum": [
+              "and",
+              "or"
+            ]
+          },
+          "rules": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "enum": [
+                        "service_used",
+                        "category_interest",
+                        "sector",
+                        "district",
+                        "province",
+                        "company_size",
+                        "subscription",
+                        "last_active_days",
+                        "ltv",
+                        "language",
+                        "obligation",
+                        "consent_email",
+                        "consent_whatsapp",
+                        "consent_sms"
+                      ]
+                    },
+                    "op": {
+                      "type": "string",
+                      "enum": [
+                        "is",
+                        "is_not",
+                        "in",
+                        "lt",
+                        "lte",
+                        "gt",
+                        "gte",
+                        "before",
+                        "after",
+                        "within_days"
+                      ]
+                    },
+                    "value": {}
+                  },
+                  "required": [
+                    "field",
+                    "op",
+                    "value"
+                  ]
+                },
+                {
+                  "$ref": "#/components/schemas/__s2171_0"
                 }
               ]
             }

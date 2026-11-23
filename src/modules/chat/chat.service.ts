@@ -5,6 +5,7 @@
 // allocated under the conversation row lock so it orders exactly like created_at). Every new message / edit / reaction /
 // read receipt is pushed to the conversation's recipients with RealtimeService.emit after the tx commits.
 import { createTicket } from "../applications/support.service";
+import { holdsRole } from "@/db/holds-role";
 import { normalizeRoles } from "@/domain/auth/roles";
 import { settingOf } from "../../core/db/system-records";
 import { FIRST_RESPONSE_MIN, addBusinessMinutes, businessHours, clientLaneReadOnly, parseCard, CARD_ACTIONS } from "@/domain/chat/rules";
@@ -1858,7 +1859,7 @@ export class ChatService {
           and(
             eq(users.isActive, true),
             ne(users.userId, s.id),
-            sql`(${agentProfiles.userId} is not null or ${users.role} = 'staff:service_manager')`,
+            sql`(${agentProfiles.userId} is not null or ${holdsRole("staff:service_manager")})`,
           ),
         )
         .orderBy(asc(users.name))

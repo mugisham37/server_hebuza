@@ -1,6 +1,7 @@
 // PRT institutional partners: registry, contacts, agreements, actions, meetings, correspondence, referrals,
 // commissions (computed from paid referred cases, approved by finance), scorecard, history, reminders.
 import { Injectable, Logger } from "@nestjs/common";
+import { holdsRole } from "@/db/holds-role";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import {
@@ -665,7 +666,7 @@ export class PartnersService {
       for (const f of await tx
         .select({ id: users.userId })
         .from(users)
-        .where(and(eq(users.role, "staff:finance"), eq(users.isActive, true))))
+        .where(and(holdsRole("staff:finance"), eq(users.isActive, true))))
         await this.notifications.notify(tx, {
           userId: f.id,
           kind: "prt.commission.pending",
@@ -790,7 +791,7 @@ export class PartnersService {
           .from(users)
           .where(
             and(
-              eq(users.role, "staff:partner_manager"),
+              holdsRole("staff:partner_manager"),
               eq(users.isActive, true),
             ),
           )

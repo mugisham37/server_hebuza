@@ -7,7 +7,7 @@ import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "@/db/schema";
-import { staffProfiles, userRoles, users } from "@/db/schema";
+import { agentProfiles, staffProfiles, userRoles, users } from "@/db/schema";
 import { genId } from "@/modules/auth/auth.rules";
 
 const ROLES = [
@@ -92,6 +92,7 @@ async function main() {
           grantedAt: t,
         })
         .onConflictDoNothing();
+    await tx.insert(agentProfiles).values({ userId: u.id, title: "System admin", clearance: "cleared" }).onConflictDoNothing(); // assignable as an agent
     const got = await tx
       .select({ role: userRoles.role })
       .from(userRoles)

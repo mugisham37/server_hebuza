@@ -2,6 +2,7 @@
 // audit records (before/after/reason, read back by the history and HistoryTab views), effective-dated settings and
 // the party directory (clients, workers, services, cases from users/catalogue/applications) finance prices and pays against.
 import { and, eq, inArray, ne, notInArray, or, sql as dsql } from "drizzle-orm";
+import { holdsRole } from "@/db/holds-role";
 import type { Tx as Exec } from "../../core/db/db";
 import { AppError } from "../../core/http/errors";
 import type { AuditEntry } from "../../core/db/audit";
@@ -370,15 +371,12 @@ async function parties(db: Exec) {
   const appClients = [...new Set(apps.map((a) => a.clientId).filter((x): x is string => !!x))];
   const [us, svcs, tickets, opsDisputes, subs] = await Promise.all([
     db
-      .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language, customerNo: users.customerNo })
+      .select({ id: users.userId, name: users.name, email: users.email, phone: users.phoneE164, role: users.role, language: users.language, customerNo: users.customerNo, agent: dsql<boolean>`${holdsRole("staff:agent", "ext:agent")}`, ext: dsql<boolean>`${holdsRole("ext:agent")}` })
       .from(users)
       .where(
         or(
-          inArray(users.role, ["staff:agent", "ext:agent"]),
-          and(
-            eq(users.role, "client"),
-            or(inArray(users.userId, appClients.length ? appClients : ["-"]), dsql`${users.userId} in ${docClients}`),
-          ),
+          holdsRole("staff:agent", "ext:agent"),
+          or(inArray(users.userId, appClients.length ? appClients : ["-"]), dsql`${users.userId} in ${docClients}`), // whoever owns a case is a client here, even a multi-role staff account
         ),
       ),
     db.select({ slug: services.slug, name: services.name }).from(services),
@@ -398,7 +396,7 @@ async function parties(db: Exec) {
   const disputed = new Set([...tickets, ...opsDisputes].map((t) => t.caseRef));
   const subscribers = new Set(subs.map((s) => s.clientId));
   const clients: Client[] = us
-    .filter((u) => u.role === "client")
+    .filter((u) => u.role === "client" || appClients.includes(u.id))
     .map((u) => ({
       id: u.id, name: u.name, type: "individual", phone: u.phone ?? "", email: u.email ?? "", language: u.language,
       flags: subscribers.has(u.id) ? ["subscriber"] : [], customerNo: u.customerNo,
@@ -409,8 +407,8 @@ async function parties(db: Exec) {
     for (const o of await db.select().from(organizations).where(inArray(organizations.id, orgIds)))
       clients.push({ id: o.id, name: o.legalName, type: "company", phone: o.phone ?? "", email: o.email ?? "", language: "en", flags: [], customerNo: o.customerNo, tin: o.tin });
   const workers: Worker[] = us
-    .filter((u) => u.role !== "client")
-    .map((u) => ({ id: u.id, name: u.name, external: u.role === "ext:agent" }));
+    .filter((u) => u.agent)
+    .map((u) => ({ id: u.id, name: u.name, external: u.ext }));
   const cases: Case[] = apps
     .filter((a) => a.clientId)
     .map((a) => ({

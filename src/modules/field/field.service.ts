@@ -5,6 +5,7 @@
 // Offline outbox: every agent write is replay-safe by (user, client_op_id) in `field_ops` on top of Idempotency-Key;
 // a stale write (base_version < office_version) answers 409 `field_conflict` with the server state in `data.conflict`.
 import { LedgerService } from "../ledger/ledger.service";
+import { holdsRole } from "@/db/holds-role";
 import { cashKey, postPayment } from "../ledger/ledger.postings";
 import { clientInvoicesForCase } from "../finance/finance.billing";
 import { Injectable } from "@nestjs/common";
@@ -1616,7 +1617,7 @@ export async function escalateCash(db: Tx, notify: NotificationsService) {
   const fin = await db
     .select({ id: users.userId })
     .from(users)
-    .where(and(eq(users.role, "staff:finance"), eq(users.isActive, true)));
+    .where(and(holdsRole("staff:finance"), eq(users.isActive, true)));
   for (const c of rows)
     for (const f of fin)
       await notify.notify(db, {

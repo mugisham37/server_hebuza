@@ -86,6 +86,8 @@ export const RoleOpIn = z.object({
 });
 export type RoleOpIn = z.infer<typeof RoleOpIn>;
 export class RoleOpDto extends dto(RoleOpIn) {}
+export const AllWorkspacesIn = z.object({ on: z.boolean(), reason: z.string().max(500).optional() });
+export class AllWorkspacesDto extends dto(AllWorkspacesIn) {}
 export const StatusIn = z.object({
   action: z.enum([
     "suspend",

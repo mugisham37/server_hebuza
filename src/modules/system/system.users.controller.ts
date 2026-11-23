@@ -24,6 +24,7 @@ import {
   InviteDto,
   OffboardDto,
   RoleOpDto,
+  AllWorkspacesDto,
   type RoleOpIn,
   StatusDto,
   type StatusIn,
@@ -76,6 +77,11 @@ export class SystemUsersController {
   @Route(W)
   roles(@Sys() c: RawCaller, @Param("id") id: string, @Body() b: RoleOpDto) {
     return users.changeRole(this.s.on(c), id, b as RoleOpIn);
+  }
+  @Post("staff/users/:id/all-workspaces")
+  @Route(W)
+  allWorkspaces(@Sys() c: RawCaller, @Param("id") id: string, @Body() b: AllWorkspacesDto) {
+    return users.allWorkspaces(this.s.on(c), id, b);
   }
   @Post("staff/users/:id/status")
   @Route(W)
