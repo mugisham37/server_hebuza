@@ -223,7 +223,7 @@ export class AuthController {
   @Get("auth/mfa/status")
   @Route({
     auth: "user",
-    out: z.object({ enrolled: z.boolean(), trustedDevice: z.boolean() }),
+    out: D.MfaStatus,
   })
   mfaStatus(
     @CurrentUser() me: SessionUser,
@@ -281,6 +281,18 @@ export class AuthController {
   })
   stepUp(@Body() b: D.StepUpDto, @CurrentUser() me: SessionUser) {
     return this.mfa.stepUp(me, b);
+  }
+
+  @Post("auth/mfa/snooze")
+  @Route({ auth: "user", limit: "write", out: z.object({ ok: z.literal(true) }) })
+  mfaSnooze(@CurrentUser() me: SessionUser) {
+    return this.mfa.snooze(me);
+  }
+
+  @Post("auth/mfa/disable")
+  @Route({ auth: "user", limit: "auth", out: z.object({ ok: z.literal(true) }) })
+  mfaDisable(@Body() b: D.MfaDisableDto, @CurrentUser() me: SessionUser) {
+    return this.mfa.disable(me, b);
   }
 
   @Post("auth/mfa/backup-codes")

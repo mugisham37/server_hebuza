@@ -99,7 +99,7 @@ export class TokenService implements OnModuleInit {
   }
 
   signAccess(u: SessionUser, ttl = ACCESS_TTL_S) {
-    return this.sign({ typ: "access", roles: u.roles, scopes: u.scopes, sid: u.sid, stepUpAt: u.stepUpAt, act: u.act, mfa_enrolled: u.mfa, active_role: u.activeRole }, u.id, ttl);
+    return this.sign({ typ: "access", roles: u.roles, scopes: u.scopes, sid: u.sid, stepUpAt: u.stepUpAt, act: u.act, mfa_enrolled: u.mfa, mfa_required: u.mfaRequired, active_role: u.activeRole }, u.id, ttl);
   }
 
   /** Signature + claims, then the revoked-session denylist (checked once per request by the guard). */
@@ -107,7 +107,7 @@ export class TokenService implements OnModuleInit {
     const p = await this.verify(token, "access");
     if (typeof p.sid === "string" && (await this.denied(p.sid))) throw unauth("Session revoked");
     const scopes = (p.scopes ?? {}) as SessionUser["scopes"];
-    return { id: p.sub, sid: p.sid, roles: normalizeRoles({ roles: p.roles }), scopes, stepUpAt: typeof p.stepUpAt === "number" ? p.stepUpAt : undefined, act: typeof p.act === "string" ? p.act : undefined, mfa: typeof p.mfa_enrolled === "boolean" ? p.mfa_enrolled : undefined, activeRole: typeof p.active_role === "string" ? (p.active_role as SessionUser["roles"][number]) : undefined };
+    return { id: p.sub, sid: p.sid, roles: normalizeRoles({ roles: p.roles }), scopes, stepUpAt: typeof p.stepUpAt === "number" ? p.stepUpAt : undefined, act: typeof p.act === "string" ? p.act : undefined, mfa: typeof p.mfa_enrolled === "boolean" ? p.mfa_enrolled : undefined, mfaRequired: typeof p.mfa_required === "boolean" ? p.mfa_required : undefined, activeRole: typeof p.active_role === "string" ? (p.active_role as SessionUser["roles"][number]) : undefined };
   }
 
   /** Issued by the auth module after a fresh second factor; checked by AuthGuard on step-up routes. */

@@ -124,7 +124,8 @@ export const MfaVerifyIn = z.object({
   trustDevice: z.boolean().optional(),
 });
 export const StepUpIn = z.object({
-  code: Code,
+  code: Code.optional(),
+  password: z.string().min(1).max(256).optional(),
   backup: z.boolean().optional(),
   action: z.string().max(120).optional(),
 });
@@ -184,5 +185,8 @@ export class PasswordDto extends dto(PasswordIn) {}
 export class CodeDto extends dto(CodeIn) {}
 export class MfaVerifyDto extends dto(MfaVerifyIn) {}
 export class StepUpDto extends dto(StepUpIn) {}
+export const MfaDisableIn = z.object({ code: Code.optional(), backup: z.boolean().optional(), password: z.string().min(1).max(256).optional() });
+export class MfaDisableDto extends dto(MfaDisableIn) {}
+export const MfaStatus = z.object({ enrolled: z.boolean(), trustedDevice: z.boolean(), policy: z.enum(["suggested", "required"]), suggest: z.boolean() });
 export class ImpersonateDto extends dto(ImpersonateIn) {}
 export class ActiveRoleDto extends dto(z.object({ role: z.string().min(1).max(32) })) {}

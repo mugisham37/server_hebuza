@@ -53,6 +53,7 @@ import {
   type IdentifierType,
 } from "./auth.rules";
 import { iso } from "../../core/db/ids";
+import { settingOf } from "../../core/db/system-records";
 import { assignCustomerNo } from "../../core/db/customer-no";
 
 export const CFG = {
@@ -128,6 +129,9 @@ const label = (role: string) =>
   role === "partner" ? "partner" : isStaffRole(role) ? "team" : "client";
 
 /** F-IAM-08: finance and sysadmin always confirm the second factor (trusted devices never apply). */
+export type MfaPolicy = "suggested" | "required";
+export const mfaPolicy = async (tx: Tx | Db) =>
+  ((await settingOf<MfaPolicy | null>(tx, "security.mfa_staff")) ?? "suggested") as MfaPolicy;
 export const NO_TRUST_ROLES = new Set(["staff:finance", "staff:sysadmin"]);
 
 @Injectable()
@@ -219,7 +223,9 @@ export class AuthService {
       roles,
       activeRole: roles.find((x) => x === r?.active) ?? roles[0],
       scopes: { ...(r?.org && { orgId: r.org }), ...(r?.partner && { partnerId: id }), ...(r?.agent && { agentId: id }) },
-      mfa: !!r?.mfa, // the web proxy sends un-enrolled staff to 2FA setup (fails closed in production without this claim)
+      mfa: !!r?.mfa,
+      // the web proxy forces 2FA setup only when this is true (policy "required", team roles, not enrolled)
+      mfaRequired: !r?.mfa && roles.some(isStaffRole) && (await mfaPolicy(tx)) === "required",
     };
     const ttl = view ? Math.max(1, Math.min(ACCESS_TTL_S, Math.floor((view.until.getTime() - Date.now()) / 1000))) : ACCESS_TTL_S;
     return { su, ttl, token: this.tokens.signAccess(su, ttl), expiresAt: new Date(Date.now() + ttl * 1000) };
@@ -601,8 +607,10 @@ export class AuthService {
         success: true,
         attemptedAt: iso(),
       });
+      // the 2FA suggestion returns on every password sign-in (snooze = "remind me next time")
+      if (u.mfaPromptSnoozedUntil)
+        await tx.update(users).set({ mfaPromptSnoozedUntil: null }).where(eq(users.userId, u.userId));
       if (
-        isStaffRole(u.role) &&
         (await this.mfaEnrolled(tx, u.userId)) &&
         (NO_TRUST_ROLES.has(u.role) || !(await this.trustedDeviceFor(tx, h, u.userId)))
       ) {
@@ -772,7 +780,7 @@ export class AuthService {
         entity: "user",
         entityId: u.userId,
       });
-      return { verified: true, mfaRequired: isStaffRole(u.role) && (await this.mfaEnrolled(tx, u.userId)) };
+      return { verified: true, mfaRequired: await this.mfaEnrolled(tx, u.userId) };
     });
   }
 

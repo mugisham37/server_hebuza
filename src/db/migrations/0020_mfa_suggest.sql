@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "mfa_prompt_snoozed_until" timestamp with time zone;

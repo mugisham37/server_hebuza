@@ -14,6 +14,10 @@
 Trust boundaries: browser → web (Next proxy) → api; gateways → api webhooks; api/worker → Postgres/Redis/S3/providers.
 `TRUST_PROXY` must equal the real proxy hop count or client IPs (and thus rate limits) become spoofable.
 
+## Two-factor sign-in (2026-11-23)
+
+TOTP is optional for every role. Setting `security.mfa_staff` = `suggested` (default) | `required` (sysadmin, approval). Users with 2FA on are challenged at sign-in (trusted devices skipped except finance/sysadmin); others get a suggestion (`GET auth/mfa/status` → `suggest`, `POST auth/mfa/snooze` hides it until the next password sign-in). `required` sets the `mfa_required` claim for un-enrolled team/ext-agent accounts and the web proxy forces setup. Step-up uses the TOTP code when enrolled, else the account password (audited `auth.step_up`, `after.method`). `POST auth/mfa/disable` needs a code or the password.
+
 ## Pen-test checklist (P8.6)
 
 - [x] Authz matrix: every route × every persona (automated, below). - [x] IDOR on every single-`:id` GET with real ids.

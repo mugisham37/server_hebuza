@@ -3441,7 +3441,7 @@ const W = {
     },
     "security.mfa_staff": {
       key: "security.mfa_staff",
-      value: "always",
+      value: "suggested",
       changedBy: null,
       changedAt: null,
     },

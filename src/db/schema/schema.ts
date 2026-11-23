@@ -559,6 +559,8 @@ export const users = pgTable("users", {
 	customerNo: varchar("customer_no", { length: 24 }).unique("uq_users_customer_no"),
 	/** IAM-20: account deletion runs at this time unless the user signs in / cancels first. */
 	deletionScheduledAt: timestamp("deletion_scheduled_at", { withTimezone: true, mode: 'string' }),
+	/** 2FA suggestion banner hidden until then; cleared on each password sign-in. */
+	mfaPromptSnoozedUntil: timestamp("mfa_prompt_snoozed_until", { withTimezone: true, mode: 'string' }),
 }, (table) => [
 	unique("uq_users_email_role").on(table.email, table.role),
 	unique("uq_users_phone_role").on(table.phoneE164, table.role),

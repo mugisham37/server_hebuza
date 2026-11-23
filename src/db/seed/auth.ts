@@ -47,8 +47,9 @@ export async function seedAuth(db: PostgresJsDatabase<typeof schema>, deps: Seed
       .onConflictDoUpdate({ target: users.userId, set: ident }); // other seeds may create the persona bare; auth owns identity fields
     if (staff) {
       const totpSecretEncrypted = deps.encrypt(SEED_TOTP_SECRET); // re-encrypt: FIELD_KEY may differ from a previous run
-      await db.insert(staffProfiles).values({ userId: `mock-${p.key}`, totpSecretEncrypted, twofaEnabled: true, createdAt: t })
-        .onConflictDoUpdate({ target: staffProfiles.userId, set: { totpSecretEncrypted, twofaEnabled: true, totpLastStep: null } });
+      const twofaEnabled = p.key === "sysadmin"; // 2FA is optional; sysadmin keeps it on to exercise the challenge
+      await db.insert(staffProfiles).values({ userId: `mock-${p.key}`, totpSecretEncrypted, twofaEnabled, createdAt: t })
+        .onConflictDoUpdate({ target: staffProfiles.userId, set: { totpSecretEncrypted, twofaEnabled, totpLastStep: null } });
     }
     for (const extra of p.roles.slice(1))
       await db.insert(userRoles).values({ userId: `mock-${p.key}`, role: extra, grantedBy: "seed", grantedAt: t }).onConflictDoNothing();

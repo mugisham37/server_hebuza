@@ -1,4 +1,4 @@
-// Staff MFA: TOTP enrolment with backup codes, the /login/2fa challenge (pre_2fa cookie → session), trusted devices
+// MFA (optional for every role; policy security.mfa_staff): TOTP enrolment with backup codes, the /login/2fa challenge (pre_2fa cookie → session), trusted devices
 // and step-up. Secret: staff_profiles.totp_secret_encrypted (CryptoService). Backup codes: backup_codes (Argon2id).
 import { PasswordService } from "../../core/auth/password";
 import { NO_TRUST_ROLES } from "./auth.service";
@@ -6,21 +6,20 @@ import { Inject, Injectable } from "@nestjs/common";
 import type IORedis from "ioredis";
 import QRCode from "qrcode";
 import { and, eq, gt, isNull } from "drizzle-orm";
-import { authTrustedDevices, backupCodes, staffProfiles } from "@/db/schema";
+import { authTrustedDevices, backupCodes, staffProfiles, users } from "@/db/schema";
 import type { SessionUser } from "../../core/http/context";
-import { AppError, conflict } from "../../core/http/errors";
+import { conflict } from "../../core/http/errors";
 import type { Tx } from "../../core/db/db";
 import { AuditService } from "../../core/db/audit";
 import { CryptoService } from "../../core/crypto/crypto.service";
 import { claimTotpStep, totp } from "../../core/auth/otp";
 import { STEP_UP_TTL_S } from "../../core/auth/tokens";
 import { REDIS } from "../../core/queue/queue.module";
-import { authErr, AuthService, DEVICE_COOKIE, type Http } from "./auth.service";
+import { authErr, AuthService, DEVICE_COOKIE, mfaPolicy, type Http } from "./auth.service";
 import {
   backupCode,
   deviceLabel,
   genId,
-  isStaffRole,
   normalizeBackup,
   opaqueToken,
   sha256,
@@ -116,28 +115,60 @@ export class MfaService {
   }
 
   status(h: Http, me: SessionUser) {
-    return this.auth.txs.run(async (tx) => ({
-      enrolled: !!(await this.profile(tx, me.id))?.twofaEnabled,
-      trustedDevice: !!(await this.auth.trustedDeviceFor(tx, h, me.id)),
-    }));
+    return this.auth.txs.run(async (tx) => {
+      const enrolled = !!(await this.profile(tx, me.id))?.twofaEnabled;
+      const until = (await this.auth.getUser(tx, me.id))?.mfaPromptSnoozedUntil;
+      return {
+        enrolled,
+        trustedDevice: !!(await this.auth.trustedDeviceFor(tx, h, me.id)),
+        policy: await mfaPolicy(tx),
+        suggest: !me.act && !enrolled && (!until || Date.parse(until) < Date.now()), // never nag during view-as
+      };
+    });
+  }
+
+  /** "Not now" on the 2FA suggestion; password sign-in clears it, so it returns next login. */
+  snooze(me: SessionUser) {
+    return this.auth.txs.run(async (tx) => {
+      await tx.update(users).set({ mfaPromptSnoozedUntil: iso(new Date(Date.now() + 30 * 86400_000)) }).where(eq(users.userId, me.id));
+      return { ok: true as const };
+    });
+  }
+
+  /** Self-service turn-off: current TOTP/backup code or the account password. */
+  disable(me: SessionUser, b: { code?: string; backup?: boolean; password?: string }) {
+    return this.auth.txs.run(async (tx) => {
+      if (!(await this.profile(tx, me.id))?.twofaEnabled)
+        throw authErr.validation("Two-factor sign-in isn't set up on this account.");
+      await this.proveIdentity(tx, me.id, b, true);
+      await this.resetMfa(tx, me.id);
+      await this.audit.record(tx, { action: "auth.mfa.disabled", entity: "user", entityId: me.id, reason: b.code ? "code" : "password" });
+      return { ok: true as const };
+    });
+  }
+
+  /** code → second factor; else password (rate-limited by the same failure counter). */
+  private async proveIdentity(tx: Tx, uid: string, b: { code?: string; backup?: boolean; password?: string }, allowPassword: boolean) {
+    if (b.code) return this.checkSecondFactor(tx, uid, b.code, !!b.backup);
+    if (!allowPassword || !b.password) throw authErr.validation(allowPassword ? "Enter your code or password." : "Enter the code from your authenticator app.");
+    await this.assertNotLocked(uid);
+    const u = await this.auth.getUser(tx, uid);
+    if (!u || !(await this.passwords.verify(u.passwordHash, b.password))) throw await this.failure(uid);
+    await this.redis.del(`auth:mfa:fail:${uid}`);
   }
 
   /** Starts (or restarts, while unconfirmed) enrolment: new secret stored encrypted, inactive until verified. */
   enrol(me: SessionUser) {
     return this.auth.txs.run(async (tx) => {
       const u = await this.auth.getUser(tx, me.id);
-      if (!u || !isStaffRole(u.role))
-        throw new AppError(
-          403,
-          "forbidden",
-          "Two-factor sign-in is for team accounts.",
-        );
+      if (!u) throw authErr.unauth("Sign in again.");
       if ((await this.profile(tx, me.id))?.twofaEnabled)
         throw conflict(
           "Two-factor sign-in is already on. Ask an administrator to reset it.",
         );
       const secret = totp.secret();
       const enc = this.crypto.encrypt(secret);
+      // shortcut: 2FA state lives in staff_profiles for every role, move to users when profiles split
       await tx
         .insert(staffProfiles)
         .values({
@@ -236,15 +267,18 @@ export class MfaService {
   /** Fresh second factor → step-up JWT (UI sends it back as X-Step-Up-Token; AuthGuard verifies it). */
   stepUp(
     me: SessionUser,
-    b: { code: string; backup?: boolean; action?: string },
+    b: { code?: string; backup?: boolean; password?: string; action?: string },
   ) {
     return this.auth.txs.run(async (tx) => {
-      await this.checkSecondFactor(tx, me.id, b.code, !!b.backup);
+      // enrolled → code only; not enrolled → password
+      const enrolled = !!(await this.profile(tx, me.id))?.twofaEnabled;
+      await this.proveIdentity(tx, me.id, enrolled ? { ...b, password: undefined } : { password: b.password }, !enrolled);
       await this.audit.record(tx, {
         action: "auth.step_up",
         entity: "user",
         entityId: me.id,
         reason: b.action,
+        after: { method: enrolled ? (b.backup ? "backup" : "totp") : "password" },
       });
       return {
         token: await this.auth.tokens.signStepUp(me),

@@ -127,6 +127,10 @@ export async function login(key: string): Promise<Who> {
         throw new Error(
           `${key} staff login ${r.status} ${JSON.stringify(r.json)}`,
         );
+      if (!(r.json?.data as { mfaRequired?: boolean } | null)?.mfaRequired) {
+        jar = merge(jar, r.cookies); // 2FA optional: un-enrolled personas sign straight in
+        break;
+      }
       const v = await call("POST", "/api/auth/mfa/verify", {
         ip,
         jar: merge("", r.cookies),
