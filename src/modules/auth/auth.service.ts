@@ -225,7 +225,7 @@ export class AuthService {
       scopes: { ...(r?.org && { orgId: r.org }), ...(r?.partner && { partnerId: id }), ...(r?.agent && { agentId: id }) },
       mfa: !!r?.mfa,
       // the web proxy forces 2FA setup only when this is true (policy "required", team roles, not enrolled)
-      mfaRequired: !r?.mfa && roles.some(isStaffRole) && (await mfaPolicy(tx)) === "required",
+      mfaRequired: false, // 2FA is never forced; kept in the token for older web builds
     };
     const ttl = view ? Math.max(1, Math.min(ACCESS_TTL_S, Math.floor((view.until.getTime() - Date.now()) / 1000))) : ACCESS_TTL_S;
     return { su, ttl, token: this.tokens.signAccess(su, ttl), expiresAt: new Date(Date.now() + ttl * 1000) };

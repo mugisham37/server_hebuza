@@ -1,8 +1,8 @@
 // Abuse checks against a running API: rate limits, OTP cap, idempotency replay, webhook signature, body limit, CSRF, view-as.
 // Run: npx tsx server/test/authz/abuse.ts   (exit 1 on any failed check). Writes one chat message (idempotency check).
 import { randomUUID } from "node:crypto";
-import { SEED_TOTP_SECRET } from "@/db/seed/auth";
-import { call, clientConversation, login, totp } from "./matrix";
+import { SEED_STAFF_PASSWORD } from "@/db/seed/auth";
+import { call, clientConversation, login } from "./matrix";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const results: [string, boolean, string][] = [];
@@ -164,19 +164,11 @@ async function main() {
 
   // 7. view-as is read-only: sysadmin step-up → impersonate client → any write is 403 impersonation_read_only.
   const s = await login("sysadmin");
-  let su = await call("POST", "/api/auth/mfa/step-up", {
+  const su = await call("POST", "/api/auth/mfa/step-up", {
     jar: s.jar,
     ip: s.ip,
-    body: { code: totp(SEED_TOTP_SECRET) },
+    body: { password: SEED_STAFF_PASSWORD }, // 2FA is opt-in; un-enrolled users confirm with their password
   });
-  if (su.status >= 300) {
-    await new Promise((r) => setTimeout(r, 31_000 - (Date.now() % 30_000)));
-    su = await call("POST", "/api/auth/mfa/step-up", {
-      jar: s.jar,
-      ip: s.ip,
-      body: { code: totp(SEED_TOTP_SECRET) },
-    });
-  }
   const token = (su.json?.data as { token?: string } | null)?.token ?? "";
   const imp = await call("POST", "/api/staff/impersonate", {
     jar: s.jar,

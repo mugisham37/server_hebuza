@@ -148,6 +148,13 @@
       "when": 1795448565686,
       "tag": "0020_mfa_suggest",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795454997604,
+      "tag": "0021_mfa_opt_in",
+      "breakpoints": true
     }
   ]
 }
