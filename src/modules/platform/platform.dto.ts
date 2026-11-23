@@ -20,6 +20,7 @@ export const PublicSettingsOut = z.object({
   maintenanceMode: z.boolean(),
   enabledLocales: z.array(z.enum(["rw", "en", "fr"])), // F-SET-10
   googleSignIn: z.boolean(), // "Continue with Google" shown only when true
+  demoLogins: z.boolean(), // staging only: web shows "Use demo account"
 }).meta({ id: "PublicSettingsResponse" });
 
 const State = z.enum(["operational", "degraded", "outage"]);

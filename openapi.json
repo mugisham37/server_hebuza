@@ -70963,6 +70963,9 @@
           },
           "googleSignIn": {
             "type": "boolean"
+          },
+          "demoLogins": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -70971,7 +70974,8 @@
           "acceptNewApps",
           "maintenanceMode",
           "enabledLocales",
-          "googleSignIn"
+          "googleSignIn",
+          "demoLogins"
         ],
         "additionalProperties": false
       },

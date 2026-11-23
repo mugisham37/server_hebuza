@@ -68,8 +68,13 @@ export class PlatformService {
           // = GoogleAuthService.enabled (mock is refused in production at boot)
           googleSignIn: (this.cfg.get("GOOGLE_OAUTH_MOCK", { infer: true }) && this.cfg.get("NODE_ENV", { infer: true }) !== "production") ||
             !!(this.cfg.get("GOOGLE_OAUTH_CLIENT_ID", { infer: true }) && this.cfg.get("GOOGLE_OAUTH_CLIENT_SECRET", { infer: true })),
+          demoLogins: demoLoginsEnabled(process.env),
         };
       }),
     );
   }
 }
+
+/** Staging-only "Use demo account" button on the web sign-in; never on a production-named env. */
+export const demoLoginsEnabled = (env: NodeJS.ProcessEnv) =>
+  env.RAILWAY_ENVIRONMENT_NAME !== "production" && (env.ALLOW_SEED === "staging" || env.RAILWAY_ENVIRONMENT_NAME === "staging");
