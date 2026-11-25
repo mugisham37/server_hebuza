@@ -151,7 +151,7 @@ function seedEntries(): CmsEntry[] {
       return variant(l, lbSlug(qa.q), qa.q, { a: { text: qa.a } }, "2026-09-01");
     }),
   })));
-  const HOME: HomeSection[] = ["hero", "tracker", "institutions", "services", "how", "pricing", "guides", "cta"];
+  const HOME: HomeSection[] = ["hero", "tracker", "institutions", "services", "how", "guides", "cta"];
   const home = base("cms-page-home", "page", "home", "2026-09-01", {
     blocks: HOME.map((s) => ({ id: s, type: `home.${s}` as const })),
     variants: per((l) => variant(l, "home", "HEBUZA", Object.fromEntries(HOME.map((s) => [s, { copy: {} }])), "2026-09-01")),
