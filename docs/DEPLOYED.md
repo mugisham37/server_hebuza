@@ -1,5 +1,7 @@
 # What is deployed (live record)
 
+> **2026-11-26: staging removed.** There is one Railway environment, `production`. A push to `main` deploys to production after CI passes (`.github/workflows/deploy.yml`); the staging environment, its database and `reseed-staging.yml` no longer exist. Mentions of staging below are historical.
+
 Updated: 2026-11-18. Plan and principles: `DEPLOYMENT-RAILWAY-CLOUDFLARE.md`.
 
 ## URLs (Railway domains; custom domain later, Phase L)

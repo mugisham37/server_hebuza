@@ -1,5 +1,7 @@
 # HEBUZA runbook
 
+> **2026-11-26: staging removed.** There is one Railway environment, `production`. A push to `main` deploys to production after CI passes (`.github/workflows/deploy.yml`); the staging environment, its database and `reseed-staging.yml` no longer exist. Mentions of staging below are historical.
+
 Processes: **web** (Next standalone, `web/Dockerfile`), **api** and **worker** (one image, `server/Dockerfile`;
 default CMD `node dist/main.js`, worker `node dist/worker.js`), **migrate** (same image, `node dist/migrate.js`; also
 `--target migrate`). Single-instance hosting: `WORKER_MODE=inline` runs the jobs inside the api process (no worker).
