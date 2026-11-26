@@ -118,7 +118,7 @@ type K = {
 export const BKG_DEFAULTS = {
   consultationPrice: 20_000, // PLACEHOLDER(consultation-price) D-1
   noShowPrepayment: 20_000, // PLACEHOLDER(no-show-prepayment) D-21
-  officeAddress: "HEBUZA office, Sonatube — Kicukiro, Kigali", // PLACEHOLDER(office-address) D-15
+  officeAddress: "HEBUZA office, Sonatube, Kicukiro, Kigali", // PLACEHOLDER(office-address) D-15
   manageTokenValidityH: 24, // PLACEHOLDER(manage-token-validity) D-18, hours after the session ends
   // F-BKG-07: Jitsi Meet rooms work from the URL alone (no account/API); the random suffix makes them unguessable.
   videoBase: "https://meet.jit.si/",
@@ -2199,7 +2199,7 @@ async function analytics(db: Tx, now = Date.now()): Promise<BookingAnalytics> {
       )
       .reduce((s, r) => s + r.price, 0),
     byType: count((r) => r.typeName.en),
-    byAdviser: count((r) => (r.adviserId && names.get(r.adviserId)) || "—"),
+    byAdviser: count((r) => (r.adviserId && names.get(r.adviserId)) || ""),
     bySource: count((r) => r.source),
   };
 }

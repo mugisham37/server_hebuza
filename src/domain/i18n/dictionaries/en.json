@@ -1,8 +1,8 @@
 {
   "meta": {
     "siteName": "HEBUZA",
-    "title": "HEBUZA — Business, tax & investment services online",
-    "description": "Your business paperwork and advice, handled by verified professionals — track every step, pay by MoMo, get your documents online."
+    "title": "HEBUZA, Business, tax & investment services online",
+    "description": "Your business paperwork and advice, handled by verified professionals, track every step, pay by MoMo, get your documents online."
   },
   "common": {
     "skipToContent": "Skip to content",
@@ -167,8 +167,8 @@
     "startRequest": "Start a new request"
   },
   "footer": {
-    "tagline": "Private One-Stop Investment and Business Advisory Centre",
-    "address": "Sonatube, Kicukiro — Kigali, Rwanda",
+    "tagline": "Private One Stop Investment and Business Advisory Centre",
+    "address": "Sonatube, Kicukiro, Kigali, Rwanda",
     "legal": "Legal",
     "terms": "Terms",
     "privacy": "Privacy",

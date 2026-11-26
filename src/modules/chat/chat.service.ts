@@ -1899,7 +1899,7 @@ export class ChatService {
       return rows.map((r) => ({
         type: "application",
         ref: r.code,
-        label: `${r.code} — ${r.name}`,
+        label: `${r.code}, ${r.name}`,
       }));
     });
   }

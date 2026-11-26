@@ -671,7 +671,7 @@ export function generateRecurringIn(w: World) {
     const lines = [
       withCalc({
         id: "l1",
-        description: `${c.title} — ${invoiceDate.slice(0, 7)}`,
+        description: `${c.title}, ${invoiceDate.slice(0, 7)}`,
         qty: 1,
         unitPrice: c.amount,
         vatable: false,

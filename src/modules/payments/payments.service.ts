@@ -1388,7 +1388,7 @@ export class PaymentsService {
     const [invs, rec] = await Promise.all([this.txs.run((tx) => clientInvoices(tx, clientId)), this.myReceipts(clientId)]);
     const cns = await this.txs.run(async (tx) =>
       invs.length
-        ? ((await tx.execute(sql`select data from finance_records where kind = 'credit_note' and ref = any(${invs.map((i) => i.no!)})`)) as unknown as { data: { no: string; invoiceNo: string; issuedAt: string; totals: { total: number } } }[]).map((r) => r.data) // cast: execute() rows are untyped
+        ? ((await tx.execute(sql`select data from finance_records where kind = 'credit_note' and ref in (${sql.join(invs.map((i) => sql`${i.no!}`), sql`, `)})`)) as unknown as { data: { no: string; invoiceNo: string; issuedAt: string; totals: { total: number } } }[]).map((r) => r.data) // cast: execute() rows are untyped
         : [],
     );
     type Row = { date: string; type: "invoice" | "payment" | "credit_note"; number: string; detail: string; amount: number };

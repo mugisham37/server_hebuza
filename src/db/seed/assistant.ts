@@ -82,7 +82,7 @@ export async function seedAssistant(tx: Exec) {
     {
       id: "kb-2",
       slug: "certificat-investissement",
-      title: "Certificat d'investissement — FAQ",
+      title: "Certificat d'investissement, FAQ",
       kind: "faq",
       locale: "fr",
       status: "approved_for_ai",

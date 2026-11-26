@@ -65,7 +65,7 @@ export class TokenService implements OnModuleInit {
       this.priv = await importPKCS8(pem.replace(/\\n/g, "\n"), ALG);
       this.pub = await importSPKI(this.config.get("JWT_PUBLIC_KEY", { infer: true }).replace(/\\n/g, "\n"), ALG, { extractable: true });
     } else if (this.config.get("NODE_ENV", { infer: true }) !== "production") {
-      this.log.warn("!!! JWT_PRIVATE_KEY is not a PEM — using an EPHEMERAL dev keypair; all sessions die on restart !!!");
+      this.log.warn("!!! JWT_PRIVATE_KEY is not a PEM, using an EPHEMERAL dev keypair; all sessions die on restart !!!");
       ({ privateKey: this.priv, publicKey: this.pub } = await generateKeyPair(ALG, { extractable: true }));
     } else throw new Error("JWT_PRIVATE_KEY must be an Ed25519 PKCS8 PEM in production");
     const jwk = await exportJWK(this.pub);

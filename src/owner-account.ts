@@ -80,7 +80,7 @@ async function main() {
       console.log(`created ${email} (${u.id})`);
     } else
       console.log(
-        `exists ${email} (${u.id}, primary ${u.role}) — password left unchanged; adding missing roles`,
+        `exists ${email} (${u.id}, primary ${u.role}), password left unchanged; adding missing roles`,
       );
     for (const role of [...ROLES, "staff:sysadmin"].filter((r) => r !== u.role))
       await tx

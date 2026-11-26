@@ -81,7 +81,7 @@ async function rows(db: Exec, where?: ReturnType<typeof and>) {
           string | null
         >`(select max(s.last_seen_at) from auth_sessions s where s.user_id = ${users.userId})`,
         codes: sql<number>`(select count(*)::int from backup_codes b where b.user_id = ${users.userId} and b.used_at is null)`,
-        held: sql<RoleGrant[] | null>`(select jsonb_agg(jsonb_build_object('role', ur.role, 'grantedBy', coalesce(ur.granted_by, '—'), 'grantedAt', ur.granted_at, 'expiresAt', ur.expires_at)) from user_roles ur where ur.user_id = ${users.userId} and (ur.expires_at is null or ur.expires_at > now()))`,
+        held: sql<RoleGrant[] | null>`(select jsonb_agg(jsonb_build_object('role', ur.role, 'grantedBy', coalesce(ur.granted_by, ''), 'grantedAt', ur.granted_at, 'expiresAt', ur.expires_at)) from user_roles ur where ur.user_id = ${users.userId} and (ur.expires_at is null or ur.expires_at > now()))`,
       })
       .from(users)
       .leftJoin(staffProfiles, eq(staffProfiles.userId, users.userId))
@@ -101,7 +101,7 @@ export function toVM(r: Row, m: UserMeta | undefined): SystemUserVM {
   const grants: RoleGrant[] = [
     ...primary.map((role) => ({
       role,
-      grantedBy: m?.grantedBy ?? m?.createdBy ?? "—",
+      grantedBy: m?.grantedBy ?? m?.createdBy ?? "",
       grantedAt: new Date(r.createdAt).toISOString(),
       expiresAt: null,
     })),
@@ -870,7 +870,7 @@ export async function identityRequests(w: World): Promise<IdentityRequestVM[]> {
         kind: r.kind as IdentityRequestVM["kind"],
         userId: u?.id ?? m?.userId ?? "",
         userName: u?.name ?? r.email,
-        managerName: m?.managerName ?? um?.managerName ?? "—",
+        managerName: m?.managerName ?? um?.managerName ?? "",
         reason: r.note ?? "",
         at: new Date(r.createdAt).toISOString(),
         status:

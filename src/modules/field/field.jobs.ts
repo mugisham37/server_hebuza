@@ -33,7 +33,7 @@ export class FieldJobs {
         `Agent: ${r.agentName}`,
         `Signed ${new Date(sig.signedAt).toISOString()} (${sig.method}${sig.typedName ? `: ${sig.typedName}` : ""}, ${sig.locale})`,
         "",
-        ...items.map((i, n) => `${n + 1}. ${i.label} — ${i.docKind}${i.original ? " (original)" : " (copy)"}, ${i.pages} page(s)`),
+        ...items.map((i, n) => `${n + 1}. ${i.label}, ${i.docKind}${i.original ? " (original)" : " (copy)"}, ${i.pages} page(s)`),
         "",
         ...(r.conditionNotes ? [`Condition: ${r.conditionNotes}`] : []),
         ...(r.supersedesId ? [`Corrects receipt ${r.supersedesId}`] : []),

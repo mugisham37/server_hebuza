@@ -381,7 +381,7 @@ export async function notifications(db: Exec, s: Session) {
     ? []
     : [
         ...(ext.contractState === "expiring" || ext.contractState === "expired"
-          ? [{ id: "n-x-con", kind: "contract", text: ext.contractState === "expired" ? "Contract expired — renew to receive offers" : "Contract expires soon — renew", href: "/work/contract?tab=renewal", at: iso(), read: false }]
+          ? [{ id: "n-x-con", kind: "contract", text: ext.contractState === "expired" ? "Contract expired, renew to receive offers" : "Contract expires soon, renew", href: "/work/contract?tab=renewal", at: iso(), read: false }]
           : []),
         ...(ext.licence?.status === "due" || ext.licence?.status === "overdue"
           ? [{ id: "n-x-fee", kind: "money", text: "Licence fee due", href: "/work/contract?tab=licence", at: iso(), read: false }]
@@ -742,7 +742,7 @@ export async function proposeDue(
     ctx.session!,
     r,
     "note",
-    `Proposed new due date ${b.due_date}${b.note ? ` · ${b.note}` : ""} — waiting for approval`,
+    `Proposed new due date ${b.due_date}${b.note ? ` · ${b.note}` : ""}, waiting for approval`,
   );
   return { id: generateId("msg"), body: b.note, created_at: iso() };
 }
@@ -1460,7 +1460,7 @@ export async function submitReview(deps: Deps, ctx: Ctx, code: string) {
       await notify(ctx.db, {
         userId: a.managerId,
         kind: "review",
-        title: `Deliverable submitted — ${r.app.code}`,
+        title: `Deliverable submitted, ${r.app.code}`,
         href: "/ops/reviews",
       });
   }
@@ -1504,7 +1504,7 @@ function xmsg(
     lane: m.lane === "client" ? "client" : "internal",
     kind,
     authorId: m.senderId ?? "sys",
-    author: m.senderId ? (names.get(m.senderId) ?? "—") : "HEBUZA",
+    author: m.senderId ? (names.get(m.senderId) ?? "") : "HEBUZA",
     body: m.deletedAt ? "" : m.content,
     at: m.createdAt,
     mentions: mentions.get(m.messageId),
@@ -2021,7 +2021,7 @@ export async function clientOne(db: Exec, s: Session, id: string) {
     activity: activity.map((x) => ({
       at: x.at,
       ref: x.code,
-      who: x.sender ? (an.get(x.sender) ?? "—") : "HEBUZA",
+      who: x.sender ? (an.get(x.sender) ?? "") : "HEBUZA",
       text: x.content,
     })),
     notes: notes.map((n) => ({
@@ -2088,7 +2088,7 @@ async function allocations(db: Exec, s: Session) {
         id: r.id,
         ref: r.caseRef,
         service: app ? (svcs.get(app.serviceSlug)?.name ?? app.serviceName) : r.caseRef,
-        client: app ? (cls.get(clientKey(app))?.name ?? "—") : "—",
+        client: app ? (cls.get(clientKey(app))?.name ?? "") : "",
         eligible: r.eligible,
         deducted: ded,
         amount: state === "deducted" ? 0 : share.amount,
@@ -2347,7 +2347,7 @@ export async function performance(
       const a = mine.find((x) => x.applicationId === f.applicationId)!;
       return {
         id: f.applicationId,
-        client: cls.get(clientKey(a))?.name ?? "—",
+        client: cls.get(clientKey(a))?.name ?? "",
         rating: f.rating!,
         note: f.reviewNote ?? "",
         at: f.ratedAt ?? a.completedAt!,
@@ -2572,7 +2572,7 @@ export async function saveOnboarding(
     throw new AppError(
       409,
       "locked",
-      "Submitted for clearance — wait for review.",
+      "Submitted for clearance, wait for review.",
     );
   if (typeof b.payout?.account === "string" && b.payout.account) {
     // Full account numbers are not stored here; finance verifies the payout account (P6) from the event.

@@ -79,7 +79,7 @@ export class MarketingJobs {
       await this.mail.send({
         to: to.email,
         subject: msg.subject ?? "HEBUZA",
-        text: `${msg.body}\n\n—\n${foot}`,
+        text: `${msg.body}\n\n\n${foot}`,
         html: `<p>${esc(msg.body).replace(/\n/g, "<br>")}</p><hr><p style="font-size:12px">${msg.unsubscribe ? `<a href="${esc(msg.unsubscribe)}">Unsubscribe</a>` : "Reply STOP to unsubscribe"}</p>`,
         tags: { kind: "marketing" },
       });

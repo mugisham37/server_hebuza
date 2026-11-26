@@ -332,7 +332,7 @@ export class WorkforceService {
           Date.parse(d.expiresAt ?? "") > Date.now()
         );
       })
-      .map((o) => ({ ref: o.id, title: `${o.ref} — offer` }));
+      .map((o) => ({ ref: o.id, title: `${o.ref}, offer` }));
   }
 
   /** F-WRK-01: work contacts and professional links (private contacts stay in the encrypted shield). */
@@ -394,7 +394,7 @@ export class WorkforceService {
   }
 
   private privateOf(r: Awaited<ReturnType<WorkforceService["one"]>>) {
-    let p = { address: "—", phone: r.u.phoneE164 ?? "—", nationalId: "—" };
+    let p = { address: "", phone: r.u.phoneE164 ?? "", nationalId: "" };
     if (r.w.privateEnc) {
       try {
         p = {
@@ -542,9 +542,9 @@ export class WorkforceService {
         districts: [],
         privateEnc: this.crypto.encrypt(
           JSON.stringify({
-            address: "—",
-            phone: phone ?? "—",
-            nationalId: "—",
+            address: "",
+            phone: phone ?? "",
+            nationalId: "",
           }),
         ),
       };

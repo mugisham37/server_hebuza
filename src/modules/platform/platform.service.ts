@@ -75,6 +75,8 @@ export class PlatformService {
   }
 }
 
-/** Staging-only "Use demo account" button on the web sign-in; never on a production-named env. */
+/** "Use demo account" button on the web sign-in: staging and local development only; never on a production-named env. */
 export const demoLoginsEnabled = (env: NodeJS.ProcessEnv) =>
-  env.RAILWAY_ENVIRONMENT_NAME !== "production" && (env.ALLOW_SEED === "staging" || env.RAILWAY_ENVIRONMENT_NAME === "staging");
+  env.RAILWAY_ENVIRONMENT_NAME !== "production" &&
+  (env.ALLOW_SEED === "staging" || env.RAILWAY_ENVIRONMENT_NAME === "staging" ||
+    (env.NODE_ENV !== "production" && !env.RAILWAY_ENVIRONMENT_NAME)); // local `npm run dev` (not on Railway)

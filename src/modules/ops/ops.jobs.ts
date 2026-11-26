@@ -35,7 +35,7 @@ export class OpsJobs {
             await notify(tx, {
               userId: mgr[0].id,
               kind: "offer",
-              title: `Offer on ${o.ref} timed out — back in the queue`,
+              title: `Offer on ${o.ref} timed out, back in the queue`,
               href: `/ops/cases/${o.ref}`,
             });
         }

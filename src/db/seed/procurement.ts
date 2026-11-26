@@ -101,7 +101,7 @@ const ct = (o: Omit<Contract, "reminders" | "documents" | "version" | "ownerId" 
   reminders: reminderDates(o.endOn, LIMITS.reminderOffsets).map((r) => ({ ...r, channel: "in_app" as const, sentAt: r.on <= T0 ? `${r.on}T07:00:00.000Z` : undefined })),
 });
 const CONTRACTS: Contract[] = [
-  ct({ id: "ct-lease-1", ref: "CT-LEASE-001", vendorId: "v-kiyovu", kind: "lease", title: "Office lease — Kiyovu", startOn: addDays(d(60), -3 * 365),
+  ct({ id: "ct-lease-1", ref: "CT-LEASE-001", vendorId: "v-kiyovu", kind: "lease", title: "Office lease, Kiyovu", startOn: addDays(d(60), -3 * 365),
     endOn: d(60), amount: 1_450_000, frequency: "monthly", dueDay: 5, escalationPercent: 5, noticeDays: 90, autoRenew: false, depositAmount: 2_900_000,
     depositNo: "DP-2026-003", budgetCategory: "RENT", documents: [{ id: "doc-l1", name: "Lease agreement signed.pdf" }] }),
   ct({ id: "ct-lease-2", ref: "CT-LEASE-002", vendorId: "v-kiyovu", kind: "lease", title: "Branch office lease (spec example)", startOn: "2026-12-01",
@@ -182,7 +182,7 @@ const POS: PurchaseOrder[] = [
   po({ id: "po-63", no: "PO-2026-0063", prNo: "PR-2026-0084", vendorId: "v-kigalinet", lines: [pl(ln("l1", "Router replacement (service)", 1, 150_000), 1)],
     status: "received", neededBy: d(-9), issuedAt: at(-14 * 24) }),
   po({ id: "po-66", no: "PO-2026-0066", prNo: "PR-2026-0083", vendorId: "v-cleanco", lines: [pl(ln("l1", "Cleaning supplies pack", 4, 25_000), 0)],
-    status: "issued", neededBy: d(3), issuedAt: at(-4 * 24), sentAt: at(-4 * 24), sentTo: "—" }),
+    status: "issued", neededBy: d(3), issuedAt: at(-4 * 24), sentAt: at(-4 * 24), sentTo: "" }),
 ];
 const poOf = (no: string) => POS.find((x) => x.no === no || x.id === no);
 const GRNS: GoodsReceipt[] = [
@@ -216,7 +216,7 @@ const BILLS: Bill[] = [
     vatMode: "incl", status: "approved", match: poMatch("PO-2026-0061", b118Lines), preparedBy: P.josiane, preparedAt: at(-17 * 24), approvedBy: P.patrick, approvedAt: at(-40),
     budgetCategory: "PRINT", file: { id: "f-118", name: "INV-PP-0398.pdf" } }),
   bill({ id: "bl-117", no: "BL-2026-0117", vendorId: "v-kigalinet", vendorInvoiceNo: "INV-KIG-1188", invoiceDate: d(-12), dueOn: d(3), contractRef: "CT-2026-0003",
-    lines: [ln("l1", "Fibre internet — this month", 1, 236_000, true, "incl")], vatMode: "incl", status: "authorised", match: { result: "contract", lines: [] },
+    lines: [ln("l1", "Fibre internet, this month", 1, 236_000, true, "incl")], vatMode: "incl", status: "authorised", match: { result: "contract", lines: [] },
     preparedBy: P.josiane, preparedAt: at(-11 * 24), approvedBy: P.patrick, approvedAt: at(-6 * 24), authorisedBy: P.solange, authorisedAt: at(-3 * 24),
     budgetCategory: "INTERNET", file: { id: "f-117", name: "INV-KIG-1188.pdf" } }),
   bill({ id: "bl-113", no: "BL-2026-0113", vendorId: "v-notary", vendorInvoiceNo: "MU-2026-033", invoiceDate: d(-42), dueOn: d(-12), lines: [ln("l1", "Notarisation of lease documents", 1, 236_000, true, "incl")],
@@ -229,17 +229,17 @@ const BILLS: Bill[] = [
   bill({ id: "bl-116", no: "BL-2026-0116", vendorId: "v-express", vendorInvoiceNo: "EXP-077", invoiceDate: d(-9), dueOn: d(5), contractRef: "CT-2026-0005",
     lines: [ln("l1", "Courier retainer", 1, 90_000, false)], status: "disputed", disputedFrom: "matched", disputeReason: "Two deliveries in the period were not made.",
     match: { result: "contract", lines: [] }, preparedBy: P.josiane, preparedAt: at(-8 * 24), budgetCategory: "COUR", file: { id: "f-116", name: "EXP-077.pdf" } }),
-  bill({ id: "bl-120", no: "BL-2026-0120", vendorId: "v-power", vendorInvoiceNo: "KWP-88213", invoiceDate: d(-2), dueOn: d(8), lines: [ln("l1", "Electricity — office meter", 1, 145_000, true, "incl")],
+  bill({ id: "bl-120", no: "BL-2026-0120", vendorId: "v-power", vendorInvoiceNo: "KWP-88213", invoiceDate: d(-2), dueOn: d(8), lines: [ln("l1", "Electricity, office meter", 1, 145_000, true, "incl")],
     vatMode: "incl", noPoJustification: "Utility bill; no PO is raised for metered electricity.", status: "submitted", match: { result: "no_po", lines: [] },
     route: "executive", routeReasons: ["no_po"], preparedBy: P.josiane, preparedAt: at(-30), budgetCategory: "UTIL", file: { id: "f-120", name: "KWP-88213.pdf" } }),
   bill({ id: "bl-115", no: "BL-2026-0115", vendorId: "v-simba", vendorInvoiceNo: "INV-SIM-2198", invoiceDate: d(-35), dueOn: d(-21), poNo: "PO-2026-0064", lines: [ln("l1", "A4 paper and files", 1, 270_000)],
     status: "paid", match: { result: "matched", lines: [] }, preparedBy: P.josiane, preparedAt: at(-34 * 24), approvedBy: P.patrick, approvedAt: at(-30 * 24),
     authorisedBy: P.solange, authorisedAt: at(-28 * 24), amountPaid: 318_600, budgetCategory: "OFFICE", file: { id: "f-115", name: "INV-SIM-2198.pdf" } }),
   bill({ id: "bl-112", no: "BL-2026-0112", vendorId: "v-kigalinet", vendorInvoiceNo: "INV-KIG-1142", invoiceDate: d(-42), dueOn: d(-27), contractRef: "CT-2026-0003",
-    lines: [ln("l1", "Fibre internet — last month", 1, 236_000, true, "incl")], vatMode: "incl", status: "paid", match: { result: "contract", lines: [] }, preparedBy: P.josiane,
+    lines: [ln("l1", "Fibre internet, last month", 1, 236_000, true, "incl")], vatMode: "incl", status: "paid", match: { result: "contract", lines: [] }, preparedBy: P.josiane,
     preparedAt: at(-41 * 24), approvedBy: P.patrick, approvedAt: at(-35 * 24), authorisedBy: P.solange, authorisedAt: at(-30 * 24), amountPaid: 236_000, budgetCategory: "INTERNET" }),
   bill({ id: "bl-110", no: "BL-2026-0110", vendorId: "v-kiyovu", vendorInvoiceNo: "KH-RENT-11", invoiceDate: d(-12), dueOn: d(-8), contractRef: "CT-LEASE-001",
-    lines: [ln("l1", "Office rent — this month", 1, 1_450_000, false)], status: "paid", match: { result: "contract", lines: [] }, preparedBy: P.josiane, preparedAt: at(-12 * 24),
+    lines: [ln("l1", "Office rent, this month", 1, 1_450_000, false)], status: "paid", match: { result: "contract", lines: [] }, preparedBy: P.josiane, preparedAt: at(-12 * 24),
     approvedBy: P.patrick, approvedAt: at(-11 * 24), authorisedBy: P.alice, authorisedAt: at(-10 * 24), amountPaid: 1_450_000, budgetCategory: "RENT" }),
 ];
 const PAYMENTS: VendorPayment[] = [

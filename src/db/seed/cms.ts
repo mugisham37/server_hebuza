@@ -168,7 +168,7 @@ const seedNav = (): Record<"header" | "mobile" | "footer", NavNode[]> => {
   const n = (id: string, href: string, en: string, fr: string, rw: string): NavNode => ({ id, href, label: { en, fr, rw } });
   const header = [
     n("services", "/services", "Services", "Services", "Serivisi"), n("pricing", "/pricing", "Pricing", "Tarifs", "Ibiciro"),
-    n("knowledge", "/knowledge", "Guides", "Guides", "Ubuyobozi"), n("updates", "/updates", "Updates", "Actualités", "Amavugurura"),
+    n("guides", "/guides", "Guides", "Guides", "Amabwiriza"), n("updates", "/updates", "Updates", "Actualités", "Amavugurura"),
     n("about", "/about", "About", "À propos", "Abo turi bo"), n("contact", "/contact", "Contact", "Contact", "Twandikire"),
   ];
   return { header, mobile: header, footer: [n("faq", "/faq", "FAQ", "FAQ", "Ibibazo"), n("legal", "/legal/terms", "Terms", "Conditions", "Amabwiriza")] };

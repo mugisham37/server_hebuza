@@ -980,7 +980,7 @@ export class DocumentsService {
       const { d, a } = await readableDeliverable(db, s, id, { download: false });
       const owes = a.clientId === s.id && money(a, ((await paidRows(db, [a.code])).get(a.code) ?? []).reduce((x, r) => x + r.amount, 0)).balance > 0;
       if (!owes) return { url: await this.storage.presignGet(d.storagePath) };
-      const stamp = `PREVIEW — HEBUZA — ${a.code}`;
+      const stamp = `PREVIEW, HEBUZA, ${a.code}`;
       if (d.mimeType.startsWith("image/")) {
         const bytes = Buffer.concat(await (await this.storage.getStream(d.storagePath)).toArray());
         const img = sharp(bytes).rotate().resize(800, 800, { fit: "inside", withoutEnlargement: true });

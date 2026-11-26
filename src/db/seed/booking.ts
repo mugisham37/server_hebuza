@@ -13,7 +13,7 @@ import type { Locale } from "@/domain/i18n/config";
 import { mask } from "@/domain/format";
 
 // Same values/derivations as BKG_DEFAULTS and the contact helpers in server booking.service.ts (seed can't import the api).
-const BKG_DEFAULTS = { consultationPrice: 20_000, officeAddress: "HEBUZA office, Sonatube — Kicukiro, Kigali", videoBase: "https://meet.google.com/" };
+const BKG_DEFAULTS = { consultationPrice: 20_000, officeAddress: "HEBUZA office, Sonatube, Kicukiro, Kigali", videoBase: "https://meet.google.com/" };
 const sha = (v: string) => createHash("sha256").update(v).digest("hex");
 const contactKey = (c: { clientId?: string | null; phone?: string | null; email?: string | null }) =>
   c.clientId ?? sha(c.phone ? c.phone.replace(/\D/g, "").slice(-9) : (c.email ?? "").trim().toLowerCase());

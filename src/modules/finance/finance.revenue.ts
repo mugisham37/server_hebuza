@@ -146,8 +146,8 @@ function allocView(f: Fin, w: RevWorld, a: Alloc): AllocView {
   const { rev: _r, last: _l, queryNote: _q, ...rest } = a;
   return {
     ...rest,
-    serviceName: c ? f.D.serviceName(c.service) : "—",
-    clientName: c ? f.D.clientName(c.clientId) : "—",
+    serviceName: c ? f.D.serviceName(c.service) : "",
+    clientName: c ? f.D.clientName(c.clientId) : "",
     completedAt: a.frozenAt,
     shares: a.shares.map((s) => ({ ...s, name: f.D.workerName(s.workerId) })),
     rule: {

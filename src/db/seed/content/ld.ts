@@ -116,7 +116,7 @@ const en = {
       "Accountants",
       "Tax advisers",
       "Business consultants",
-      "Field agents — visit RDB, RRA and sector offices",
+      "Field agents, visit RDB, RRA and sector offices",
     ],
     howT: "How it works",
     steps: [
@@ -130,7 +130,7 @@ const en = {
     earnB:
       "You earn a share of the service fee on every task you complete. Your exact rate is in your contract.",
     stmt: "Example statement",
-    stmtSub: "Illustration only — not real earnings",
+    stmtSub: "Illustration only, not real earnings",
     needT: "What you need",
     need: [
       "National ID or passport",
@@ -167,7 +167,7 @@ const en = {
     l1: "Plain-language",
     hl: "help",
     l2: "for Rwandan businesses.",
-    search: "Search guides — e.g. VAT, RDB, loan",
+    search: "Search guides, e.g. VAT, RDB, loan",
     all: "All",
     cats: {
       registration: "Registration",
@@ -191,7 +191,7 @@ const en = {
     page: "Page {n}",
     newsT: "Get new guides and regulatory updates",
     newsPh: "Your email or phone",
-    newsDone: "Thanks — check your inbox or SMS to confirm.",
+    newsDone: "Thanks, check your inbox or SMS to confirm.",
     newsErr: "Enter a valid email or phone number.",
     crumb: "Guides",
     published: "Published {d}",
@@ -228,7 +228,7 @@ const en = {
     tag: "Regulatory updates",
     l1: "Rule changes,",
     hl: "explained.",
-    sub: "What changed at RRA, RDB, RSSB and others — who it affects, and what to do.",
+    sub: "What changed at RRA, RDB, RSSB and others, who it affects, and what to do.",
     inst: "Institution",
     affects: "Affects",
     all: "All",
@@ -413,7 +413,7 @@ const fr: LdCopy = {
       "Comptables",
       "Conseillers fiscaux",
       "Consultants d'entreprise",
-      "Agents de terrain — RDB, RRA et bureaux de secteur",
+      "Agents de terrain, RDB, RRA et bureaux de secteur",
     ],
     howT: "Comment ça marche",
     steps: [
@@ -427,7 +427,7 @@ const fr: LdCopy = {
     earnB:
       "Vous percevez une part des frais de service pour chaque mission réalisée. Votre taux exact figure dans votre contrat.",
     stmt: "Exemple de relevé",
-    stmtSub: "Illustration uniquement — pas de revenus réels",
+    stmtSub: "Illustration uniquement, pas de revenus réels",
     needT: "Ce qu'il vous faut",
     need: [
       "Carte d'identité ou passeport",
@@ -464,7 +464,7 @@ const fr: LdCopy = {
     l1: "Une aide",
     hl: "claire",
     l2: "pour les entreprises rwandaises.",
-    search: "Rechercher — ex. TVA, RDB, prêt",
+    search: "Rechercher, ex. TVA, RDB, prêt",
     all: "Tous",
     cats: {
       registration: "Création",
@@ -489,7 +489,7 @@ const fr: LdCopy = {
     page: "Page {n}",
     newsT: "Recevez les nouveaux guides et les mises à jour réglementaires",
     newsPh: "Votre e-mail ou téléphone",
-    newsDone: "Merci — confirmez via votre e-mail ou SMS.",
+    newsDone: "Merci, confirmez via votre e-mail ou SMS.",
     newsErr: "Saisissez un e-mail ou un numéro valide.",
     crumb: "Guides",
     published: "Publié le {d}",
@@ -526,7 +526,7 @@ const fr: LdCopy = {
     tag: "Mises à jour réglementaires",
     l1: "Les règles changent,",
     hl: "expliquées.",
-    sub: "Ce qui change à la RRA, la RDB, la RSSB et ailleurs — qui est concerné, et quoi faire.",
+    sub: "Ce qui change à la RRA, la RDB, la RSSB et ailleurs, qui est concerné, et quoi faire.",
     inst: "Institution",
     affects: "Concerne",
     all: "Toutes",
@@ -714,7 +714,7 @@ const rw: LdCopy = {
       "Abacungamari",
       "Abajyanama mu misoro",
       "Abajyanama mu bucuruzi",
-      "Abakozi bo hanze — basura RDB, RRA n'ibiro by'imirenge",
+      "Abakozi bo hanze, basura RDB, RRA n'ibiro by'imirenge",
     ],
     howT: "Uko bikora",
     steps: [
@@ -728,7 +728,7 @@ const rw: LdCopy = {
     earnB:
       "Uhabwa igice cy'igiciro cya serivisi kuri buri murimo urangije. Igipimo cyawe nyacyo kiri mu masezerano yawe.",
     stmt: "Urugero rwa raporo",
-    stmtSub: "Ni urugero gusa — si amafaranga nyayo",
+    stmtSub: "Ni urugero gusa, si amafaranga nyayo",
     needT: "Ibyo ukeneye",
     need: [
       "Indangamuntu cyangwa pasiporo",
@@ -762,7 +762,7 @@ const rw: LdCopy = {
     l1: "Ubufasha",
     hl: "bwumvikana",
     l2: "ku bucuruzi bwo mu Rwanda.",
-    search: "Shakisha — urugero TVA, RDB, inguzanyo",
+    search: "Shakisha, urugero TVA, RDB, inguzanyo",
     all: "Byose",
     cats: {
       registration: "Kwiyandikisha",
@@ -787,7 +787,7 @@ const rw: LdCopy = {
     page: "Urupapuro {n}",
     newsT: "Habwa amabwiriza mashya n'impinduka z'amategeko",
     newsPh: "Imeyili cyangwa telefoni",
-    newsDone: "Murakoze — emeza ukoresheje imeyili cyangwa SMS.",
+    newsDone: "Murakoze, emeza ukoresheje imeyili cyangwa SMS.",
     newsErr: "Andika imeyili cyangwa nimero nyayo.",
     crumb: "Amabwiriza",
     published: "Byatangajwe {d}",
@@ -824,7 +824,7 @@ const rw: LdCopy = {
     tag: "Impinduka z'amategeko",
     l1: "Amategeko arahinduka,",
     hl: "dore ibisobanuro.",
-    sub: "Ibyahindutse muri RRA, RDB, RSSB n'ahandi — abo bireba n'icyo gukora.",
+    sub: "Ibyahindutse muri RRA, RDB, RSSB n'ahandi, abo bireba n'icyo gukora.",
     inst: "Ikigo",
     affects: "Bireba",
     all: "Byose",
@@ -1224,7 +1224,7 @@ export const GUIDES: Guide[] = [
           "Submit the application to RDB.",
           "Receive the certificate and keep it current.",
         ],
-        tip: "Ask about incentives before you invest — some apply only from the start.",
+        tip: "Ask about incentives before you invest, some apply only from the start.",
       },
       fr: {
         title: "Le certificat d'investissement expliqué",
@@ -1242,7 +1242,7 @@ export const GUIDES: Guide[] = [
           "Déposez la demande à la RDB.",
           "Recevez le certificat et tenez-le à jour.",
         ],
-        tip: "Renseignez-vous sur les incitations avant d'investir — certaines ne s'appliquent qu'au départ.",
+        tip: "Renseignez-vous sur les incitations avant d'investir, certaines ne s'appliquent qu'au départ.",
       },
       rw: {
         title: "Icyemezo cy'ishoramari gisobanuwe",
@@ -1260,7 +1260,7 @@ export const GUIDES: Guide[] = [
           "Ohereza ubusabe muri RDB.",
           "Akira icyemezo ukivugurure.",
         ],
-        tip: "Baza ku nyoroshyo mbere yo gushora — zimwe zitangwa mu ntangiriro gusa.",
+        tip: "Baza ku nyoroshyo mbere yo gushora, zimwe zitangwa mu ntangiriro gusa.",
       },
     },
   },
@@ -1288,7 +1288,7 @@ export const GUIDES: Guide[] = [
           "Give a receipt for every sale.",
           "Keep the EBM synchronised.",
         ],
-        tip: "Train everyone who sells for you — a missing receipt is the shop's responsibility.",
+        tip: "Train everyone who sells for you, a missing receipt is the shop's responsibility.",
       },
       fr: {
         title: "EBM : ce que tout commerçant doit savoir",
@@ -1306,7 +1306,7 @@ export const GUIDES: Guide[] = [
           "Remettez un reçu à chaque vente.",
           "Gardez l'EBM synchronisée.",
         ],
-        tip: "Formez tous vos vendeurs — un reçu manquant engage la boutique.",
+        tip: "Formez tous vos vendeurs, un reçu manquant engage la boutique.",
       },
       rw: {
         title: "EBM: ibyo buri mucuruzi agomba kumenya",
@@ -1324,7 +1324,7 @@ export const GUIDES: Guide[] = [
           "Tanga inyemezabuguzi kuri buri kugurisha.",
           "Komeza EBM ihuye n'iya RRA.",
         ],
-        tip: "Hugura abagurisha bose — inyemezabuguzi ibuze ibazwa iduka.",
+        tip: "Hugura abagurisha bose, inyemezabuguzi ibuze ibazwa iduka.",
       },
     },
   },

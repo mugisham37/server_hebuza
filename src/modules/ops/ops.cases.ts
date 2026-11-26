@@ -353,7 +353,7 @@ async function setLead(
     actorId: s.id,
     actorName: names.get(s.id) ?? "Staff",
     from: prev ? names.get(prev) : null,
-    text: agentId ? (names.get(agentId) ?? agentId) : "—",
+    text: agentId ? (names.get(agentId) ?? agentId) : "",
   });
   if (agentId)
     await notify(db, {
@@ -1275,7 +1275,7 @@ const BRIEFS: Record<
   { name: string; steps: string[]; deliverables: string[] }
 > = {
   "company-registration": {
-    name: "Company registration — standard brief",
+    name: "Company registration, standard brief",
     steps: [
       "Reserve name on RDB portal",
       "Prepare articles of association",
@@ -1498,7 +1498,7 @@ export async function sendOffer(
   await notify(db, {
     userId: a.id,
     kind: "offer",
-    title: `New offer — ${r.app.serviceName}`,
+    title: `New offer, ${r.app.serviceName}`,
     href: "/agent/offers",
   });
   await logEvent(db, r.app.applicationId, {

@@ -1,8 +1,8 @@
 {
   "meta": {
     "siteName": "HEBUZA",
-    "title": "HEBUZA — Services d'affaires, fiscaux et d'investissement en ligne",
-    "description": "Vos formalités et conseils d'entreprise, traités par des professionnels vérifiés — suivez chaque étape, payez par MoMo, recevez vos documents en ligne."
+    "title": "HEBUZA, Services d'affaires, fiscaux et d'investissement en ligne",
+    "description": "Vos formalités et conseils d'entreprise, traités par des professionnels vérifiés, suivez chaque étape, payez par MoMo, recevez vos documents en ligne."
   },
   "common": {
     "skipToContent": "Aller au contenu",
@@ -168,7 +168,7 @@
   },
   "footer": {
     "tagline": "Centre privé de guichet unique pour l'investissement et le conseil aux entreprises",
-    "address": "Sonatube, Kicukiro — Kigali, Rwanda",
+    "address": "Sonatube, Kicukiro, Kigali, Rwanda",
     "legal": "Mentions légales",
     "terms": "Conditions",
     "privacy": "Confidentialité",

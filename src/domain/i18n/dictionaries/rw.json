@@ -1,8 +1,8 @@
 {
   "meta": {
     "siteName": "HEBUZA",
-    "title": "HEBUZA — Serivisi z'ubucuruzi, imisoro n'ishoramari kuri murandasi",
-    "description": "Impapuro n'inama by'ubucuruzi bwawe bikorwa n'abahanga bemewe — kurikirana buri ntambwe, wishyure ukoresheje MoMo, ubone inyandiko zawe kuri murandasi."
+    "title": "HEBUZA, Serivisi z'ubucuruzi, imisoro n'ishoramari kuri murandasi",
+    "description": "Impapuro n'inama by'ubucuruzi bwawe bikorwa n'abahanga bemewe, kurikirana buri ntambwe, wishyure ukoresheje MoMo, ubone inyandiko zawe kuri murandasi."
   },
   "common": {
     "skipToContent": "Jya ku bikubiyemo",
@@ -168,7 +168,7 @@
   },
   "footer": {
     "tagline": "Ikigo cyigenga gitanga serivisi zose z'ishoramari n'inama ku bucuruzi ahantu hamwe",
-    "address": "Sonatube, Kicukiro — Kigali, Rwanda",
+    "address": "Sonatube, Kicukiro, Kigali, Rwanda",
     "legal": "Amategeko",
     "terms": "Amabwiriza",
     "privacy": "Ubuzima bwite",

@@ -693,7 +693,7 @@ async function applyToCase(
     await notify(ctx.db, {
       userId: r.app.assignedAgentId,
       kind: "review",
-      title: `Review ${review} — ${r.app.code}`,
+      title: `Review ${review}, ${r.app.code}`,
       body: comment,
       href: `/agent/cases/${r.app.code}?tab=deliverables`,
     });

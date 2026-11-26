@@ -324,7 +324,7 @@ async function onboard(ctx: WCtx, r: JoinRec, provision: Provision) {
     const firmId = `firm_${p.id.slice(4, 20)}`;
     const f: FirmRec = {
       name: d.firmName || r.app.name,
-      account: "—",
+      account: "",
       adminId: p.id,
       members: [
         {

@@ -2,7 +2,7 @@
 import { PDFDocument, StandardFonts, degrees, rgb } from "pdf-lib";
 
 // Standard 14 fonts are WinAnsi: drop characters they cannot encode instead of failing the whole document.
-const ansi = (s: string) => s.replace(/[—–]/g, "-").replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
+const ansi = (s: string) => s.replace(/[–]/g, "-").replace(/[^\x20-\x7e\xa0-\xff]/g, "?");
 
 /**
  * Stamp `text` diagonally (and in the footer) on each page. `maxPages` keeps only the first pages (previews).

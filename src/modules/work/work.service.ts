@@ -439,7 +439,7 @@ export async function decideOnboarding(
     kind: "workforce",
     title:
       b.decision === "approve"
-        ? "You're cleared — offers can now reach you"
+        ? "You're cleared, offers can now reach you"
         : "Changes requested on your onboarding",
     href: "/work/onboarding",
   });
@@ -652,7 +652,7 @@ export async function giveNotice(ctx: WCtx, reason: string) {
   if (!reason?.trim()) throw new AppError(422, "reason_required", "Reason required");
   const lastDay = dayIso(Date.now() + WORK.noticeDays * D);
   a.e.notice = { at: iso(), lastDay, reason: reason.trim() };
-  hist(a.e, "notice", `Notice given — last day ${lastDay}`, a.name);
+  hist(a.e, "notice", `Notice given, last day ${lastDay}`, a.name);
   await saveExt(ctx.db, a.uid, a.e);
   const m = await managerOf(ctx.db, a.uid);
   if (m.id)
@@ -1002,7 +1002,7 @@ export async function payoutsOf(db: Exec, uid: string, e: ExtState) {
         month: b.period,
         date: new Date(Date.UTC(y, mo, WORK.payoutDay, 10)).toISOString(),
         method: `${METHOD[l.method] ?? l.method} ${l.destination.masked}`,
-        ref: l.providerRef ?? "—",
+        ref: l.providerRef ?? "",
         amount: l.net,
         status:
           l.status === "paid"
@@ -1095,7 +1095,7 @@ export async function decideInvoice(
   if (decision === "rejected")
     inv.note =
       note?.trim() ||
-      "Amount doesn't match the statement net — please reissue.";
+      "Amount doesn't match the statement net, please reissue.";
   await saveExt(ctx.db, uid, e);
   ctx.audit = { resourceId: inv.number, details: { decision } };
   return invOut(inv);
@@ -1592,7 +1592,7 @@ export async function handback(
       kind: "assignment",
       actorId: a.uid,
       actorName: a.name,
-      text: `Hand back requested: ${b.reason}${b.note ? ` — ${b.note}` : ""}`,
+      text: `Hand back requested: ${b.reason}${b.note ? `, ${b.note}` : ""}`,
     });
     const mgr = await managerOf(ctx.db, a.uid);
     if (mgr.id)
@@ -1907,7 +1907,7 @@ export async function credentialRow(tx: Exec, owner: string, e: ExtState, now: n
   const gone = e.credentials.filter((c) => c.status === "verified" && c.expiresOn && Date.parse(c.expiresOn) < now);
   if (!gone.length) return 0;
   for (const c of gone)
-    Object.assign(c, { status: "expired", note: "Expired — upload the renewed certificate to be cleared again." });
+    Object.assign(c, { status: "expired", note: "Expired, upload the renewed certificate to be cleared again." });
   const still = new Set(e.credentials.filter((c) => c.status === "verified").flatMap((c) => c.services));
   for (const s of e.services)
     if (gone.some((c) => c.services.includes(s.slug)) && !still.has(s.slug))
@@ -1916,7 +1916,7 @@ export async function credentialRow(tx: Exec, owner: string, e: ExtState, now: n
   await notify(tx, {
     userId: owner,
     kind: "workforce",
-    title: "A credential expired — upload the renewal",
+    title: "A credential expired, upload the renewal",
     href: "/work/profile?tab=credentials",
   });
   return gone.length;

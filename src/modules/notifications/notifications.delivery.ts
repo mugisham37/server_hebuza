@@ -283,7 +283,7 @@ export class DeliveryService {
       userId: to.userId,
       kind: n.kind.slice(0, 64),
       channel: ch,
-      toMasked: address ? maskTo(address).slice(-64) : "—",
+      toMasked: address ? maskTo(address).slice(-64) : "",
       lang: to.lang,
       createdAt: now,
       updatedAt: now,

@@ -175,9 +175,9 @@ export const isProhibited = (t: string) => PROHIBITED.test(t);
 const T = (lang: Locale, m: Record<Locale, string>) => m[lang] ?? m.en;
 const L = {
   guarantee: {
-    en: "I can't guarantee a loan, an approval or a timeline — those decisions belong to the bank or the institution. An adviser can review your case and tell you what improves your chances.",
+    en: "I can't guarantee a loan, an approval or a timeline, those decisions belong to the bank or the institution. An adviser can review your case and tell you what improves your chances.",
     fr: "Je ne peux pas garantir un prêt, une approbation ou un délai : ces décisions appartiennent à la banque ou à l'institution. Un conseiller peut examiner votre dossier.",
-    rw: "Sinshobora kwemeza inguzanyo cyangwa igihe — ibyo byemezwa na banki cyangwa ikigo. Umujyanama ashobora gusuzuma dosiye yawe.",
+    rw: "Sinshobora kwemeza inguzanyo cyangwa igihe, ibyo byemezwa na banki cyangwa ikigo. Umujyanama ashobora gusuzuma dosiye yawe.",
   },
   advicePre: {
     en: "Here is what our published guidance says. For your own situation, an adviser should look at it.",

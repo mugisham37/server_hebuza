@@ -624,7 +624,7 @@ export function dataMap(c: Caller) {
     items: MAP.map((m) => ({
       ...m,
       retention:
-        w.retention.find((r) => r.category === m.category)?.keep ?? "—",
+        w.retention.find((r) => r.category === m.category)?.keep ?? "",
     })),
     roles: MAP_ROLES,
     residencyOpen: true,
@@ -1148,7 +1148,7 @@ export function patchIncident(c: Caller, id: string, b: IncidentPatchIn) {
       if (!br) throw fail(422, "validation", "not a personal-data breach");
       if (!b.breachNotified.reference.trim()) throw fail(422, "validation", "reference");
       Object.assign(br, { notifiedAt: now, reference: b.breachNotified.reference.trim() });
-      i.timeline.push({ at: now, by: w.actor.name, text: `Regulator notified (${br.reference})${Date.parse(now) > Date.parse(br.notifyBy) ? " — after the deadline" : ""}` });
+      i.timeline.push({ at: now, by: w.actor.name, text: `Regulator notified (${br.reference})${Date.parse(now) > Date.parse(br.notifyBy) ? ", after the deadline" : ""}` });
       record(w, "system.incident.updated", "incident", i.id, undefined, { breachNotified: br.reference, late: Date.parse(now) > Date.parse(br.notifyBy) });
     }
     if (b.status) {
