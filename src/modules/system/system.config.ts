@@ -12,6 +12,7 @@ import en from "@/domain/i18n/dictionaries/en.json";
 import fr from "@/domain/i18n/dictionaries/fr.json";
 import rw from "@/domain/i18n/dictionaries/rw.json";
 import { platformSettings } from "@/db/schema";
+import { ensureDemoAccounts } from "@/db/seed/demo-accounts";
 import type { Env } from "../../core/config/env";
 import { canGoLive, health } from "@/domain/system/integrations";
 import { exportSettings, settingDef } from "@/domain/system/settings-registry";
@@ -88,6 +89,11 @@ const PLATFORM_COLS: Record<
   "flags.card_payments": "paymentsEnabled",
 };
 async function writeThrough(w: World, key: string, value: unknown) {
+  if (key === "security.demo_logins") {
+    if (value === true) await ensureDemoAccounts(w.db);
+    w.afterCommit.push(() => w.caller.deps.cache.bust("platform")); // public-settings.demoLogins
+    return;
+  }
   const col = PLATFORM_COLS[key];
   if (!col) return;
   await w.db
