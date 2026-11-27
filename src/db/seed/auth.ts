@@ -14,7 +14,7 @@ const DEMO_PHONE = "+250788000000";
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
 const isStaff = (role: string) => role.startsWith("staff:") || role === "ext:agent";
 
-const PERSONAS: { key: string; name: string; email: string; roles: string[] }[] = [
+export const PERSONAS: { key: string; name: string; email: string; roles: string[] }[] = [
   { key: "client", name: "Demo Client", email: "client@example.test", roles: ["client"] },
   { key: "unverified", name: "Demo New Client", email: "new@example.test", roles: ["client"] },
   { key: "agent", name: "Eric Habimana", email: "eric.habimana@hebuza.example", roles: ["staff:agent"] },
