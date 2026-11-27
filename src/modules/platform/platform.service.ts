@@ -68,7 +68,7 @@ export class PlatformService {
           // = GoogleAuthService.enabled (mock is refused in production at boot)
           googleSignIn: (this.cfg.get("GOOGLE_OAUTH_MOCK", { infer: true }) && this.cfg.get("NODE_ENV", { infer: true }) !== "production") ||
             !!(this.cfg.get("GOOGLE_OAUTH_CLIENT_ID", { infer: true }) && this.cfg.get("GOOGLE_OAUTH_CLIENT_SECRET", { infer: true })),
-          demoLogins: demoLoginsEnabled(process.env),
+          demoLogins: demoLoginsEnabled(process.env) || (await settingOf(db, "security.demo_logins")) === true,
         };
       }),
     );

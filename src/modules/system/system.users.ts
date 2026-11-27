@@ -59,8 +59,10 @@ import { iso } from "../../core/db/ids";
 import { loadExt, saveExt } from "../work/work.store";
 
 const D = 86_400_000;
+// Stakeholder roles only. Ops/finance/marketing/procurement/executive are run by the system admin ("all workspaces"), never granted to others.
+const SYSADMIN_ONLY: readonly string[] = ["staff:service_manager", "staff:finance", "staff:marketing", "staff:procurement", "staff:executive"];
 const ASSIGNABLE: readonly string[] = ROLES.filter(
-  (r) => r !== "visitor" && r !== "client",
+  (r) => r !== "visitor" && r !== "client" && !SYSADMIN_ONLY.includes(r),
 );
 const DONE_CASE = ["closed", "cancelled", "completed", "rejected", "withdrawn"];
 

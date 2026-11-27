@@ -26,7 +26,7 @@ const PERSONAS: { key: string; name: string; email: string; roles: string[] }[] 
   { key: "procurement", name: "Josiane Uwera", email: "josiane.uwera@hebuza.example", roles: ["staff:procurement"] },
   { key: "partners", name: "Demo Partner Manager", email: "pm@example.test", roles: ["staff:partner_manager"] },
   { key: "exec", name: "Alice Mutoni", email: "alice.mutoni@hebuza.example", roles: ["staff:executive", "staff:service_manager"] },
-  { key: "sysadmin", name: "Innocent Kayitare", email: "innocent.kayitare@hebuza.example", roles: ["staff:sysadmin"] },
+  { key: "sysadmin", name: "Innocent Kayitare", email: "innocent.kayitare@hebuza.example", roles: ["staff:sysadmin", "client", "staff:agent", "ext:agent", "staff:service_manager", "staff:finance", "staff:marketing", "staff:procurement", "staff:partner_manager", "staff:executive"] }, // all workspaces,
   { key: "sysadmin2", name: "Yvonne Uwamahoro", email: "yvonne.uwamahoro@hebuza.example", roles: ["staff:sysadmin"] },
   { key: "field", name: "Emmanuel Mugabo", email: "emmanuel.mugabo@hebuza.example", roles: ["staff:agent"] },
   { key: "client-b", name: "Demo Client B", email: "client-b@example.test", roles: ["client"] },
